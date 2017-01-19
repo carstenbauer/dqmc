@@ -5,8 +5,6 @@ type parameters
   slices::Int
   safe_mult::Int
   lattice_file::String
-  L::Int
-  sites::Int
   hsfield::Array{Float64, 3} # dim 1: op component, dim 2: linearized spatial lattice, dim 3: imag time
   thermalization::Int # no measurements, no saving
   measurements::Int # save and (maybe) measure
