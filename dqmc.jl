@@ -40,13 +40,15 @@ p.r = parse(Float64, params["R"])
 p.u = parse(Float64, params["U"])
 p.beta = p.slices * p.delta_tau
 l = lattice()
-l.L = parse(Int, p.lattice_file[maximum(search(p.lattice_file,"L_"))+1])
+# OPT: better filename parsing
+Lpos = maximum(search(p.lattice_file,"L_"))+1
+l.L = parse(Int, p.lattice_file[Lpos:Lpos+minimum(search(p.lattice_file[Lpos:end],"_"))-2])
 
 l.t = hoppings([parse(Float64, f) for f in split(params["HOPPINGS"], ',')]...)
 println("Hoppings are ", str(l.t))
 
 init_lattice_from_filename(params["LATTICE_FILE"], l)
-l.urneighbors = zeros(Int64, 2, l.sites) # up and right neighbor
+l.urneighbors = zeros(Int64, 2, l.sites)
 for i in 1:l.sites
   bofi = l.bonds[l.site_bonds[i,:],:]
   l.urneighbors[:,i] = bofi[findin(bofi[:,1],i),2]
