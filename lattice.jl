@@ -7,6 +7,7 @@ type hoppings
   yh::Float64
   yv::Float64
 end
+str(t::hoppings) = "xh = $(t.xh), xv = $(t.xv), yh = $(t.yh), yv = $(t.yv)"
 
 # define lattice type
 type lattice
@@ -34,7 +35,8 @@ type lattice
   lattice() = new()
 end
 
-
+# TODO: checkerboard content in this function
+# TODO: too general for square lattice, still, leave it that way?
 function init_lattice_from_filename(filename::String, l::lattice)
   l.chkr_hop = SparseMatrixCSC[]
   l.chkr_hop_inv = SparseMatrixCSC[]
@@ -87,7 +89,7 @@ function init_lattice_from_filename(filename::String, l::lattice)
       if sites_used[trg] == 1 continue end
 
       if src == 1 || trg == 1
-        println("Bond ", src, " - ", trg)
+        # println("Bond ", src, " - ", trg)
         l.n_neighbors += 1 end
 
       edges_used[bd_id] = 1
@@ -101,7 +103,8 @@ function init_lattice_from_filename(filename::String, l::lattice)
     group_start = group_end
   end
 
-  println("Initializing latice with ", l.n_neighbors, " neighbors")
+  # println("Initializing latice with ", l.n_neighbors, " neighbors and ", l.sites , " sites")
+  println("Initializing latice with ", l.sites , " sites")
   l.bonds = zeros(l.n_bonds, 2)
   l.site_bonds = zeros(l.sites, l.n_neighbors)
   for (e_idx, e) in enumerate(edges)

@@ -43,13 +43,13 @@ l = lattice()
 l.L = parse(Int, p.lattice_file[maximum(search(p.lattice_file,"L_"))+1])
 
 l.t = hoppings([parse(Float64, f) for f in split(params["HOPPINGS"], ',')]...)
-println("Hoppings are ", l.t)
+println("Hoppings are ", str(l.t))
 
 init_lattice_from_filename(params["LATTICE_FILE"], l)
 l.urneighbors = zeros(Int64, 2, l.sites) # up and right neighbor
 for i in 1:l.sites
-  bonds = l.bonds[l.site_bonds[i,:],:]
-  l.urneighbors[:,i] = bonds[find(e->e==i,bonds[:,1]),2]
+  bofi = l.bonds[l.site_bonds[i,:],:]
+  l.urneighbors[:,i] = bofi[findin(bofi[:,1],i),2]
 end
 
 # init_checkerboard_matrices(l, p.delta_tau)
