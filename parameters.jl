@@ -12,5 +12,6 @@ type parameters
   lambda::Float64
   r::Float64
   u::Float64
+  flv::Int # flavors: GF matrix has size flv*l.sites x flv*l.sites
   parameters() = new()
 end

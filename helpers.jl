@@ -5,3 +5,8 @@ function setGLOBAL_RNG(rng::MersenneTwister)
   Base.Random.GLOBAL_RNG.seed = rng.seed
   nothing
 end
+
+
+function sparsity(A::AbstractArray)
+  length(findin(A,0))/length(A)
+end

@@ -21,8 +21,9 @@ type lattice
   bonds::Array{Int, 2}
   bond_vecs::Array{Float64, 2}
   site_bonds::Array{Int, 2}
-  Tx::Array{Float64, 2} # flavor dep. hopping matrices
-  Ty::Array{Float64, 2}
+
+  hopping_matrix_minus::Array{Float64, 2}
+  hopping_matrix_plus::Array{Float64, 2}
 
   checkerboard::Array{Int, 2}
   groups::Array{UnitRange, 1}
@@ -38,7 +39,7 @@ type lattice
 end
 
 # TODO: checkerboard content in this function
-# TODO: too general for square lattice, still, leave it that way?
+# TODO: too general for square lattice! leave it that way?
 function init_lattice_from_filename(filename::String, l::lattice)
   xdoc = parse_file(filename)
   xroot = LightXML.root(xdoc)
@@ -141,19 +142,28 @@ function init_lattice_from_filename(filename::String, l::lattice)
       error("l.site_bonds is not correctly setup")
     end
   end
+end
 
-  # hopping matrices
-  l.Tx = diagm(fill(-p.mu,l.sites))
-  l.Ty = diagm(fill(-p.mu,l.sites))
+
+function init_hopping_matrix(p::parameters,l::lattice)
+  Tx = diagm(fill(-p.mu,l.sites))
+  Ty = diagm(fill(-p.mu,l.sites))
   for b in 1:l.n_bonds
     src = l.bonds[b,1]
     trg = l.bonds[b,2]
     if l.bond_vecs[b,1] == 1
-      l.Tx[trg,src] = l.Tx[src,trg] = -l.t.xh
-      l.Ty[trg,src] = l.Ty[src,trg] = -l.t.yh
+      Tx[trg,src] = Tx[src,trg] = -l.t.xh
+      Ty[trg,src] = Ty[src,trg] = -l.t.yh
     else
-      l.Tx[trg,src] = l.Tx[src,trg] = -l.t.xv
-      l.Ty[trg,src] = l.Ty[src,trg] = -l.t.yv
+      Tx[trg,src] = Tx[src,trg] = -l.t.xv
+      Ty[trg,src] = Ty[src,trg] = -l.t.yv
     end
   end
+
+  eTx_minus = expm(-0.5 * p.delta_tau * Tx)
+  eTy_minus = expm(-0.5 * p.delta_tau * Ty)
+  eTx_plus = expm(0.5 * p.delta_tau * Tx)
+  eTy_plus = expm(0.5 * p.delta_tau * Ty)
+  l.hopping_matrix_minus = cat([1,2],eTx_minus,eTy_minus,eTx_minus,eTy_minus)
+  l.hopping_matrix_plus = cat([1,2],eTx_plus,eTy_plus,eTx_plus,eTy_plus)
 end

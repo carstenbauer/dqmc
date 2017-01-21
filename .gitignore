@@ -1,3 +1,4 @@
 **/*.xml
 **/*.h5
 playground.jl
+**/*.bin
