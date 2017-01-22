@@ -1,7 +1,7 @@
 type stack
   u_stack::Array{Complex{Float64}, 3}
   d_stack::Array{Float64, 2}
-  t_stack::Array{Complex{Float64}, 3}
+  v_stack::Array{Complex{Float64}, 3}
 
   Ul::Array{Complex{Float64}, 2}
   Ur::Array{Complex{Float64}, 2}
@@ -34,7 +34,7 @@ function initialize_stack(s::stack, p::parameters, l::lattice)
 
   s.u_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
   s.d_stack = zeros(Float64, p.flv*l.sites, s.n_elements)
-  s.t_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
+  s.v_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
 
   s.greens = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.greens_temp = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
@@ -61,19 +61,54 @@ function initialize_stack(s::stack, p::parameters, l::lattice)
 end
 
 
-# function build_stack(s::stack, p::parameters, l::lattice)
-#   s.u_stack[:, :, 1] = l.free_fermion_wavefunction + 0.im * l.free_fermion_wavefunction
-#   s.d_stack[:, 1] = ones(size(s.d_stack)[1])
-#   s.t_stack[:, :, 1] = eye(Complex{Float64}, size(s.d_stack)[1], size(s.d_stack)[1])
-#
-#   for i in 1:length(s.ranges)
-#     add_slice_sequence_left(s, i, p, l)
-#   end
-#
-#   s.current_slice = p.slices + 1
-#   s.direction = -1
-#
-# end
+function build_stack(s::stack, p::parameters, l::lattice)
+  s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.d_stack[:, 1] = ones(p.flv*l.sites)
+  s.v_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
+  for i in 1:length(s.ranges)
+    add_slice_sequence_left(s, p, l, i)
+  end
+
+  s.current_slice = p.slices + 1
+  s.direction = -1
+end
+
+
+function add_slice_sequence_left(s::stack, p::parameters, l::lattice, idx::Int)
+  curr_U = copy(s.u_stack[:, :, idx])
+  # println("Adding slice seq left $idx = ", s.ranges[idx])
+  for slice in s.ranges[idx]
+    curr_U = slice_matrix_no_chkr(p, l, slice) * curr_U
+  end
+
+  curr_U =  curr_U * spdiagm(s.d_stack[:, idx])
+  F = svdfact!(curr_U)
+  s.u_stack[:, :, idx + 1] = F[:U]
+  s.d_stack[:, idx + 1] = F[:S]
+  s.v_stack[:, :, idx + 1] =  s.v_stack[:, :, idx] * F[:Vt]
+end
+
+
+function add_slice_sequence_right(s::stack, p::parameters, l::lattice, idx::Int)
+  curr_U = copy(s.u_stack[:, :, idx + 1])
+
+  for slice in reverse(s.ranges[idx])
+    slice_mat = slice_matrix(slice, p, l)
+    curr_U = transpose(slice_mat) * curr_U
+    # multiply_slice_matrix_left_transpose!(curr_U, l.temp_thin, slice, p, l)
+  end
+
+  s.u_stack[:, :, idx], R, p = qr(curr_U, Val{true}; thin=true)
+  # decompose_udt_alt!(slice(s.u_stack, :, :, idx), curr_U)
+
+  # for i in 1:p.particles
+  #   curr_U[:, i] *= s.d_stack[i, idx + 1]
+  # end
+
+  # s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(curr_U)
+  # s.t_stack[:, :, idx] = T * s.t_stack[:, :, idx + 1]
+end
 
 
 # B(slice) = exp(−1/2∆τK)exp(−∆τV(slice))exp(−1/2∆τK)
@@ -83,28 +118,28 @@ end
 
 
 # B(slice) = exp(−1/2∆τK)exp(−∆τV(slice))exp(−1/2∆τK)
-function slice_matrix(p::parameters, l::lattice, slice::Int, pref::Float64=1.)
-
-  M = eye(Complex{Float64}, 2*l.n_sites, 2*l.n_sites)
-
-  if pref > 0
-    M = spdiagm(interaction_matrix(p, l, slice)) * M
-    for h in l.chkr_hop
-      M = h * M
-    end
-
-    for h in reverse(l.chkr_hop)
-      M = h * M
-    end
-  else
-    for h in l.chkr_hop_inv
-      M = h * M
-    end
-
-    for h in reverse(l.chkr_hop_inv)
-      M = h * M
-    end
-    M = spdiagm(interaction_matrix(p, l, slice, -1.)) * M
-  end
-  return M
-end
+# function slice_matrix(p::parameters, l::lattice, slice::Int, pref::Float64=1.)
+#
+#   M = eye(Complex{Float64}, 2*l.n_sites, 2*l.n_sites)
+#
+#   if pref > 0
+#     M = spdiagm(interaction_matrix(p, l, slice)) * M
+#     for h in l.chkr_hop
+#       M = h * M
+#     end
+#
+#     for h in reverse(l.chkr_hop)
+#       M = h * M
+#     end
+#   else
+#     for h in l.chkr_hop_inv
+#       M = h * M
+#     end
+#
+#     for h in reverse(l.chkr_hop_inv)
+#       M = h * M
+#     end
+#     M = spdiagm(interaction_matrix(p, l, slice, -1.)) * M
+#   end
+#   return M
+# end

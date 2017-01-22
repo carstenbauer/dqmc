@@ -1,5 +1,6 @@
 # dqmc.jl called with arguments: sdwO3_L_4_B_2_dt_0.1_1 ${SLURM_ARRAY_TASK_ID}
 include("helpers.jl")
+include("linalg.jl")
 include("parameters.jl")
 include("xml_parameters.jl")
 include("lattice.jl")
@@ -69,7 +70,7 @@ s = stack()
 initialize_stack(s, p, l)
 
 
-# @time build_stack(s, p, l)
+@time build_stack(s, p, l)
 # # @time begin for __ in 1:(2 * p.slices) propagate(s, p, l); flipped = simple_update(s, p, l); end end
 #
 # println("Propagate ", s.current_slice, " ", s.direction)
