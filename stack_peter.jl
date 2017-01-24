@@ -31,38 +31,37 @@ end
 function initialize_stack(s::stack, p::parameters, l::lattice)
   s.n_elements = convert(Int, p.slices / p.safe_mult) + 1
 
-  s.u_stack = zeros(Complex{Float64}, l.n_sites, p.particles, s.n_elements)
-  s.d_stack = zeros(Float64, p.particles, s.n_elements)
-  s.t_stack = zeros(Complex{Float64}, p.particles, p.particles, s.n_elements)
+  s.u_stack = zeros(Complex{Float64}, l.n_sites, l.n_sites, s.n_elements)
+  s.d_stack = zeros(Float64, l.n_sites, s.n_elements)
+  s.t_stack = zeros(Complex{Float64}, l.n_sites, l.n_sites, s.n_elements)
 
   s.greens = zeros(Complex{Float64}, l.n_sites, l.n_sites)
   s.greens_temp = zeros(Complex{Float64}, l.n_sites, l.n_sites)
 
-  s.Ul = zeros(Complex{Float64}, l.n_sites, p.particles)
-  s.Tl = eye(Complex{Float64}, p.particles, p.particles)
-  s.Ur = zeros(Complex{Float64}, l.n_sites, p.particles)
-  s.Tr = eye(Complex{Float64}, p.particles, p.particles)
-  s.Dl = ones(Float64, p.particles)
-  s.Dr = ones(Float64, p.particles)
+  s.Ul = zeros(Complex{Float64}, l.n_sites, l.n_sites)
+  s.Tl = eye(Complex{Float64}, l.n_sites, l.n_sites)
+  s.Ur = zeros(Complex{Float64}, l.n_sites, l.n_sites)
+  s.Tr = eye(Complex{Float64}, l.n_sites, l.n_sites)
+  s.Dl = ones(Float64, l.n_sites)
+  s.Dr = ones(Float64, l.n_sites)
 
   s.U = zeros(Complex{Float64}, l.n_sites, l.n_sites)
   s.Q = zeros(Complex{Float64}, l.n_sites, l.n_sites)
-  s.D = zeros(Float64, p.particles)
-  s.R = zeros(Complex{Float64}, p.particles, p.particles)
-  s.T = zeros(Complex{Float64}, p.particles, p.particles)
+  s.D = zeros(Float64, l.n_sites)
+  s.R = zeros(Complex{Float64}, l.n_sites, l.n_sites)
+  s.T = zeros(Complex{Float64}, l.n_sites, l.n_sites)
   s.ranges = UnitRange[]
 
   for i in 1:s.n_elements - 1
     push!(s.ranges, 1 + (i - 1) * p.safe_mult:i * p.safe_mult)
   end
-
 end
 
 
 function build_stack(s::stack, p::parameters, l::lattice)
-  s.u_stack[:, :, 1] = l.free_fermion_wavefunction + 0.im * l.free_fermion_wavefunction
-  s.d_stack[:, 1] = ones(size(s.d_stack)[1])
-  s.t_stack[:, :, 1] = eye(Complex{Float64}, size(s.d_stack)[1], size(s.d_stack)[1])
+  s.u_stack[:, :, 1] = eye(Complex{Float64}, l.n_sites)
+  s.d_stack[:, 1] = ones(l.n_sites)
+  s.t_stack[:, :, 1] = eye(Complex{Float64}, l.n_sites)
 
   for i in 1:length(s.ranges)
     add_slice_sequence_left(s, i, p, l)
@@ -76,52 +75,28 @@ end
 #
 function add_slice_sequence_left(s::stack, idx::Int, p::parameters, l::lattice)
   curr_U = copy(s.u_stack[:, :, idx])
-  # println("Adding slice seq left $idx = ", s.ranges[idx])
+
   for slice in s.ranges[idx]
     slice_mat = slice_matrix(slice, p, l)
     curr_U = slice_mat * curr_U
   end
 
-  # for i in 1:p.particles
-  #   curr_U[:, i] *= s.d_stack[i, idx]
-  # end
-
-  # curr_U =  curr_U * spdiagm(s.d_stack[:, idx])
-  # A, B, C = decompose_udt(curr_U)
-  s.u_stack[:, :, idx + 1], R, p = qr(curr_U, Val{true}; thin=true)
-  # s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], s.t_stack[:, :, idx + 1] = decompose_udt(curr_U)
-  #
-  # decompose_udt_alt!(slice(s.u_stack, :, :, idx + 1), slice(s.d_stack, :, idx + 1), s.R, s.T, curr_U)
-  # println("A Diff\t", maximum(abs(A - s.u_stack[:, :, idx + 1])))
-  # println("B\t", B)
-  # println("d_stack\t", s.d_stack[:, idx + 1])
-  # println("B Diff\t", maximum(abs(B - s.d_stack[:, idx + 1])))
-  # println("C Diff\t", maximum(abs(C - s.T)))
-  # quit()
-
-  # s.t_stack[:, :, idx + 1] = s.T * s.t_stack[:, :, idx]
-  # s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], T = decompose_udt(curr_U)
-  # s.t_stack[:, :, idx + 1] = T * s.t_stack[:, :, idx]
+  curr_U =  curr_U * spdiagm(s.d_stack[:, idx])
+  s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], T = decompose_udt(curr_U)
+  s.t_stack[:, :, idx + 1] = T * s.t_stack[:, :, idx]
 end
 
 function add_slice_sequence_right(s::stack, idx::Int, p::parameters, l::lattice)
   curr_U = copy(s.u_stack[:, :, idx + 1])
+  # println("Curr U is\n\n", curr_U)
 
   for slice in reverse(s.ranges[idx])
     slice_mat = slice_matrix(slice, p, l)
     curr_U = transpose(slice_mat) * curr_U
-
-    # multiply_slice_matrix_left_transpose!(curr_U, l.temp_thin, slice, p, l)
   end
-  s.u_stack[:, :, idx], R, p = qr(curr_U, Val{true}; thin=true)
-  # decompose_udt_alt!(slice(s.u_stack, :, :, idx), curr_U)
-
-  # for i in 1:p.particles
-  #   curr_U[:, i] *= s.d_stack[i, idx + 1]
-  # end
-
-  # s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(curr_U)
-  # s.t_stack[:, :, idx] = T * s.t_stack[:, :, idx + 1]
+  curr_U =  curr_U * spdiagm(s.d_stack[:, idx + 1])
+  s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(curr_U)
+  s.t_stack[:, :, idx] = T * s.t_stack[:, :, idx + 1]
 end
 
 
@@ -325,11 +300,34 @@ function slice_matrix(slice::Int, p::parameters, l::lattice, pref::Float64=1.)
 end
 
 function calculate_greens(s::stack, p::parameters, l::lattice)
-  A = transpose(s.Ur) * s.Ul
-  F = svdfact!(A)
+    # println(s.Tl)
+  A = spdiagm(s.Dl) * (s.Tl * transpose(s.Tr)) * spdiagm(s.Dr)
 
-  s.greens = eye(l.n_sites) - s.Ul * ctranspose(F[:Vt]) * spdiagm(1. ./ F[:S]) * ctranspose(F[:U]) * transpose(s.Ur)
-  #return greens
+  M, S, N = decompose_udt(A)
+
+  U = s.Ul * M
+  D = S
+  T = N * transpose(s.Ur)
+
+  # A' * X = B
+  # X = A'-1 * B
+  # X' = B' * A^-1
+
+  inside = ctranspose(\(ctranspose(T), U)) + diagm(D)
+  Ui, Di, Ti = decompose_udt(inside)
+  Di_inv = 1. ./ Di
+
+  U_left = U * Ui
+  T_left = spdiagm(Di) * Ti * T
+  s.greens = \(T_left, ctranspose(U_left))
+  # inside = ctranspose(U) * ctranspose(T) + diagm(D)
+  # Fi = svdfact!(inside)
+  # Ui = Fi[:U]
+  # Di_inv = 1./Fi[:S]
+  # Ti = Fi[:Vt]
+
+  # s.greens = ctranspose(T) * ctranspose(Ti) * spdiagm(Di_inv) * ctranspose(Ui) * ctranspose(U)
+
 end
 
 ################################################################################
@@ -341,9 +339,9 @@ function propagate(s::stack, p::parameters, l::lattice)
       s.current_slice += 1
       if s.current_slice == 1
         s.Ur[:], s.Dr[:], s.Tr[:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
-        s.u_stack[:, :, 1] = l.free_fermion_wavefunction
-        s.d_stack[:, 1] = ones(size(s.d_stack)[1])
-        s.t_stack[:, :, 1] = eye(Complex{Float64}, size(s.d_stack)[1], size(s.d_stack)[1])
+        s.u_stack[:, :, 1] = eye(Complex{Float64}, l.n_sites)
+        s.d_stack[:, 1] = ones(l.n_sites)
+        s.t_stack[:, :, 1] = eye(Complex{Float64}, l.n_sites)
         s.Ul[:], s.Dl[:], s.Tl[:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
         calculate_greens(s, p, l)
 
@@ -380,9 +378,9 @@ function propagate(s::stack, p::parameters, l::lattice)
       idx = Int(s.current_slice / p.safe_mult) + 1
       if s.current_slice == p.slices
         s.Ul[:, :], s.Dl[:], s.Tl[:, :] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
-        s.u_stack[:, :, end] = l.free_fermion_wavefunction
-        s.d_stack[:, end] = ones(p.particles)
-        s.t_stack[:, :, end] = eye(Complex{Float64}, p.particles, p.particles)
+        s.u_stack[:, :, end] = eye(Complex{Float64}, l.n_sites, l.n_sites)
+        s.d_stack[:, end] = ones(l.n_sites)
+        s.t_stack[:, :, end] = eye(Complex{Float64}, l.n_sites, l.n_sites)
         s.Ur[:], s.Dr[:], s.Tr[:] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
         calculate_greens(s, p, l)
 
@@ -400,6 +398,7 @@ function propagate(s::stack, p::parameters, l::lattice)
         add_slice_sequence_right(s, idx, p, l)
         s.Ur[:], s.Dr[:], s.Tr[:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.t_stack[:, :, idx]
         calculate_greens(s, p, l)
+        # println(real(diag(s.greens)))
         diff = maximum(diag(abs(s.greens_temp - s.greens)))
         if diff > 1e-4
           println(s.current_slice, "\t-1  Propagation stability\t", diff)

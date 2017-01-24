@@ -7,7 +7,7 @@ include("lattice.jl")
 include("interactions.jl")
 include("stack.jl")
 
-# ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]
+ # ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]
 prefix = convert(String, ARGS[1])
 idx = 1
 try
@@ -72,7 +72,7 @@ initialize_stack(s, p, l)
 
 @time build_stack(s, p, l)
 # # @time begin for __ in 1:(2 * p.slices) propagate(s, p, l); flipped = simple_update(s, p, l); end end
-#
+
 # println("Propagate ", s.current_slice, " ", s.direction)
 # propagate(s, p, l)
 # println(real(diag(s.greens)))
