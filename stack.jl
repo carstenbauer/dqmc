@@ -61,7 +61,7 @@ function build_stack(s::stack, p::parameters, l::lattice)
   s.d_stack[:, 1] = ones(p.flv*l.sites)
   s.vt_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
 
-  for i in 1:length(s.ranges)
+  @inbounds for i in 1:length(s.ranges)
     add_slice_sequence_left(s, p, l, i)
   end
 
@@ -129,7 +129,7 @@ function propagate(s::stack, p::parameters, l::lattice)
     if mod(s.current_slice, p.safe_mult) == 0
       s.current_slice += 1
       if s.current_slice == 1
-        s.Ur[:], s.Dr[:], s.Tr[:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.vt_stack[:, :, 1]
+        s.Ur[:], s.Dr[:], s.Vtr[:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.vt_stack[:, :, 1]
         s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites)
         s.d_stack[:, 1] = ones(p.flv*l.sites)
         s.vt_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites)
@@ -138,7 +138,7 @@ function propagate(s::stack, p::parameters, l::lattice)
 
       elseif s.current_slice > 1 && s.current_slice < p.slices
         idx = Int((s.current_slice - 1) / p.safe_mult)
-        s.Ur[:], s.Dr[:], s.Tr[:] = s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], s.vt_stack[:, :, idx + 1]
+        s.Ur[:], s.Dr[:], s.Vtr[:] = s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], s.vt_stack[:, :, idx + 1]
         add_slice_sequence_left(s, p, l, idx)
         s.Ul[:], s.Dl[:], s.Vtl[:] = s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], s.vt_stack[:, :, idx + 1]
 

@@ -18,6 +18,7 @@ type lattice
   n_bonds::Int
   t::hoppings
   urneighbors::Array{Int, 2} # different cols contain up and right neighbors of site=colidx
+  neighbors::Array{Int, 2} # different cols contain neighbors of site=colidx in no particular order
   bonds::Array{Int, 2}
   bond_vecs::Array{Float64, 2}
   site_bonds::Array{Int, 2}
@@ -166,4 +167,16 @@ function init_hopping_matrix(p::parameters,l::lattice)
   eTy_plus = expm(0.5 * p.delta_tau * Ty)
   l.hopping_matrix_minus = cat([1,2],eTx_minus,eTy_minus,eTx_minus,eTy_minus)
   l.hopping_matrix_plus = cat([1,2],eTx_plus,eTy_plus,eTx_plus,eTy_plus)
+end
+
+
+function init_neighbors_table(p::parameters,l::lattice)
+  # TODO: Only one sorted neighbor table!
+  l.urneighbors = zeros(Int64, 2, l.sites)
+  l.neighbors = zeros(Int64, 4, l.sites) # unsorted order of neighbors
+  for i in 1:l.sites
+    bofi = l.bonds[l.site_bonds[i,:],:]
+    l.urneighbors[:,i] = bofi[findin(bofi[:,1],i),2]
+    l.neighbors[:,i] = filter(x->x!=i,l.bonds[l.site_bonds[i,:],:])
+  end
 end
