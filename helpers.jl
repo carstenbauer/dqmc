@@ -10,3 +10,10 @@ end
 function sparsity(A::AbstractArray)
   length(findin(A,0))/length(A)
 end
+
+
+function swapRows!(X, i, j)
+    for k = 1:size(X,2)
+        X[i,k], X[j,k] = X[j,k], X[i,k]
+    end
+end

@@ -11,7 +11,7 @@ function boson_action(p::parameters, l::lattice,
       # spatial gradient
       # Count only top and right neighbor (avoid overcounting)
       for n in 1:2
-        diff = hsfield[:,i,s] - hsfield[:,l.urneighbors[n,i],s]
+        diff = hsfield[:,i,s] - hsfield[:,l.neighbors[n,i],s]
         S += p.delta_tau * 0.5 * dot(diff,diff);
       end
 

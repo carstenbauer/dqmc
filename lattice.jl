@@ -17,8 +17,8 @@ type lattice
   n_neighbors::Int
   n_bonds::Int
   t::hoppings
-  urneighbors::Array{Int, 2} # different cols contain up and right neighbors of site=colidx
-  neighbors::Array{Int, 2} # different cols contain neighbors of site=colidx in no particular order
+  neighbors::Array{Int, 2} # different cols contain neighbors of site=colidx.
+                           # first = up, second = down, third and fourth not ordered
   bonds::Array{Int, 2}
   bond_vecs::Array{Float64, 2}
   site_bonds::Array{Int, 2}
@@ -171,12 +171,11 @@ end
 
 
 function init_neighbors_table(p::parameters,l::lattice)
-  # TODO: Only one sorted neighbor table!
-  l.urneighbors = zeros(Int64, 2, l.sites)
+  # TODO: neighbor table: sort down and left neighbors
   l.neighbors = zeros(Int64, 4, l.sites) # unsorted order of neighbors
   for i in 1:l.sites
-    bofi = l.bonds[l.site_bonds[i,:],:]
-    l.urneighbors[:,i] = bofi[findin(bofi[:,1],i),2]
     l.neighbors[:,i] = filter(x->x!=i,l.bonds[l.site_bonds[i,:],:])
   end
+  swapRows!(l.neighbors,3,1)
+  swapRows!(l.neighbors,4,2)
 end
