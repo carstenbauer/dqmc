@@ -63,6 +63,7 @@ l.t = hoppings([parse(Float64, f) for f in split(params["HOPPINGS"], ',')]...)
 println("Hoppings are ", str(l.t))
 init_lattice_from_filename(params["LATTICE_FILE"], l)
 init_neighbors_table(p,l)
+init_time_neighbors_table(p,l)
 init_hopping_matrix(p,l)
 # init_checkerboard_matrices(l, p.delta_tau)
 

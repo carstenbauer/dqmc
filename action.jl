@@ -5,7 +5,7 @@ function boson_action(p::parameters, l::lattice,
     for i in 1:l.sites
 
       # temporal gradient
-      diff = hsfield[:,i,s] - hsfield[:,i,time_neighbor(s,-1)]
+      diff = hsfield[:,i,s] - hsfield[:,i,l.time_neighbors[2,s]]
       S += 0.5/p.delta_tau * dot(diff,diff);
 
       # spatial gradient
@@ -41,8 +41,8 @@ function boson_action_diff(p::parameters, l::lattice, site::Int, new_op::Vector{
   new_op_pow4 = new_op_sq * new_op_sq
   pow4_diff = new_op_pow4 - old_op_pow4
 
-  op_earlier = hsfield[:,site,time_neighbor(slice,-1)]
-  op_later = hsfield[:,site,time_neighbor(slice,1)]
+  op_earlier = hsfield[:,site,l.time_neighbors[2,slice]]
+  op_later = hsfield[:,site,l.time_neighbors[1,slice]]
   op_time_neighbors = op_later + op_earlier
 
   op_space_neighbors = zeros(3)

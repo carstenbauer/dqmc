@@ -17,3 +17,4 @@ function test_boson_action_diff(p,l)
   end
   return true
 end
+test_boson_action_diff(p,l)

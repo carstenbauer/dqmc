@@ -17,7 +17,8 @@ type lattice
   n_neighbors::Int
   n_bonds::Int
   t::hoppings
-  neighbors::Array{Int, 2} # different cols contain neighbors of site=colidx.
+  time_neighbors::Array{Int, 2} # colidx = slice, rowidx = up, down
+  neighbors::Array{Int, 2} # colidx = site
                            # first = up, second = down, third and fourth not ordered
   bonds::Array{Int, 2}
   bond_vecs::Array{Float64, 2}
@@ -178,4 +179,16 @@ function init_neighbors_table(p::parameters,l::lattice)
   end
   swapRows!(l.neighbors,3,1)
   swapRows!(l.neighbors,4,2)
+end
+
+
+"""
+Periodic boundary conditions in imaginary time
+"""
+function init_time_neighbors_table(p::parameters,l::lattice)
+  l.time_neighbors = zeros(Int64, 2, p.slices)
+  for s in 1:p.slices
+    l.time_neighbors[1,s] = s==p.slices?1:s+1
+    l.time_neighbors[2,s] = s==1?p.slices:s-1
+  end
 end

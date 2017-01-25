@@ -22,15 +22,3 @@ type parameters
   box::Distributions.Uniform{Float64}
   parameters() = new()
 end
-
-
-"""
-Periodic boundary conditions in imaginary time
-"""
-function time_neighbor(slice::Int, direction::Int)
-  if direction == 1
-    return slice==p.slices?1:slice+1
-  else
-    return slice==1?p.slices:slice-1
-  end
-end
