@@ -62,40 +62,42 @@ l.L = parse(Int, p.lattice_file[Lpos:Lpos+minimum(search(p.lattice_file[Lpos:end
 l.t = hoppings([parse(Float64, f) for f in split(params["HOPPINGS"], ',')]...)
 println("Hoppings are ", str(l.t))
 init_lattice_from_filename(params["LATTICE_FILE"], l)
-init_neighbors_table(p,l)
-init_time_neighbors_table(p,l)
+println("Initializing neighbor-tables")
+@time init_neighbors_table(p,l)
+@time init_time_neighbors_table(p,l)
 init_hopping_matrix(p,l)
 # init_checkerboard_matrices(l, p.delta_tau)
 
 # init hsfield
-println("Initializing HS field...")
+println("Initializing HS field")
 @time p.hsfield = rand(3,l.sites,p.slices)
-@time boson_action(p,l)
+println("Initializing boson action")
+boson_action(p,l)
 
 # stack init and test
 s = stack()
 initialize_stack(s, p, l)
-println("Building stack...")
 @time build_stack(s, p, l)
 # # @time begin for __ in 1:(2 * p.slices) propagate(s, p, l); flipped = simple_update(s, p, l); end end
 
+# println("Propagate ", s.current_slice, " ", s.direction)
+# propagate(s, p, l)
+# println(real(diag(s.greens)))
+# local_updates(s, p, l)
+# updated_greens = copy(s.greens)
+@time build_stack(s, p, l)
 println("Propagate ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
-# println(real(diag(s.greens)))
-# simple_update(s, p, l)
-updated_greens = copy(s.greens)
-build_stack(s, p, l)
-propagate(s, p, l)
-println("Update test\t", maximum(abs(updated_greens - s.greens)))
+# println("Update test\t", maximum(abs(updated_greens - s.greens)))
 
 
-println("Starting thermalization - ", p.thermalization)
+println("\nThermalization - ", p.thermalization)
 acc_rat = 0.0
 tic()
 for i in 1:p.thermalization
   for u in 1:2 * p.slices
     @inbounds propagate(s, p, l)
-    # acc_rat += local_updates(s, p, l)
+    acc_rat += local_updates(s, p, l)
   end
   if mod(i, 10) == 0
     println("\t", i)

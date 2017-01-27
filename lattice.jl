@@ -108,7 +108,7 @@ function init_lattice_from_filename(filename::String, l::lattice)
   end
 
   # bonds & bond vectors
-  println("Initializing latice with ", l.sites , " sites")
+  println("Loading lattice with ", l.sites , " sites")
   l.bonds = zeros(l.n_bonds, 2)
   l.bond_vecs = zeros(l.n_bonds, l.dim)
   l.site_bonds = zeros(l.sites, l.n_neighbors)
@@ -172,7 +172,7 @@ end
 
 
 function init_neighbors_table(p::parameters,l::lattice)
-  # TODO: neighbor table: sort down and left neighbors
+  # OPT: neighbor table: sort down and left neighbors
   l.neighbors = zeros(Int64, 4, l.sites) # unsorted order of neighbors
   for i in 1:l.sites
     l.neighbors[:,i] = filter(x->x!=i,l.bonds[l.site_bonds[i,:],:])

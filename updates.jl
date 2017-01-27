@@ -2,10 +2,10 @@ function local_updates(s::stack, p::parameters, l::lattice)
   acc_rat = 0.0
   @inbounds for i in 1:l.sites
     new_op = rand(p.box, 3)
-    exp_delta_S_boson = exp(-boson_action_diff(s,p,l,i,new_op))
+    exp_delta_S_boson = exp(-boson_action_diff(p,l,i,new_op))
     detratio = calculate_detratio(s,p,l,i,new_op)
     # double detratioAbsSq = abs(detratio) * abs(detratio)
-    p_acc = min(1.0,exp_delta_S_boson * det_ratio)
+    p_acc = min(1.0,exp_delta_S_boson * real(detratio))
 
     if rand() < p_acc
       acc_rat += 1

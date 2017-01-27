@@ -57,6 +57,7 @@ end
 
 
 function build_stack(s::stack, p::parameters, l::lattice)
+  println("Building stack")
   s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.d_stack[:, 1] = ones(p.flv*l.sites)
   s.vt_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
