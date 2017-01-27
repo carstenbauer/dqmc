@@ -3,3 +3,4 @@
 playground.jl
 **/*.bin
 tmp.cpp
+**/*.nb

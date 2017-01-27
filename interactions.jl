@@ -1,17 +1,28 @@
 # interaction_matrix = matrix exponential of V = exp(- pref delta_tau V(slice))
-function interaction_matrix(p::parameters, l::lattice, slice, pref::Float64=1.)
+function interaction_matrix(p::parameters, l::lattice, slice::Int, pref::Float64=1.)
   C = zeros(l.sites,l.sites)
   S = zeros(Complex{Float64}, l.sites,l.sites)
   R = zeros(l.sites,l.sites)
   for i in 1:l.sites
-    sh = sinh(pref * p.delta_tau*norm(p.hsfield[:,i,slice]))/norm(p.hsfield[:,i,slice])
-    C[i,i] = p.lambda * cosh(pref * p.delta_tau*norm(p.hsfield[:,i,slice]))
-    S[i,i] = p.lambda * (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * sh
-    R[i,i] = p.lambda * (-p.hsfield[3,i,slice]) * sh
+    sh = sinh(pref * p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))/norm(p.hsfield[:,i,slice])
+    C[i,i] = cosh(pref * p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))
+    S[i,i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * sh
+    R[i,i] = (-p.hsfield[3,i,slice]) * sh
   end
   Z = zeros(l.sites,l.sites)
 
-  return [C Z R S; Z C conj(S) -R; R S C Z; conj(S) -R Z C]
+  # return [C Z R S; Z C conj(S) -R; R S C Z; conj(S) -R Z C]
+  return [C S Z R; conj(S) C -R Z; Z -R C conj(S); R Z S C]
+end
+
+# calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
+function interaction_matrix_op(p::parameters, l::lattice, op::Vector{Float64}, pref::Float64=1.)
+  sh = sinh(pref * p.lambda * p.delta_tau*norm(op))/norm(op)
+  Cii = cosh(pref * p.lambda * p.delta_tau*norm(op))
+  Sii = (im * op[2] - op[1]) * sh
+  Rii = (-op[3]) * sh
+
+  return [Cii Sii 0 Rii; conj(Sii) Cii -Rii 0; 0 -Rii Cii conj(Sii); Rii 0 Sii Cii]
 end
 
 

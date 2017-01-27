@@ -17,6 +17,9 @@ type stack
   D::Array{Float64, 1}
   V::Array{Complex{Float64}, 2}
 
+  delta_i::Array{Complex{Float64}, 2}
+  M::Array{Complex{Float64}, 2}
+
   ranges::Array{UnitRange, 1}
   n_elements::Int
   current_slice::Int
@@ -46,6 +49,9 @@ function initialize_stack(s::stack, p::parameters, l::lattice)
   s.U = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.D = zeros(Float64, p.flv*l.sites)
   s.V = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
+  s.delta_i = zeros(Complex{Float64}, p.flv, p.flv)
+  s.M = zeros(Complex{Float64}, p.flv, p.flv)
 
   s.ranges = UnitRange[]
 
