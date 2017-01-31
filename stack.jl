@@ -154,9 +154,9 @@ function propagate(s::stack, p::parameters, l::lattice)
         # s.greens_temp[:] = multiply_slice_matrix_left(p, l, s.greens_temp, s.current_slice - 1, 1.)
 
         A = slice_matrix_no_chkr(p, l, s.current_slice -1 , -1.)
-        l.temp_square = s.greens * A
+        l.temp_square = s.greens_temp * A
         A = slice_matrix_no_chkr(p, l, s.current_slice -1, 1.)
-        s.greens = A * l.temp_square
+        s.greens_temp = A * l.temp_square
 
         calculate_greens(s, p, l)
         diff = maximum(diag(abs(s.greens_temp - s.greens)))
