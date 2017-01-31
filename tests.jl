@@ -18,6 +18,7 @@ function test_boson_action_diff(p,l)
   return true
 end
 test_boson_action_diff(p,l)
+# Worked
 
 
 function test_interaction_matrix_consistency(p,l)
@@ -29,6 +30,7 @@ function test_interaction_matrix_consistency(p,l)
   return true
 end
 test_interaction_matrix_consistency(p,l)
+# Worked
 
 
 function delta_naive(s::stack, p::parameters, l::lattice, i::Int, new_op::Vector{Float64})
@@ -66,3 +68,4 @@ function test_delta_i_consistency(s,p,l)
   return true
 end
 test_delta_i_consistency(s,p,l)
+# Worked

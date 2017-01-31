@@ -17,3 +17,13 @@ function swapRows!(X, i, j)
         X[i,k], X[j,k] = X[j,k], X[i,k]
     end
 end
+
+
+function reldiff(A::AbstractArray, B::AbstractArray)
+  return 2*abs(A-B)./abs(A+B)
+end
+
+import Base.diff
+function diff(A::Array{Complex{Float64},2}, B::Array{Complex{Float64},2})
+  return A-B
+end

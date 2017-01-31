@@ -80,15 +80,15 @@ initialize_stack(s, p, l)
 @time build_stack(s, p, l)
 # # @time begin for __ in 1:(2 * p.slices) propagate(s, p, l); flipped = simple_update(s, p, l); end end
 
-# println("Propagate ", s.current_slice, " ", s.direction)
-# propagate(s, p, l)
-# println(real(diag(s.greens)))
-# local_updates(s, p, l)
-# updated_greens = copy(s.greens)
+println("Propagate ", s.current_slice, " ", s.direction)
+propagate(s, p, l)
+println(real(diag(s.greens)))
+local_updates(s, p, l)
+updated_greens = copy(s.greens)
 @time build_stack(s, p, l)
 println("Propagate ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
-# println("Update test\t", maximum(abs(updated_greens - s.greens)))
+println("Update test\t", maximum(abs(updated_greens - s.greens)))
 
 
 println("\nThermalization - ", p.thermalization)

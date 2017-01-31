@@ -39,8 +39,8 @@ function initialize_stack(s::stack, p::parameters, l::lattice)
   s.greens = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.greens_temp = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
 
-  s.Ul = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.Ur = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.Ul = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.Ur = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.Vtl = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.Vtr = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.Dl = ones(Float64, p.flv*l.sites)
@@ -235,4 +235,5 @@ function propagate(s::stack, p::parameters, l::lattice)
       # s.greens = multiply_slice_matrix_right(p, l, s.greens, s.current_slice, 1.)
     end
   end
+  nothing
 end
