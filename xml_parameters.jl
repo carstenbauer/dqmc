@@ -1,7 +1,7 @@
 # conversion between parameters::Dict (NOT ::parameters !!), xml file and hdf5 file
 using LightXML
-using HDF5
 using Iterators
+import HDF5
 
 function xml2parameters(prefix::String, idx::Int)
   println("Prefix is ", prefix, " and idx is ", idx)
