@@ -1,5 +1,5 @@
 # dqmc.jl called with arguments: sdwO3_L_4_B_2_dt_0.1_1 ${SLURM_ARRAY_TASK_ID}
-include("helpers.jl")
+using Helpers
 include("linalg.jl")
 include("parameters.jl")
 include("xml_parameters.jl")
@@ -8,6 +8,7 @@ include("interactions.jl")
 include("action.jl")
 include("stack.jl")
 include("updates.jl")
+include("observable.jl")
 
 # @inbounds begin
 
@@ -33,6 +34,7 @@ try
 catch e
   println(e)
 end
+
 
 p = parameters()
 p.thermalization = parse(Int, params["THERMALIZATION"])

@@ -34,3 +34,7 @@ function obs2hdf5{T}(filename::String, obs::observable{T})
     HDF5.h5write(filename, "simulation/results/" * obs.name * "/mean_imag", squeeze(mean(imag(timeseries_matrix),nd),nd))
   end
 end
+
+function load_obs(filename::String, obsname::String)
+  # TODO: load_obs from hdf5: Check if complex or real, and load timeseries.
+end

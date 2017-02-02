@@ -1,4 +1,5 @@
 using LightXML
+using Helpers
 
 # define hoppings type
 type hoppings
@@ -177,8 +178,8 @@ function init_neighbors_table(p::parameters,l::lattice)
   for i in 1:l.sites
     l.neighbors[:,i] = filter(x->x!=i,l.bonds[l.site_bonds[i,:],:])
   end
-  swapRows!(l.neighbors,3,1)
-  swapRows!(l.neighbors,4,2)
+  swap_rows!(l.neighbors,3,1)
+  swap_rows!(l.neighbors,4,2)
 end
 
 
