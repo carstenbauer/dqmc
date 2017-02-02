@@ -106,6 +106,28 @@ function calculate_greens_udv(p::Parameters, l::Lattice, slice::Int)
   return ctranspose(I[:Vt] * Vtr) * spdiagm(1./I[:S]) * ctranspose(Ul * I[:U])
 end
 
+function calculate_greens_2udv(p::Parameters, l::Lattice, slice::Int)
+  # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
+  Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(p,l,slice,p.slices)
+
+  # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
+  Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
+
+  # Calculate Greens function
+  tmp = Vtl * Ur
+  inner = spdiagm(Dl) * tmp * spdiagm(Dr)
+  I = decompose_udv!(inner)
+
+  U = Ul*I[:U]
+  D = spdiagm(I[:S])
+  Vt = I[:Vt] * Vtr
+
+  F = decompose_udv!(ctranspose(Vt*U) + D)
+
+  return ctranspose(F[:Vt] * Vt) * spdiagm(1./F[:S]) * ctranspose(U * F[:U])
+end
+# equivalent to version above with only one SVD decomp. up to max absdiff of ~1e-10
+
 
 function calculate_greens_naive(p::Parameters, l::Lattice, slice::Int)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
@@ -148,10 +170,10 @@ function compare_greens(g1::Array{Complex{Float64}, 2}, g2::Array{Complex{Float6
   println("mean dev: ", mean(abs(g1 - g2)))
   println("max rel dev: ", maximum(reldiff(g1,g2)))
   println("mean rel dev: ", mean(reldiff(g1,g2)))
-  println("max diag dev: ", maximum(diag(abs(g1 - g2))))
-  println("mean diag dev: ", mean(diag(abs(g1 - g2))))
-  println("max diag rel dev: ", maximum(diag(reldiff(g1,g2))))
-  println("mean diag rel dev: ", mean(diag(reldiff(g1,g2))))
+  # println("max diag dev: ", maximum(diag(abs(g1 - g2))))
+  # println("mean diag dev: ", mean(diag(abs(g1 - g2))))
+  # println("max diag rel dev: ", maximum(diag(reldiff(g1,g2))))
+  # println("mean diag rel dev: ", mean(diag(reldiff(g1,g2))))
   return isapprox(g1,g2,atol=1e-2)
 end
 
@@ -191,23 +213,64 @@ function wrap_greens(gf::Array{Complex{Float64},2},slice::Int,direction::Int)
   end
 end
 
+function wrap_greens2(gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+  if direction == -1
+    B = slice_matrix_no_chkr(p, l, slice - 1)
+    temp = inv(B) * gf
+    return temp * B
+  else
+    B = slice_matrix_no_chkr(p, l, slice)
+    temp = B * gf
+    return temp * inv(B)
+  end
+end
+
+function test_wrap_greens_vs_wrap_greens2(p,l)
+  # slice = rand(1:p.slices)
+  slice = 10
+  gf = calculate_greens_udv(p,l,slice)
+
+  # wrapping down
+  gfwrapped1 = wrap_greens(gf,slice,-1)
+  gfwrapped2 = wrap_greens2(gf,slice,-1)
+
+  println("Comparing wrapped down vs num exact")
+  compare_greens(gfwrapped,gfexact)
+end
+
 
 
 function test_gf_wrapping(p::Parameters, l::Lattice)
-  slice = rand(1:p.slices)
+  # slice = rand(1:p.slices)
+  slice = 10
   gf = calculate_greens_udv(p,l,slice)
 
+  # wrapping down
   gfwrapped = wrap_greens(gf,slice,-1)
   gfwrapped2 = wrap_greens(gfwrapped,slice,-1)
   gfexact = calculate_greens_udv(p,l,slice - 1)
   gfexact2 = calculate_greens_udv(p,l,slice - 2)
-  gfexact3 = calculate_greens_udv(p,l,slice - 2)
 
-  println("Comparing wrapped vs num exact")
+  println("Comparing wrapped down vs num exact")
   compare_greens(gfwrapped,gfexact)
   println("")
-  println("Comparing twice wrapped vs num exact")
+  println("Comparing twice wrapped down vs num exact")
   compare_greens(gfwrapped2,gfexact2)
+
+  # wrapping up
+  gfwrapped = wrap_greens(gf,slice,1)
+  gfwrapped2 = wrap_greens(gfwrapped,slice,1)
+  gfexact = calculate_greens_udv(p,l,slice + 1)
+  gfexact2 = calculate_greens_udv(p,l,slice + 2)
+
+  println("")
+  println("")
+  println("Comparing wrapped down vs num exact")
+  compare_greens(gfwrapped,gfexact)
+  println("")
+  println("Comparing twice wrapped down vs num exact")
+  compare_greens(gfwrapped2,gfexact2)
+
   nothing
 end
 
