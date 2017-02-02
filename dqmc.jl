@@ -36,7 +36,7 @@ catch e
 end
 
 
-p = parameters()
+p = Parameters()
 p.thermalization = parse(Int, params["THERMALIZATION"])
 p.measurements = parse(Int, params["MEASUREMENTS"])
 p.slices = parse(Int, params["SLICES"])
@@ -57,11 +57,11 @@ else
 end
 
 # load lattice xml and prepare hopping matrices
-l = lattice()
+l = Lattice()
 # OPT: better filename parsing
 Lpos = maximum(search(p.lattice_file,"L_"))+1
 l.L = parse(Int, p.lattice_file[Lpos:Lpos+minimum(search(p.lattice_file[Lpos:end],"_"))-2])
-l.t = hoppings([parse(Float64, f) for f in split(params["HOPPINGS"], ',')]...)
+l.t = Hoppings([parse(Float64, f) for f in split(params["HOPPINGS"], ',')]...)
 println("Hoppings are ", str(l.t))
 init_lattice_from_filename(params["LATTICE_FILE"], l)
 println("Initializing neighbor-tables")
@@ -74,10 +74,10 @@ init_hopping_matrix(p,l)
 println("Initializing HS field")
 @time p.hsfield = rand(3,l.sites,p.slices)
 println("Initializing boson action")
-boson_action(p,l)
+calculate_boson_action(p,l)
 
 # stack init and test
-s = stack()
+s = Stack()
 initialize_stack(s, p, l)
 @time build_stack(s, p, l)
 # # @time begin for __ in 1:(2 * p.slices) propagate(s, p, l); flipped = simple_update(s, p, l); end end
@@ -111,4 +111,34 @@ for i in 1:p.thermalization
 end
 toc()
 
-# end
+configurations = Observable{Array{Float64,3}}("configurations", p.measurements)
+
+boson_action = Observable{Float64}("Boson Action", p.measurements)
+mean_abs_op = Observable{Float64}("Mean Abs OP", p.measurements)
+mean_op = Observable{Vector{Float64}}("Mean OP", p.measurements)
+
+initialize_stack(s, p, l)
+@time build_stack(s, p, l)
+println("Propagating", s.current_slice, " ", s.direction)
+propagate(s, p, l)
+println(real(diag(s.greens)))
+println(imag(diag(s.greens)))
+println(sum(diag(s.greens)))
+
+println("Starting measurements")
+ms = min(p.measurements, 128)
+
+# mc loop with measurements
+
+# add_value(configurations, p.hsfield)
+# add_value(boson_action, p.boson_action)
+# add_value(mean_abs_op, mean(abs(p.hsfield)))
+# add_value(mean_op, vec(mean(p.hsfield,[2,3])))
+
+obs2hdf5(output_file, configurations)
+
+obs2hdf5(output_file, boson_action)
+obs2hdf5(output_file, mean_abs_op)
+obs2hdf5(output_file, mean_op)
+
+# end # inbounds

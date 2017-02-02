@@ -1,5 +1,5 @@
 # interaction_matrix = matrix exponential of V = exp(- pref delta_tau V(slice))
-function interaction_matrix(p::parameters, l::lattice, slice::Int, pref::Float64=1.)
+function interaction_matrix(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
   C = zeros(l.sites,l.sites)
   S = zeros(Complex{Float64}, l.sites,l.sites)
   R = zeros(l.sites,l.sites)
@@ -16,7 +16,7 @@ function interaction_matrix(p::parameters, l::lattice, slice::Int, pref::Float64
 end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
-function interaction_matrix_op(p::parameters, l::lattice, op::Vector{Float64}, pref::Float64=1.)
+function interaction_matrix_op(p::Parameters, l::Lattice, op::Vector{Float64}, pref::Float64=1.)
   sh = sinh(pref * p.lambda * p.delta_tau*norm(op))/norm(op)
   Cii = cosh(pref * p.lambda * p.delta_tau*norm(op))
   Sii = (im * op[2] - op[1]) * sh
@@ -48,13 +48,13 @@ end
 
 
 
-# function interaction_matrix_left!(M::Array{Complex{Float64}, 2}, p::parameters, l::lattice, slice, pref::Float64=1.)
+# function interaction_matrix_left!(M::Array{Complex{Float64}, 2}, p::Parameters, l::Lattice, slice, pref::Float64=1.)
 #   for i in 1:l.n_sites
 #     M[i, :] *= exp(-pref * p.lambda * p.af_field[i, slice] - pref * p.delta_tau * p.mu)
 #   end
 # end
 #
-# function interaction_matrix_right!(M::Array{Complex{Float64}, 2}, p::parameters, l::lattice, slice, pref::Float64=1.)
+# function interaction_matrix_right!(M::Array{Complex{Float64}, 2}, p::Parameters, l::Lattice, slice, pref::Float64=1.)
 #   for i in 1:l.n_sites
 #     M[:, i] *= exp(-pref * p.lambda * p.af_field[i, slice] - pref * p.delta_tau * p.mu)
 #   end

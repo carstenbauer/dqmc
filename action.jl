@@ -1,4 +1,4 @@
-function boson_action(p::parameters, l::lattice,
+function calculate_boson_action(p::Parameters, l::Lattice,
                         hsfield::Array{Float64,3}=p.hsfield)
   S = 0.0
   for s in 1:p.slices
@@ -28,7 +28,7 @@ end
 """
 Calculate Delta_S_boson = S_boson' - S_boson
 """
-function boson_action_diff(p::parameters, l::lattice, site::Int, new_op::Vector{Float64},
+function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, new_op::Vector{Float64},
                             hsfield::Array{Float64, 3}=p.hsfield, slice::Int=s.current_slice)
   old_op = view(hsfield,:,site,slice)
   diff = new_op - old_op

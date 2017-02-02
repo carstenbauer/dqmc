@@ -1,8 +1,8 @@
-function local_updates(s::stack, p::parameters, l::lattice)
+function local_updates(s::Stack, p::Parameters, l::Lattice)
   acc_rat = 0.0
   @inbounds for i in 1:l.sites
     new_op = rand(p.box, 3)
-    exp_delta_S_boson = exp(-boson_action_diff(p,l,i,new_op))
+    exp_delta_S_boson = exp(-calculate_boson_action_diff(p,l,i,new_op))
     detratio = calculate_detratio(s,p,l,i,new_op)
 
     if abs(imag(detratio)) > 1e-7
@@ -29,7 +29,7 @@ function local_updates(s::stack, p::parameters, l::lattice)
 end
 
 
-function calculate_detratio(s::stack, p::parameters, l::lattice, i::Int, new_op::Vector{Float64})
+function calculate_detratio(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
   # TODO: Compare delta_i and M calculation (detratio)
   # TODO: Why is detratio not completely real??
   V1i = interaction_matrix_op(p,l,p.hsfield[:,i,s.current_slice],-1.)
@@ -40,7 +40,7 @@ function calculate_detratio(s::stack, p::parameters, l::lattice, i::Int, new_op:
 end
 
 
-function update_greens!(s::stack, p::parameters, l::lattice, i::Int)
+function update_greens!(s::Stack, p::Parameters, l::Lattice, i::Int)
   # TODO: Compare update_greens with from scratch calculation to make sure that the formula is correct
   first_term = (s.greens - eye(p.flv*l.sites,p.flv*l.sites))[:,i:l.sites:end] * inv(s.M)
   second_term = s.delta_i * s.greens[i:l.sites:end,:]

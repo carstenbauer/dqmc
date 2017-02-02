@@ -1,6 +1,6 @@
 # Calculate B(stop) ... B(start) naively (without stabilization)
 # Returns: tuple of result (matrix) and log singular values of the intermediate products
-function calculate_slice_matrix_chain_naive(p::parameters, l::lattice, start::Int, stop::Int)
+function calculate_slice_matrix_chain_naive(p::Parameters, l::Lattice, start::Int, stop::Int)
   R = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   svs = zeros(p.flv*l.sites,length(start:stop))
   svc = 1
@@ -16,7 +16,7 @@ end
 
 # Calculate B(stop) ... B(start) safely (with stabilization at every step)
 # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
-function calculate_slice_matrix_chain_udv(p::parameters, l::lattice, start::Int, stop::Int)
+function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int, stop::Int)
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
@@ -38,7 +38,7 @@ end
 using PyPlot
 using PyCall
 @pyimport matplotlib.ticker as ticker
-function plot_svs_of_slice_matrix_chain_naive(p::parameters, l::lattice)
+function plot_svs_of_slice_matrix_chain_naive(p::Parameters, l::Lattice)
   T = calculate_slice_matrix_chain_naive(p,l,1,p.slices)
   svs = T[2]
   figure()
@@ -49,7 +49,7 @@ function plot_svs_of_slice_matrix_chain_naive(p::parameters, l::lattice)
   xlabel("Inverse temperature \\beta")
   nothing
 end
-function plot_svs_of_slice_matrix_chain_udv(p::parameters, l::lattice)
+function plot_svs_of_slice_matrix_chain_udv(p::Parameters, l::Lattice)
   T = calculate_slice_matrix_chain_udv(p,l,1,p.slices)
   svs = T[4]
   figure()
@@ -61,7 +61,7 @@ function plot_svs_of_slice_matrix_chain_udv(p::parameters, l::lattice)
   println(maximum(svs))
   nothing
 end
-function plot_svs_of_slice_matrix_chain_both(p::parameters, l::lattice)
+function plot_svs_of_slice_matrix_chain_both(p::Parameters, l::Lattice)
   T = calculate_slice_matrix_chain_naive(p,l,1,p.slices)
   svs = T[2]
   fig = figure()
@@ -92,7 +92,7 @@ end
 Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) using
 udv decompositions for (!)every slice matrix multiplication
 """
-function calculate_greens_udv(p::parameters, l::lattice, slice::Int)
+function calculate_greens_udv(p::Parameters, l::Lattice, slice::Int)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(p,l,slice,p.slices)
 
@@ -107,7 +107,7 @@ function calculate_greens_udv(p::parameters, l::lattice, slice::Int)
 end
 
 
-function calculate_greens_naive(p::parameters, l::lattice, slice::Int)
+function calculate_greens_naive(p::Parameters, l::Lattice, slice::Int)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Br = calculate_slice_matrix_chain_naive(p,l,slice,p.slices)[1]
 
@@ -120,7 +120,7 @@ function calculate_greens_naive(p::parameters, l::lattice, slice::Int)
 end
 
 
-function calculate_greens_naive_udvinv(p::parameters, l::lattice, slice::Int)
+function calculate_greens_naive_udvinv(p::Parameters, l::Lattice, slice::Int)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Br = calculate_slice_matrix_chain_naive(p,l,slice,p.slices)[1]
   F = decompose_udv!(Br)
@@ -162,7 +162,7 @@ end
 
 
 
-function test_greens_udv_vs_naive_vs_naiveudvinv(p::parameters, l::lattice)
+function test_greens_udv_vs_naive_vs_naiveudvinv(p::Parameters, l::Lattice)
   slice = rand(1:p.slices)
   gfudv = calculate_greens_udv(p,l,slice)
   gfnaive = calculate_greens_naive(p,l,slice)
@@ -193,7 +193,7 @@ end
 
 
 
-function test_gf_wrapping(p::parameters, l::lattice)
+function test_gf_wrapping(p::Parameters, l::Lattice)
   slice = rand(1:p.slices)
   gf = calculate_greens_udv(p,l,slice)
 
@@ -212,7 +212,7 @@ function test_gf_wrapping(p::parameters, l::lattice)
 end
 
 
-function test_local_update_gf(s::stack, p::parameters, l::lattice)
+function test_local_update_gf(s::Stack, p::Parameters, l::Lattice)
   p.hsfield = rand(3,l.sites,p.slices)
   s.current_slice = rand(1:p.slices)
 

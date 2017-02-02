@@ -1,4 +1,4 @@
-# conversion between parameters::Dict (NOT ::parameters !!), xml file and hdf5 file
+# conversion between parameters::Dict (NOT ::Parameters !!), xml file and hdf5 file
 using LightXML
 using Iterators
 import HDF5

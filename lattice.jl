@@ -2,22 +2,22 @@ using LightXML
 using Helpers
 
 # define hoppings type
-type hoppings
+type Hoppings
   xh::Float64
   xv::Float64
   yh::Float64
   yv::Float64
 end
-str(t::hoppings) = "xh = $(t.xh), xv = $(t.xv), yh = $(t.yh), yv = $(t.yv)"
+str(t::Hoppings) = "xh = $(t.xh), xv = $(t.xv), yh = $(t.yh), yv = $(t.yv)"
 
 # define lattice type
-type lattice
+type Lattice
   dim::Int
   sites::Int
   L::Int
   n_neighbors::Int
   n_bonds::Int
-  t::hoppings
+  t::Hoppings
   time_neighbors::Array{Int, 2} # colidx = slice, rowidx = up, down
   neighbors::Array{Int, 2} # colidx = site
                            # first = up, second = down, third and fourth not ordered
@@ -38,12 +38,12 @@ type lattice
   temp_diag::Array{Float64, 1}
   temp_small::Array{Complex{Float64}, 2}
 
-  lattice() = new()
+  Lattice() = new()
 end
 
 # TODO: checkerboard content in this function
 # TODO: too general for square lattice! leave it that way?
-function init_lattice_from_filename(filename::String, l::lattice)
+function init_lattice_from_filename(filename::String, l::Lattice)
   xdoc = parse_file(filename)
   xroot = LightXML.root(xdoc)
   l.sites = 1
@@ -148,7 +148,7 @@ function init_lattice_from_filename(filename::String, l::lattice)
 end
 
 
-function init_hopping_matrix(p::parameters,l::lattice)
+function init_hopping_matrix(p::Parameters,l::Lattice)
   Tx = diagm(fill(-p.mu,l.sites))
   Ty = diagm(fill(-p.mu,l.sites))
   for b in 1:l.n_bonds
@@ -172,7 +172,7 @@ function init_hopping_matrix(p::parameters,l::lattice)
 end
 
 
-function init_neighbors_table(p::parameters,l::lattice)
+function init_neighbors_table(p::Parameters,l::Lattice)
   # OPT: neighbor table: sort down and left neighbors
   l.neighbors = zeros(Int64, 4, l.sites) # unsorted order of neighbors
   for i in 1:l.sites
@@ -186,7 +186,7 @@ end
 """
 Periodic boundary conditions in imaginary time
 """
-function init_time_neighbors_table(p::parameters,l::lattice)
+function init_time_neighbors_table(p::Parameters,l::Lattice)
   l.time_neighbors = zeros(Int64, 2, p.slices)
   for s in 1:p.slices
     l.time_neighbors[1,s] = s==p.slices?1:s+1

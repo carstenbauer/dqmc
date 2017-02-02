@@ -1,4 +1,4 @@
-type stack
+type Stack
   u_stack::Array{Complex{Float64}, 3}
   d_stack::Array{Float64, 2}
   vt_stack::Array{Complex{Float64}, 3}
@@ -25,11 +25,11 @@ type stack
   current_slice::Int
   direction::Int
 
-  stack() = new()
+  Stack() = new()
 end
 
 
-function initialize_stack(s::stack, p::parameters, l::lattice)
+function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.n_elements = convert(Int, p.slices / p.safe_mult) + 1
 
   s.u_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
@@ -62,7 +62,7 @@ function initialize_stack(s::stack, p::parameters, l::lattice)
 end
 
 
-function build_stack(s::stack, p::parameters, l::lattice)
+function build_stack(s::Stack, p::Parameters, l::Lattice)
   println("Building stack")
   s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.d_stack[:, 1] = ones(p.flv*l.sites)
@@ -80,7 +80,7 @@ end
 """
 Updates stack[idx+1] based on stack[idx]
 """
-function add_slice_sequence_left(s::stack, p::parameters, l::lattice, idx::Int)
+function add_slice_sequence_left(s::Stack, p::Parameters, l::Lattice, idx::Int)
   curr_U = copy(s.u_stack[:, :, idx])
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
@@ -98,7 +98,7 @@ end
 """
 Updates stack[idx] based on stack[idx+1]
 """
-function add_slice_sequence_right(s::stack, p::parameters, l::lattice, idx::Int)
+function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
   curr_Vt = copy(s.vt_stack[:, :, idx + 1])
 
   for slice in reverse(s.ranges[idx])
@@ -113,14 +113,14 @@ end
 
 
 # B(slice) = exp(−1/2∆τK)exp(−∆τV(slice))exp(−1/2∆τK)
-function slice_matrix_no_chkr(p::parameters, l::lattice, slice::Int, pref::Float64=1.)
+function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
   B = l.hopping_matrix_minus * interaction_matrix(p, l, slice, pref) * l.hopping_matrix_minus
 end
 
 """
 Calculates G(slice) using s.Ur,s.Dr,s.Vtr=B(M) ... B(slice) and s.Ul,s.Dl,s.Vtl=B(slice-1) ... B(1)
 """
-function calculate_greens(s::stack, p::parameters, l::lattice)
+function calculate_greens(s::Stack, p::Parameters, l::Lattice)
   tmp = s.Vtl * s.Ur
   inner = ctranspose(s.Vtr * s.Ul) + spdiagm(s.Dl) * tmp * spdiagm(s.Dr)
   I = decompose_udv!(inner)
@@ -131,7 +131,7 @@ end
 ################################################################################
 # Propagation
 ################################################################################
-function propagate(s::stack, p::parameters, l::lattice)
+function propagate(s::Stack, p::Parameters, l::Lattice)
   if s.direction == 1
     if mod(s.current_slice, p.safe_mult) == 0
       s.current_slice += 1

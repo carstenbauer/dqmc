@@ -1,6 +1,6 @@
 using Distributions
 
-type parameters
+type Parameters
   lattice_file::String
   beta::Float64
   delta_tau::Float64
@@ -20,5 +20,5 @@ type parameters
   flv::Int # flavors: GF matrix has size flv*l.sites x flv*l.sites
 
   box::Distributions.Uniform{Float64}
-  parameters() = new()
+  Parameters() = new()
 end
