@@ -4,3 +4,5 @@ playground.jl
 **/*.bin
 tmp.cpp
 **/*.nb
+images/*.*
+settings.json
