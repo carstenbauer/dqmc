@@ -14,25 +14,30 @@ function calculate_slice_matrix_chain_naive(p::Parameters, l::Lattice, start::In
 end
 
 
-# Calculate B(stop) ... B(start) safely (with stabilization at every step)
+# Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
 # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
-function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int, stop::Int)
+function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
   svs = zeros(p.flv*l.sites,length(start:stop))
   svc = 1
   for k in start:stop
-    U = slice_matrix_no_chkr(p,l,k) * U * spdiagm(D)
-    F = decompose_udv!(U)
-    U = F[:U]
-    D = F[:S]
-    Vt =  F[:Vt] * Vt
-    svs[:,svc] = log(D)
-    svc += 1
+    if mod(k,safe_mult) == 0
+      U = slice_matrix_no_chkr(p,l,k) * U * spdiagm(D)
+      F = decompose_udv!(U)
+      U = F[:U]
+      D = F[:S]
+      Vt =  F[:Vt] * Vt
+      svs[:,svc] = log(D)
+      svc += 1
+    else
+      U = slice_matrix_no_chkr(p,l,k) * U
+    end
   end
   return (U,D,Vt,svs)
 end
+# TODO: deviation of lowest sv from exact one as a function of safe_mult
 
 
 using PyPlot
@@ -81,6 +86,31 @@ function plot_svs_of_slice_matrix_chain_both(p::Parameters, l::Lattice)
   # tight_layout()
   subplots_adjust(wspace = 0.0)
   println(maximum(svs))
+  nothing
+end
+function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lattice)
+
+  svs = Vector{Float64}(50)
+  for safe_mult in 1:50
+    U, D, Vt, svals = calculate_slice_matrix_chain_udv(p,l,1,p.slices,safe_mult)
+    U = U * spdiagm(D)
+    F = decompose_udv!(U)
+    D = F[:S]
+    svs[safe_mult] = log(D[end])
+  end
+
+  fig, ax1 = subplots()
+
+  # These are in unitless percentages of the figure size. (0,0 is bottom left)
+  left, bottom, width, height = [0.3, 0.3, 0.2, 0.2]
+  ax2 = fig[:add_axes]([left, bottom, width, height])
+
+  ax1[:plot](collect(1:50),abs(svs[:]-svs[1]),"C0")
+  ax1[:set_ylabel]("deviation of smallest log singular value")
+  ax1[:set_xlabel]("safe_mult")
+  ax2[:plot](collect(1:20),abs(svs[1:20]-svs[1]),"C1")
+
+  show()
   nothing
 end
 
@@ -235,8 +265,9 @@ function test_wrap_greens_vs_wrap_greens2(p,l)
   gfwrapped2 = wrap_greens2(gf,slice,-1)
 
   println("Comparing wrapped down vs num exact")
-  compare_greens(gfwrapped,gfexact)
+  compare_greens(gfwrapped1,gfwrapped2)
 end
+# Worked! Found mistake in slice_matrix_no_chkr in stack.jl
 
 
 
@@ -273,31 +304,33 @@ function test_gf_wrapping(p::Parameters, l::Lattice)
 
   nothing
 end
+# Single wrapping: Fine. Twice wrapping: deviation to large?
 
 
 function test_local_update_gf(s::Stack, p::Parameters, l::Lattice)
   p.hsfield = rand(3,l.sites,p.slices)
   s.current_slice = rand(1:p.slices)
 
-  gfbefore = calculate_greens_udv(p,l,slice)
-  s.greens = copy(gf)
+  gfbefore = calculate_greens_udv(p,l,s.current_slice)
+  s.greens = copy(gfbefore)
 
-  site = rand(1:l.sites)
-  new_op = rand(p.box, 3)
-  detratio = calculate_detratio(s,p,l,site,new_op)
-  update_greens!(s,p,l,site)
-  p.hsfield[:,site,s.current_slice] = new_op[:]
+  for site in 1:l.sites
+    new_op = rand(p.box, 3)
+    detratio = calculate_detratio(s,p,l,site,new_op)
+    update_greens!(s,p,l,site)
+    p.hsfield[:,site,s.current_slice] = new_op[:]
+  end
 
-  gfafter = calculate_greens_udv(p,l,slice)
+  gfafter = calculate_greens_udv(p,l,s.current_slice)
 
   println("Num exact vs updated")
   compare_greens(s.greens, gfafter)
-  println("")
-  println("Before vs After (num exact)")
-  compare_greens(gfbefore, gfafter)
+  # println("")
+  # println("Before vs After (num exact)")
+  # compare_greens(gfbefore, gfafter)
   nothing
 end
-
+# What about max rel dev (order 1)? Max abs dev around 1e-3 to 1e-2
 
 
 function test_gf_safe_mult(s,p,l)
@@ -322,4 +355,63 @@ function test_gf_safe_mult(s,p,l)
   if !check_current_gf(s,p,l)
     error("p.safe_mult=1 and gf is not correct!?!")
   end
+end
+# Makes sense. However, agreement only up to 1e-2.
+# p.safe_mult=1 is not completely equivalent to direct implementation.
+
+
+function plot_gf_error_propagation(s,p,l)
+  p.slices = 200
+  p.safe_mult = 1
+  p.hsfield = rand(3,l.sites,p.slices)
+  initialize_stack(s,p,l)
+  build_stack(s,p,l)
+  mean_dev = Vector{Float64}(p.slices)
+  slices = Vector{Int}(p.slices)
+  for n in 1:p.slices
+    propagate(s,p,l)
+    gf = calculate_greens_udv(p,l,s.current_slice)
+    mean_dev[n] = mean(absdiff(gf,s.greens))
+    slices[n] = s.current_slice
+  end
+
+  mean_devUP = Vector{Float64}(p.slices)
+  slicesUP = Vector{Int}(p.slices)
+  for n in 1:p.slices
+    propagate(s,p,l)
+    gf = calculate_greens_udv(p,l,s.current_slice)
+    mean_devUP[n] = mean(absdiff(gf,s.greens))
+    slicesUP[n] = s.current_slice
+  end
+
+  # second round (more or less copy paste of above)
+  mean_dev2 = Vector{Float64}(p.slices)
+  slices = Vector{Int}(p.slices)
+  for n in 1:p.slices
+    propagate(s,p,l)
+    gf = calculate_greens_udv(p,l,s.current_slice)
+    mean_dev2[n] = mean(absdiff(gf,s.greens))
+    slices[n] = s.current_slice
+  end
+
+  mean_dev2UP = Vector{Float64}(p.slices)
+  slicesUP = Vector{Int}(p.slices)
+  for n in 1:p.slices
+    propagate(s,p,l)
+    gf = calculate_greens_udv(p,l,s.current_slice)
+    mean_dev2UP[n] = mean(absdiff(gf,s.greens))
+    slicesUP[n] = s.current_slice
+  end
+
+  fig, (ax1, ax2, ax3, ax4) = subplots(2,2,sharey=true)
+  ax1[:plot](slices,mean_dev,"C0")
+  ax1[:invert_xaxis]()
+  ax3[:plot](slicesUP,mean_devUP,"C0")
+  ax2[:plot](slices,mean_dev2,"C3")
+  ax2[:invert_xaxis]()
+  ax4[:plot](slicesUP,mean_dev2UP,"C3")
+  subplots_adjust(wspace = 0.0)
+  fig[:text](.03, .5, "mean abs error", ha="center", va="center", rotation="vertical")
+  fig[:text](.5, .03, "time slice", ha="center")
+  show()
 end

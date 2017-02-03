@@ -5,8 +5,8 @@ function local_updates(s::Stack, p::Parameters, l::Lattice)
     exp_delta_S_boson = exp(-calculate_boson_action_diff(p,l,i,new_op))
     detratio = calculate_detratio(s,p,l,i,new_op)
 
-    if abs(imag(detratio)) > 1e-7
-      println("Determinant ratio isn't real. abs imag: ", abs(imag(detratio)))
+    if abs(imag(detratio)) > 1e-3 || abs(imag(detratio))/abs(real(detratio)) > 1e-3
+      @printf("%d, %d \t Determinant ratio isn't real. \t abs imag: %.3e \t relative: %.1f%%\n", s.current_slice, i, abs(imag(detratio)), abs(imag(detratio))/abs(real(detratio))*100)
     elseif real(detratio) < 0
       println("Negative fermion weight.")
     elseif detratio == 0

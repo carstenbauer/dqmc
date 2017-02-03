@@ -165,9 +165,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         s.greens_temp = A * l.temp_square
 
         calculate_greens(s, p, l)
-        diff = maximum(diag(abs(s.greens_temp - s.greens)))
+        diff = maximum(abs(s.greens_temp - s.greens))
         if diff > 1e-4
-          println(s.current_slice, "\t+1 Propagation stability\t", diff)
+          @printf("%d \t+1 Propagation stability\t %.4f\n", s.current_slice, diff)
         end
       else
         idx = s.n_elements - 1
@@ -213,9 +213,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         s.Ur[:], s.Dr[:], s.Vtr[:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.vt_stack[:, :, idx]
         calculate_greens(s, p, l)
         # println(real(diag(s.greens)))
-        diff = maximum(diag(abs(s.greens_temp - s.greens)))
+        diff = maximum(abs(s.greens_temp - s.greens))
         if diff > 1e-4
-          println(s.current_slice, "\t-1  Propagation stability\t", diff)
+          @printf("%d \t-1 Propagation stability\t %.4f\n", s.current_slice, diff)
         end
 
         A = slice_matrix_no_chkr(p, l, s.current_slice, -1.)
