@@ -34,15 +34,14 @@ function calculate_detratio(s::Stack, p::Parameters, l::Lattice, i::Int, new_op:
   # TODO: Why is detratio not completely real??
   V1i = interaction_matrix_op(p,l,p.hsfield[:,i,s.current_slice],-1.)
   V2i = interaction_matrix_op(p,l,new_op)
-  s.delta_i = V1i * V2i  - eye(p.flv,p.flv)
-  s.M = eye(p.flv,p.flv) + s.delta_i * (eye(p.flv,p.flv) - s.greens[i:l.sites:end,i:l.sites:end])
+  s.delta_i = V1i * V2i  - s.eye_flv
+  s.M = s.eye_flv + s.delta_i * (s.eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
   return det(s.M)
 end
 
 
 function update_greens!(s::Stack, p::Parameters, l::Lattice, i::Int)
-  # TODO: Compare update_greens with from scratch calculation to make sure that the formula is correct
-  first_term = (s.greens - eye(p.flv*l.sites,p.flv*l.sites))[:,i:l.sites:end] * inv(s.M)
+  first_term = (s.greens - s.eye_full)[:,i:l.sites:end] * inv(s.M)
   second_term = s.delta_i * s.greens[i:l.sites:end,:]
   s.greens = s.greens + first_term * second_term
 end

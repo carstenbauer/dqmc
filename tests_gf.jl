@@ -37,7 +37,6 @@ function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int,
   end
   return (U,D,Vt,svs)
 end
-# TODO: deviation of lowest sv from exact one as a function of safe_mult
 
 
 using PyPlot

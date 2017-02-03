@@ -20,6 +20,9 @@ type Stack
   delta_i::Array{Complex{Float64}, 2}
   M::Array{Complex{Float64}, 2}
 
+  eye_flv::Array{Complex{Float64},2}
+  eye_full::Array{Complex{Float64},2}
+
   ranges::Array{UnitRange, 1}
   n_elements::Int
   current_slice::Int
@@ -52,6 +55,9 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
 
   s.delta_i = zeros(Complex{Float64}, p.flv, p.flv)
   s.M = zeros(Complex{Float64}, p.flv, p.flv)
+
+  s.eye_flv = eye(p.flv,p.flv)
+  s.eye_full = eye(p.flv*l.sites,p.flv*l.sites)
 
   s.ranges = UnitRange[]
 
