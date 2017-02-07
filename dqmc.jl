@@ -111,12 +111,6 @@ for i in 1:p.thermalization
 end
 toc()
 
-configurations = Observable{Array{Float64,3}}("configurations", p.measurements)
-
-boson_action = Observable{Float64}("Boson Action", p.measurements)
-mean_abs_op = Observable{Float64}("Mean Abs OP", p.measurements)
-mean_op = Observable{Vector{Float64}}("Mean OP", p.measurements)
-
 initialize_stack(s, p, l)
 @time build_stack(s, p, l)
 println("Propagating", s.current_slice, " ", s.direction)
@@ -125,20 +119,54 @@ println(real(diag(s.greens)))
 println(imag(diag(s.greens)))
 println(sum(diag(s.greens)))
 
+
 println("Starting measurements")
-ms = min(p.measurements, 128)
+csz = min(p.measurements, 128)
 
-# mc loop with measurements
+configurations = Observable{Float64}("configurations", size(p.hsfield), ms)
+greens = Observable{Complex{Float64}}("greens", size(s.greens), ms)
 
-# add_value(configurations, p.hsfield)
-# add_value(boson_action, p.boson_action)
-# add_value(mean_abs_op, mean(abs(p.hsfield)))
-# add_value(mean_op, vec(mean(p.hsfield,[2,3])))
+boson_action = Observable{Float64}("boson action", ms)
+mean_abs_op = Observable{Float64}("mean abs op", ms)
+mean_op = Observable{Float64}("mean op", ms)
 
-obs2hdf5(output_file, configurations)
+acc_rate = 0.0
+for i in 1:p.measurements
+  if mod(i, ms) == 0
+    println(i)
+  end
 
-obs2hdf5(output_file, boson_action)
-obs2hdf5(output_file, mean_abs_op)
-obs2hdf5(output_file, mean_op)
+  for u in 1:2 * p.slices
+    @inbounds propagate(s, p, l)
+    acc_rat += local_updates(s, p, l)
+
+    if s.current_slice == -10 # measure criterium
+      add_element(boson_action, p.boson_action)
+
+      curr_mean_abs_op, curr_mean_op = measure_op(s,p,l)
+      add_element(mean_abs_op, curr_mean_abs_op)
+      add_element(mean_op, curr_mean_op)
+
+      add_element(configurations, p.hsfield)
+      add_element(greens, s.greens)
+
+      if mod(i, ms) == 0
+        obs2hdf5(output_file, configurations)
+        obs2hdf5(output_file, greens)
+
+        obs2hdf5(output_file, boson_action)
+        obs2hdf5(output_file, mean_abs_op)
+        obs2hdf5(output_file, mean_op)
+        clear(boson_action)
+        clear(mean_abs_op)
+        clear(mean_op)
+
+        clear(configurations)
+        clear(greens)
+        println("Dumping block of $ms datapoints was a success")
+      end
+    end
+  end
+end
 
 # end # inbounds

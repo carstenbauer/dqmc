@@ -1,40 +1,147 @@
-import HDF5
+using HDF5
 
-type Observable{T<:Union{Number,AbstractArray}}
+type Observable{T<:Number}
   name::String
   count::Int
-  timeseries::Array{T, 1}
+  timeseries::Array{T}
+  elsize::Tuple{Vararg{Int}}
+  eldims::Int
+  ellength::Int
+  alloc::Int
 
-  Observable(name::String,alloc::Int) = new(name,0,Array{T, 1}(alloc))
-  Observable(name::String) = Observable{T}(name,256)
+  Observable(name::String, elsize::Tuple{Vararg{Int}}, alloc::Int) = new(name,0,zeros(T, elsize..., alloc), elsize, ndims(Array{Int}(elsize...)), typeof(elsize)==Tuple{}?1:*(elsize...), alloc)
+  Observable(name::String, elsize::Int, alloc::Int) = new(name,0,zeros(T, elsize, alloc), (elsize,), 1, elsize, alloc)
+  Observable(name::String, elsize::Tuple{Vararg{Int}}) = Observable{T}(name, elsize, 128)
+
+  Observable(name::String, alloc::Int) = Observable{T}(name,(),alloc)
+  Observable(name::String) = Observable{T}(name,128)
 end
 
 
-function add_value{T}(obs::Observable{T}, value::T)
-  if length(obs.timeseries) < obs.count+1
-    # backup if allocation wasn't correct
-    push!(obs.timeseries,copy(value))
+function add_element{T}(obs::Observable{T}, element::Union{Number,Array})
+  if size(element) != obs.elsize
+    error("Element size incompatible with observable size.")
   end
-  obs.timeseries[obs.count+1] = copy(value)
+
+  # type conversion, e.g. int -> float
+  if eltype(element) != T
+    try
+      if T<:Number  add_element(obs, convert(T, element))
+      else  add_element(obs, convert(Array{T}, element)) end
+    catch error("Element dtype not compatible with observable dtype.") end
+    return
+  end
+
+  if length(obs.timeseries) < obs.count+1
+    if length(obs.timeseries) == obs.count info("Exceeding time series preallocation of observable.") end
+    obs.timeseries = cat(obs.eldims+1, obs.timeseries, element)
+  end
+
+  obs.timeseries[obs.count*obs.ellength+1:(obs.count+1)*obs.ellength] = isa(element, Number)?element:element[:]
   obs.count += 1
 end
 
 
 function obs2hdf5{T}(filename::String, obs::Observable{T})
-  HDF5.h5write(filename, "simulation/results/" * obs.name * "/count", obs.count)
-  timeseries_matrix = cat(ndims(obs.timeseries[1])+1,obs.timeseries[1:obs.count]...)
-  nd = ndims(timeseries_matrix)
-  if eltype(timeseries_matrix)<:Real
-    HDF5.h5write(filename, "simulation/results/" * obs.name * "/timeseries", timeseries_matrix)
-    HDF5.h5write(filename, "simulation/results/" * obs.name * "/mean", squeeze(mean(timeseries_matrix,nd),nd))
-  else
-    HDF5.h5write(filename, "simulation/results/" * obs.name * "/timeseries_real", real(timeseries_matrix))
-    HDF5.h5write(filename, "simulation/results/" * obs.name * "/timeseries_imag", imag(timeseries_matrix))
-    HDF5.h5write(filename, "simulation/results/" * obs.name * "/mean_real", squeeze(mean(real(timeseries_matrix),nd),nd))
-    HDF5.h5write(filename, "simulation/results/" * obs.name * "/mean_imag", squeeze(mean(imag(timeseries_matrix),nd),nd))
+
+  if obs.count != obs.alloc
+    warn("Saving incomplete time series chunk of observable \"$obs.name\".")
+  end
+
+  h5open(filename, isfile(filename)?"r+":"w") do f
+
+    new_count = -1
+    if !exists(f, "simulation/results/" * obs.name)
+      # initialze chunk storage
+      if T<:Real
+        write(f, "simulation/results/" * obs.name * "/count", obs.count)
+        d_create(f, "simulation/results/" * obs.name * "/timeseries", T, ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
+
+        if obs.eldims == 0
+          write(f, "simulation/results/" * obs.name * "/mean", mean(obs.timeseries))
+        end
+      else
+        d_create(f, "simulation/results/" * obs.name * "/timeseries_real", T.types[1], ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
+        d_create(f, "simulation/results/" * obs.name * "/timeseries_imag", T.types[1], ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
+      end
+      new_count = obs.count
+    else
+      # update counter
+      new_count = read(f["simulation/results/" * obs.name * "/count"]) + obs.count
+      o_delete(f, "simulation/results/" * obs.name * "/count")
+      write(f, "simulation/results/" * obs.name * "/count", new_count)
+    end
+    g = f["simulation/results/" * obs.name]
+
+    # update (append to) time series
+    colons = [Colon() for k in 1:obs.eldims]
+
+    if T<:Real
+      set_dims!(g["timeseries"],(obs.elsize...,new_count))
+      g["timeseries"][colons...,end-obs.count+1:end] = obs.timeseries[colons...,:]
+
+      if obs.eldims == 0
+        o_delete(g, "mean")
+        m = sum(read(g["timeseries"]))/new_count
+        println(m)
+        write(g, "mean", m)
+      end
+    else
+      println(new_count)
+      println(obs.elsize)
+      set_dims!(g["timeseries_real"],(obs.elsize...,new_count))
+      set_dims!(g["timeseries_imag"],(obs.elsize...,new_count))
+      g["timeseries_real"][colons...,end-obs.count+1:end] = real(obs.timeseries[colons...,:])
+      g["timeseries_imag"][colons...,end-obs.count+1:end] = imag(obs.timeseries[colons...,:])
+    end
+
   end
 end
 
-function load_obs(filename::String, obsname::String)
-  # TODO: load_obs from hdf5: Check if complex or real, and load timeseries.
+
+function hdf52obs(filename::String, obsname::String)
+  h5open(filename, "r+") do f
+    if !exists(f, "/simulation/results/" * obsname) error("Observable does not exist in \"$filename\"")
+    else
+      o = f["/simulation/results/" * obsname]
+      if exists(o, "timeseries") # Real
+        chunksize = get_chunk(o["timeseries"])[end]
+        elsize = size(o["timeseries"])[1:end-1]
+        obs = Observable{eltype(o["timeseries"])}(obsname,elsize,chunksize)
+        obs.timeseries = read(o["timeseries"])
+        obs.count = size(obs.timeseries)[end]
+        return obs
+      else # Complex
+        chunksize = get_chunk(o["timeseries_real"])[end]
+        elsize = size(o["timeseries_real"])[1:end-1]
+        obs = Observable{Complex{eltype(o["timeseries_real"])}}(obsname,elsize,chunksize)
+        obs.timeseries = read(o["timeseries_real"]) + im*read(o["timeseries_imag"])
+        obs.count = size(obs.timeseries)[end]
+        return obs
+      end
+    end
+  end
+end
+
+
+function clear{T}(obs::Observable{T})
+  obs.count = 0
+end
+
+
+function delete{T}(filename::String, obs::Observable{T})
+  h5open(filename, "r+") do f
+    if !exists(f, "simulation/results/" * obs.name)
+      info("Nothing to be done.")
+    else
+      o_delete(f, "simulation/results/" * obs.name)
+    end
+  end
+end
+
+
+function listobs(filename::String)
+  h5open(filename, "r+") do f
+    return names(f["/simulation/results"])
+  end
 end
