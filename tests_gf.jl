@@ -332,7 +332,7 @@ end
 # What about max rel dev (order 1)? Max abs dev around 1e-3 to 1e-2
 
 
-function test_gf_safe_mult(s,p,l)
+function test_gf_safe_mult(s::Stack, p::Parameters, l::Lattice)
   p.slices = 200
   p.safe_mult = p.slices
   p.hsfield = rand(3,l.sites,p.slices)
@@ -359,7 +359,7 @@ end
 # p.safe_mult=1 is not completely equivalent to direct implementation.
 
 
-function plot_gf_error_propagation(s,p,l)
+function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice)
   p.slices = 200
   p.safe_mult = 1
   p.hsfield = rand(3,l.sites,p.slices)
@@ -413,4 +413,32 @@ function plot_gf_error_propagation(s,p,l)
   fig[:text](.03, .5, "mean abs error", ha="center", va="center", rotation="vertical")
   fig[:text](.5, .03, "time slice", ha="center")
   show()
+end
+
+
+function calculate_greens_and_det_and_svs_udv(p::Parameters, l::Lattice, slice::Int)
+  # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
+  Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(p,l,slice,p.slices)
+
+  # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
+  Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
+
+  # Calculate Greens function
+  tmp = Vtl * Ur
+  inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
+  I = decompose_udv!(inner)
+  U = ctranspose(I[:Vt] * Vtr)
+  D = spdiagm(1./I[:S])
+  Vt = ctranspose(Ul * I[:U])
+  return (U*D*Vt, det(U)*det(D)*det(Vt), diag(D))
+end
+
+
+function test_greens_det_naive(s::Stack, p::Parameters, l::Lattice)
+  greens, det_udv, svs_udv = calculate_greens_and_det_and_svs_udv(p,l,s.current_slice)
+  det_naive = det(greens)
+  F = svdfact(greens)
+  svs_naive = F[:S][end:-1:1]
+  println("svs_udv, svs_naive, abs diff, rel diff")
+  display(cat(2,svs_udv,svs_naive,absdiff(svs_naive, svs_udv), reldiff(svs_naive, svs_udv)))
 end
