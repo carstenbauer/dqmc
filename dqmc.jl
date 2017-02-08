@@ -53,7 +53,7 @@ p.flv = 4
 if haskey(params,"BOX_HALF_LENGTH")
   p.box = Uniform(-parse(Float64, params["BOX_HALF_LENGTH"]),parse(Float64, params["BOX_HALF_LENGTH"]))
 else
-  p.box = Uniform(-0.1,0.1)
+  p.box = Uniform(-0.2,0.2)
 end
 
 # load lattice xml and prepare hopping matrices
@@ -97,17 +97,32 @@ println("\nThermalization - ", p.thermalization)
 acc_rate = 0.0
 tic()
 for i in 1:p.thermalization
+
   for u in 1:2 * p.slices
     @inbounds propagate(s, p, l)
     acc_rate += local_updates(s, p, l)
   end
+
   if mod(i, 10) == 0
+    acc_rate = acc_rate / (10 * 2 * p.slices)
     println("\t", i)
-    println("\t\telapsed time: ", string(toq()))
-    println("\t\tacceptance rate: ", acc_rate / (10 * 2 * p.slices))
+    @printf("\t\telapsed time: %.2fs\n", toq())
+    @printf("\t\tacceptance rate: %.1f%%\n", acc_rate*100)
+
+    # adaption (first half of thermalization)
+    if i < p.thermalization / 2 + 1
+      if acc_rate < 0.5
+        @printf("\t\tshrinking box: %.2f\n", 0.9*p.box.b)
+        p.box = Uniform(-0.9*p.box.b,0.9*p.box.b)
+      else
+        @printf("\t\tenlarging box: %.2f\n", 1.1*p.box.b)
+        p.box = Uniform(-1.1*p.box.b,1.1*p.box.b)
+      end
+    end
     acc_rate = 0.0
     tic()
   end
+
 end
 toq();
 
@@ -168,9 +183,10 @@ for i in 1:p.measurements
     end
   end
   if mod(i, 10) == 0
+    acc_rate = acc_rate / (10 * 2 * p.slices)
     println("\t", i)
-    println("\t\telapsed time: ", string(toq()))
-    println("\t\tacceptance rate: ", acc_rate / (10 * 2 * p.slices))
+    @printf("\t\telapsed time: %.2fs\n", toq())
+    @printf("\t\tacceptance rate: %.1f%%\n", acc_rate*100)
     acc_rate = 0.0
     tic()
   end
