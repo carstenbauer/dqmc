@@ -109,7 +109,7 @@ function init_lattice_from_filename(filename::String, l::Lattice)
   end
 
   # bonds & bond vectors
-  println("Loading lattice with ", l.sites , " sites")
+  println("\nLoading lattice with ", l.sites , " sites")
   l.bonds = zeros(l.n_bonds, 2)
   l.bond_vecs = zeros(l.n_bonds, l.dim)
   l.site_bonds = zeros(l.sites, l.n_neighbors)

@@ -35,10 +35,11 @@ function add_element{T}(obs::Observable{T}, element::Union{Number,Array})
   if length(obs.timeseries) < obs.count+1
     if length(obs.timeseries) == obs.count info("Exceeding time series preallocation of observable.") end
     obs.timeseries = cat(obs.eldims+1, obs.timeseries, element)
+    obs.count += 1
+  else
+    obs.timeseries[obs.count*obs.ellength+1:(obs.count+1)*obs.ellength] = isa(element, Number)?element:element[:]
+    obs.count += 1
   end
-
-  obs.timeseries[obs.count*obs.ellength+1:(obs.count+1)*obs.ellength] = isa(element, Number)?element:element[:]
-  obs.count += 1
 end
 
 
@@ -53,8 +54,8 @@ function obs2hdf5{T}(filename::String, obs::Observable{T})
     new_count = -1
     if !exists(f, "simulation/results/" * obs.name)
       # initialze chunk storage
+      write(f, "simulation/results/" * obs.name * "/count", obs.count)
       if T<:Real
-        write(f, "simulation/results/" * obs.name * "/count", obs.count)
         d_create(f, "simulation/results/" * obs.name * "/timeseries", T, ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
 
         if obs.eldims == 0
@@ -83,12 +84,9 @@ function obs2hdf5{T}(filename::String, obs::Observable{T})
       if obs.eldims == 0
         o_delete(g, "mean")
         m = sum(read(g["timeseries"]))/new_count
-        println(m)
         write(g, "mean", m)
       end
     else
-      println(new_count)
-      println(obs.elsize)
       set_dims!(g["timeseries_real"],(obs.elsize...,new_count))
       set_dims!(g["timeseries_imag"],(obs.elsize...,new_count))
       g["timeseries_real"][colons...,end-obs.count+1:end] = real(obs.timeseries[colons...,:])

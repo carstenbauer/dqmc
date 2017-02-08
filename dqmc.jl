@@ -9,6 +9,7 @@ include("action.jl")
 include("stack.jl")
 include("updates.jl")
 include("observable.jl")
+include("measurements.jl")
 
 # @inbounds begin
 
@@ -50,8 +51,8 @@ p.r = parse(Float64, params["R"])
 p.u = parse(Float64, params["U"])
 p.beta = p.slices * p.delta_tau
 p.flv = 4
-if haskey(params,"BOX_LENGTH")
-  p.box = Uniform(-parse(Float64, params["BOX_LENGTH"]),parse(Float64, params["BOX_LENGTH"]))
+if haskey(params,"BOX_HALF_LENGTH")
+  p.box = Uniform(-parse(Float64, params["BOX_HALF_LENGTH"]),parse(Float64, params["BOX_HALF_LENGTH"]))
 else
   p.box = Uniform(-0.1,0.1)
 end
@@ -71,9 +72,9 @@ init_hopping_matrix(p,l)
 # init_checkerboard_matrices(l, p.delta_tau)
 
 # init hsfield
-println("Initializing HS field")
+println("\nInitializing HS field")
 @time p.hsfield = rand(3,l.sites,p.slices)
-println("Initializing boson action")
+println("Initializing boson action\n")
 calculate_boson_action(p,l)
 
 # stack init and test
@@ -82,65 +83,62 @@ initialize_stack(s, p, l)
 @time build_stack(s, p, l)
 # # @time begin for __ in 1:(2 * p.slices) propagate(s, p, l); flipped = simple_update(s, p, l); end end
 
-println("Propagate ", s.current_slice, " ", s.direction)
-propagate(s, p, l)
-println(real(diag(s.greens)))
-local_updates(s, p, l)
-updated_greens = copy(s.greens)
+# println("Propagate ", s.current_slice, " ", s.direction)
+# propagate(s, p, l)
+# println(real(diag(s.greens)))
+# local_updates(s, p, l)
+# updated_greens = copy(s.greens)
 @time build_stack(s, p, l)
 println("Propagate ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
-println("Update test\t", maximum(abs(updated_greens - s.greens)))
+# println("Update test\t", maximum(abs(updated_greens - s.greens)))
 
 
 println("\nThermalization - ", p.thermalization)
-acc_rat = 0.0
+acc_rate = 0.0
 tic()
 for i in 1:p.thermalization
   for u in 1:2 * p.slices
     @inbounds propagate(s, p, l)
-    acc_rat += local_updates(s, p, l)
+    acc_rate += local_updates(s, p, l)
   end
   if mod(i, 10) == 0
     println("\t", i)
-    toc()
-    println("acceptance rate: ", acc_rat / (10 * 2 * p.slices))
-    acc_rat = 0.0
+    println("\t\telapsed time: ", string(toq()))
+    println("\t\tacceptance rate: ", acc_rate / (10 * 2 * p.slices))
+    acc_rate = 0.0
     tic()
   end
 end
-toc()
+toq();
 
+println("")
 initialize_stack(s, p, l)
 @time build_stack(s, p, l)
 println("Propagating", s.current_slice, " ", s.direction)
 propagate(s, p, l)
-println(real(diag(s.greens)))
-println(imag(diag(s.greens)))
-println(sum(diag(s.greens)))
+println("")
 
 
-println("Starting measurements")
-csz = min(p.measurements, 128)
+println("\nMeasurements - ", p.measurements)
+cs = min(p.measurements, 128)
 
-configurations = Observable{Float64}("configurations", size(p.hsfield), ms)
-greens = Observable{Complex{Float64}}("greens", size(s.greens), ms)
+configurations = Observable{Float64}("configurations", size(p.hsfield), cs)
+greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
 
-boson_action = Observable{Float64}("boson action", ms)
-mean_abs_op = Observable{Float64}("mean abs op", ms)
-mean_op = Observable{Float64}("mean op", ms)
+boson_action = Observable{Float64}("boson action", cs)
+mean_abs_op = Observable{Float64}("mean abs op", cs)
+mean_op = Observable{Float64}("mean op", (3), cs)
 
 acc_rate = 0.0
+tic()
 for i in 1:p.measurements
-  if mod(i, ms) == 0
-    println(i)
-  end
-
   for u in 1:2 * p.slices
     @inbounds propagate(s, p, l)
-    acc_rat += local_updates(s, p, l)
+    acc_rate += local_updates(s, p, l)
 
-    if s.current_slice == -10 # measure criterium
+    if s.current_slice == 200 && s.direction == 1 # measure criterium
+      # println("\t\tMeasuring")
       add_element(boson_action, p.boson_action)
 
       curr_mean_abs_op, curr_mean_op = measure_op(s,p,l)
@@ -150,23 +148,34 @@ for i in 1:p.measurements
       add_element(configurations, p.hsfield)
       add_element(greens, s.greens)
 
-      if mod(i, ms) == 0
-        obs2hdf5(output_file, configurations)
-        obs2hdf5(output_file, greens)
+      if mod(i, cs) == 0
+          println("Dumping...")
+        @time begin
+          obs2hdf5(output_file, configurations)
+          obs2hdf5(output_file, greens)
 
-        obs2hdf5(output_file, boson_action)
-        obs2hdf5(output_file, mean_abs_op)
-        obs2hdf5(output_file, mean_op)
-        clear(boson_action)
-        clear(mean_abs_op)
-        clear(mean_op)
+          obs2hdf5(output_file, boson_action)
+          obs2hdf5(output_file, mean_abs_op)
+          obs2hdf5(output_file, mean_op)
+          clear(boson_action)
+          clear(mean_abs_op)
+          clear(mean_op)
 
-        clear(configurations)
-        clear(greens)
-        println("Dumping block of $ms datapoints was a success")
+          clear(configurations)
+          clear(greens)
+          println("Dumping block of $cs datapoints was a success")
+        end
       end
     end
   end
+  if mod(i, 10) == 0
+    println("\t", i)
+    println("\t\telapsed time: ", string(toq()))
+    println("\t\tacceptance rate: ", acc_rate / (10 * 2 * p.slices))
+    acc_rate = 0.0
+    tic()
+  end
 end
+toq();
 
 # end # inbounds
