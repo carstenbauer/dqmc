@@ -21,11 +21,10 @@ try
 end
 output_file = prefix * ".task" * string(idx) * ".out.h5"
 
-if !isfile(output_file)
-  f = HDF5.h5open(output_file, "w")
-  f["parameters/TEST"] = 42
-  close(f)
-end
+# hdf5 write test
+f = HDF5.h5open(output_file, "w")
+f["parameters/TEST"] = 42
+close(f)
 
 # load parameters xml
 params = Dict{Any, Any}()
