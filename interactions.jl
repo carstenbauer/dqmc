@@ -1,5 +1,5 @@
-# interaction_matrix = matrix exponential of V = exp(- pref delta_tau V(slice))
-function interaction_matrix(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
+# interaction_matrix_exp = exp(- pref delta_tau V(slice))
+function interaction_matrix_exp(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
   C = zeros(l.sites,l.sites)
   S = zeros(Complex{Float64}, l.sites,l.sites)
   R = zeros(l.sites,l.sites)

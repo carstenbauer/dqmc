@@ -67,8 +67,9 @@ init_lattice_from_filename(params["LATTICE_FILE"], l)
 println("Initializing neighbor-tables")
 @time init_neighbors_table(p,l)
 @time init_time_neighbors_table(p,l)
-init_hopping_matrix(p,l)
-# init_checkerboard_matrices(l, p.delta_tau)
+println("Initializing hopping exponentials")
+@time init_hopping_matrix_exp(p,l)
+@time init_checkerboard_matrices(p,l)
 
 # init hsfield
 println("\nInitializing HS field")
@@ -106,7 +107,7 @@ for i in 1:p.thermalization
   if mod(i, 10) == 0
     acc_rate = acc_rate / (10 * 2 * p.slices)
     println("\t", i)
-    @printf("\t\telapsed time: %.2fs\n", toq())
+    @printf("\t\tup-down sweep dur: %.2fs\n", toq()/10)
     @printf("\t\tacceptance rate: %.1f%%\n", acc_rate*100)
 
     # adaption (first half of thermalization)
@@ -185,7 +186,7 @@ for i in 1:p.measurements
   if mod(i, 10) == 0
     acc_rate = acc_rate / (10 * 2 * p.slices)
     println("\t", i)
-    @printf("\t\telapsed time: %.2fs\n", toq())
+    @printf("\t\tup-down sweep dur: %.2fs\n", toq()/10)
     @printf("\t\tacceptance rate: %.1f%%\n", acc_rate*100)
     acc_rate = 0.0
     tic()

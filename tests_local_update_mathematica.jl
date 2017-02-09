@@ -15,7 +15,7 @@ h5write("DetRatioCheck.h5", "delta_tau", p.delta_tau)
 h5write("DetRatioCheck.h5", "lambda", p.lambda)
 h5write("DetRatioCheck.h5", "hsfield", p.hsfield)
 
-V = interaction_matrix(p,l,slice)
+V = interaction_matrix_exp(p,l,slice)
 
 h5write("DetRatioCheck.h5", "V_real", real(V))
 h5write("DetRatioCheck.h5", "V_imag", imag(V))
@@ -24,7 +24,7 @@ hsfield = copy(p.hsfield)
 newhsfield = copy(p.hsfield)
 newhsfield[:,site,slice] = new_op[:]
 p.hsfield[:] = newhsfield[:]
-newV = interaction_matrix(p,l,slice)
+newV = interaction_matrix_exp(p,l,slice)
 p.hsfield[:] = hsfield[:]
 
 h5write("DetRatioCheck.h5", "newV_real", real(newV))

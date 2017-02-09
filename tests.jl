@@ -23,7 +23,7 @@ test_calculate_boson_action_diff(p,l)
 
 function test_interaction_matrix_consistency(p,l)
   for i in 1:l.sites
-    if interaction_matrix(p,l,s.current_slice)[i:l.sites:end,i:l.sites:end] != interaction_matrix_op(p,l,p.hsfield[:,i,s.current_slice])
+    if interaction_matrix_exp(p,l,s.current_slice)[i:l.sites:end,i:l.sites:end] != interaction_matrix_op(p,l,p.hsfield[:,i,s.current_slice])
       error("Interaction_matrix Inconsistency!")
     end
   end
@@ -34,10 +34,10 @@ test_interaction_matrix_consistency(p,l)
 
 
 function delta_naive(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
-  V1 = interaction_matrix(p,l,s.current_slice,-1.0)
+  V1 = interaction_matrix_exp(p,l,s.current_slice,-1.0)
   bkp = copy(p.hsfield[:,i,s.current_slice])
   p.hsfield[:,i,s.current_slice] = new_op[:]
-  V2 = interaction_matrix(p,l,s.current_slice)
+  V2 = interaction_matrix_exp(p,l,s.current_slice)
   p.hsfield[:,i,s.current_slice] = bkp[:]
   return (V1 * V2 - eye(p.flv*l.sites,p.flv*l.sites))
 end

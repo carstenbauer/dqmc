@@ -121,9 +121,9 @@ end
 # B(slice) = exp(−1/2∆τK)exp(−∆τV(slice))exp(−1/2∆τK)
 function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
   if pref == 1
-    return l.hopping_matrix_minus * interaction_matrix(p, l, slice, pref) * l.hopping_matrix_minus
+    return l.hopping_matrix_exp * interaction_matrix_exp(p, l, slice, pref) * l.hopping_matrix_exp
   elseif pref == -1
-    return l.hopping_matrix_plus * interaction_matrix(p, l, slice, pref) * l.hopping_matrix_plus
+    return l.hopping_matrix_exp_inv * interaction_matrix_exp(p, l, slice, pref) * l.hopping_matrix_exp_inv
   else
     error("pref must be either 1 or -1")
   end
