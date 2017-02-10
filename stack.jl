@@ -129,6 +129,41 @@ function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, pref::Float
   end
 end
 
+function slice_matrix(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
+
+  M = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
+  if pref > 0
+
+    for h in l.chkr_hop
+      M = h * M
+    end
+
+    M = l.chkr_mu * M
+    M = interaction_matrix_exp(p, l, slice) * M
+    M = l.chkr_mu * M
+
+    for h in reverse(l.chkr_hop)
+      M = h * M
+    end
+  else
+
+    for h in l.chkr_hop_inv
+      M = h * M
+    end
+
+    M = l.chkr_mu_inv * M
+    M = interaction_matrix_exp(p, l, slice, -1.) * M
+    M = l.chkr_mu_inv * M
+
+    for h in reverse(l.chkr_hop_inv)
+      M = h * M
+    end
+  end
+  return M
+end
+
+
 """
 Calculates G(slice) using s.Ur,s.Dr,s.Vtr=B(M) ... B(slice) and s.Ul,s.Dl,s.Vtl=B(slice-1) ... B(1)
 """

@@ -87,6 +87,7 @@ function plot_svs_of_slice_matrix_chain_both(p::Parameters, l::Lattice)
   println(maximum(svs))
   nothing
 end
+# plot_svs_of_slice_matrix_chain_both(p,l)
 function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lattice)
 
   svs = Vector{Float64}(50)
@@ -112,6 +113,7 @@ function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lat
   show()
   nothing
 end
+plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p,l)
 
 
 

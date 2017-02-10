@@ -220,28 +220,16 @@ function init_checkerboard_matrices(p::Parameters,l::Lattice)
   Tx_B = sum(Tx_Bs)
   Ty_B = sum(Ty_Bs)
 
-  eTx_A_minus = sparse(expm(-0.5 * p.delta_tau * full(Tx_A)))
-  eTy_A_minus = sparse(expm(-0.5 * p.delta_tau * full(Ty_A)))
-  eTx_B_minus = sparse(expm(-0.5 * p.delta_tau * full(Tx_B)))
-  eTy_B_minus = sparse(expm(-0.5 * p.delta_tau * full(Ty_B)))
-  eTx_A_plus = sparse(expm(0.5 * p.delta_tau * full(Tx_A)))
-  eTy_A_plus = sparse(expm(0.5 * p.delta_tau * full(Ty_A)))
-  eTx_B_plus = sparse(expm(0.5 * p.delta_tau * full(Tx_B)))
-  eTy_B_plus = sparse(expm(0.5 * p.delta_tau * full(Ty_B)))
-
-  # OPT: many <1e-15 entries in expm(-0.5 * p.delta_tau * full(Tx_B))
-  # sparsity is therefore not optimal. Can we just set them zero? Check with Mathematica
-  # if they should be analytically equal zero.
-  #
-  # low_cutoff(X::Array, c::Float64) = map(e->e<c?0:e,X)
-  # eTx_A_minus = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(Tx_A)), 1e-15))
-  # eTy_A_minus = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(Ty_A)), 1e-15))
-  # eTx_B_minus = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(Tx_B)), 1e-15))
-  # eTy_B_minus = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(Ty_B)), 1e-15))
-  # eTx_A_plus = sparse(low_cutoff(expm(0.5 * p.delta_tau * full(Tx_A)), 1e-15))
-  # eTy_A_plus = sparse(low_cutoff(expm(0.5 * p.delta_tau * full(Ty_A)), 1e-15))
-  # eTx_B_plus = sparse(low_cutoff(expm(0.5 * p.delta_tau * full(Tx_B)), 1e-15))
-  # eTy_B_plus = sparse(low_cutoff(expm(0.5 * p.delta_tau * full(Ty_B)), 1e-15))
+  # To remove numerical quasi zeros, which should be (Mathematica) exactly zero
+  low_cutoff(X::Array, c::Float64) = map(e->abs(e)<abs(c)?0.:e,X)
+  eTx_A_minus = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(Tx_A)), 1e-15))
+  eTy_A_minus = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(Ty_A)), 1e-15))
+  eTx_B_minus = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(Tx_B)), 1e-15))
+  eTy_B_minus = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(Ty_B)), 1e-15))
+  eTx_A_plus = sparse(low_cutoff(expm(0.5 * p.delta_tau * full(Tx_A)), 1e-15))
+  eTy_A_plus = sparse(low_cutoff(expm(0.5 * p.delta_tau * full(Ty_A)), 1e-15))
+  eTx_B_plus = sparse(low_cutoff(expm(0.5 * p.delta_tau * full(Tx_B)), 1e-15))
+  eTy_B_plus = sparse(low_cutoff(expm(0.5 * p.delta_tau * full(Ty_B)), 1e-15))
 
   # chemical potential
   # eTmu_minus = spdiagm(fill(exp(-0.5 * p.delta_tau * -p.mu), l.sites))
@@ -259,6 +247,10 @@ function init_checkerboard_matrices(p::Parameters,l::Lattice)
   l.chkr_hop_inv = [eT_A_plus, eT_B_plus]
   l.chkr_mu = spdiagm(fill(exp(-0.5 * p.delta_tau * -p.mu), p.flv * l.sites))
   l.chkr_mu_inv = spdiagm(fill(exp(0.5 * p.delta_tau * -p.mu), p.flv * l.sites))
+
+  hop_mat_exp_chkr = l.chkr_hop[1] * l.chkr_hop[2] * l.chkr_mu
+  println("Checkerboard - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
+  println("Checkerboard - exact (rel):\t\t", maximum(reldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
 end
 
 

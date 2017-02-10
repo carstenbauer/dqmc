@@ -13,7 +13,7 @@ include("measurements.jl")
 
 # @inbounds begin
 
-# ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]
+ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]
 prefix = convert(String, ARGS[1])
 idx = 1
 try
@@ -94,7 +94,7 @@ propagate(s, p, l)
 # println("Update test\t", maximum(abs(updated_greens - s.greens)))
 
 
-println("\nThermalization - ", p.thermalization)
+# println("\nThermalization - ", p.thermalization)
 acc_rate = 0.0
 tic()
 for i in 1:p.thermalization

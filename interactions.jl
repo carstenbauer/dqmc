@@ -15,8 +15,25 @@ function interaction_matrix_exp(p::Parameters, l::Lattice, slice::Int, pref::Flo
   return [C S Z R; conj(S) C -R Z; Z -R C conj(S); R Z S C]
 end
 
+# TODO: Efficient implementation that sets all matrix element explicitly and returns sparse mat.
+function interaction_matrix_exp_sparse(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
+  C = spzeros(l.sites,l.sites)
+  S = spzeros(Complex{Float64}, l.sites,l.sites)
+  R = spzeros(l.sites,l.sites)
+  for i in 1:l.sites
+    sh = sinh(pref * p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))/norm(p.hsfield[:,i,slice])
+    C[i,i] = cosh(pref * p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))
+    S[i,i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * sh
+    R[i,i] = (-p.hsfield[3,i,slice]) * sh
+  end
+  Z = spzeros(l.sites,l.sites)
+
+  # return [C Z R S; Z C conj(S) -R; R S C Z; conj(S) -R Z C]
+  return sparse([C S Z R; conj(S) C -R Z; Z -R C conj(S); R Z S C])
+end
+
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
-function interaction_matrix_op(p::Parameters, l::Lattice, op::Vector{Float64}, pref::Float64=1.)
+function interaction_matrix_exp_op(p::Parameters, l::Lattice, op::Vector{Float64}, pref::Float64=1.)
   sh = sinh(pref * p.lambda * p.delta_tau*norm(op))/norm(op)
   Cii = cosh(pref * p.lambda * p.delta_tau*norm(op))
   Sii = (im * op[2] - op[1]) * sh

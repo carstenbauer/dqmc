@@ -32,8 +32,8 @@ end
 function calculate_detratio(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
   # TODO: Compare delta_i and M calculation (detratio)
   # TODO: Why is detratio not completely real??
-  V1i = interaction_matrix_op(p,l,p.hsfield[:,i,s.current_slice],-1.)
-  V2i = interaction_matrix_op(p,l,new_op)
+  V1i = interaction_matrix_exp_op(p,l,p.hsfield[:,i,s.current_slice],-1.)
+  V2i = interaction_matrix_exp_op(p,l,new_op)
   s.delta_i = V1i * V2i  - s.eye_flv
   s.M = s.eye_flv + s.delta_i * (s.eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
   return det(s.M)
