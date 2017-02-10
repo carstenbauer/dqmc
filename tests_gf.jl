@@ -87,6 +87,7 @@ function plot_svs_of_slice_matrix_chain_both(p::Parameters, l::Lattice)
   println(maximum(svs))
   nothing
 end
+# TODO: Does not work anymore! Both plots show numerical error in svs
 # plot_svs_of_slice_matrix_chain_both(p,l)
 function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lattice)
 
@@ -114,7 +115,6 @@ function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lat
   nothing
 end
 plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p,l)
-
 
 
 

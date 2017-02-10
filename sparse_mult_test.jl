@@ -31,18 +31,23 @@ end
 println("done")
 
 
-function test_simple_sparse_vs_normal()
-  x = sprand(1000,1000,.1);
+# check wether for a given matrix size and # of nz-element
+# sparse * dense is faster/slower than dense * dense
+function test_sparse_dense_vs_dense_dense(msize::Int=100, nzelements::Int=8, samplesize::Int=50)
+  x = spzeros(msize,msize);
+  # the hopping matrices Tx_As are NxN with exactly 8 (= four site hopping * back and forth) non-zero entries
+  x[rand(1:length(x),nzelements)] = rand(nzelements);
+  # x = sprand(msize,msize,.1);
   fx = full(x);
-  y = rand(1000,1000);
-  xa = Base.SparseArrays.CHOLMOD.Sparse(x);
+  y = rand(msize,msize);
+  # xa = Base.SparseArrays.CHOLMOD.Sparse(x);
 
-  times_normal = zeros(10)
-  times_sparse = zeros(10)
-  times_sparse_alt = zeros(10)
-  times_sparse_sparse = zeros(10)
-  times_normal_normal = zeros(10)
-  for k in 1:10
+  times_normal = zeros(samplesize)
+  times_sparse = zeros(samplesize)
+  # times_sparse_alt = zeros(samplesize)
+  times_sparse_sparse = zeros(samplesize)
+  times_normal_normal = zeros(samplesize)
+  for k in 1:samplesize
     tic()
     fx * y
     times_normal[k] = toq()
@@ -51,9 +56,9 @@ function test_simple_sparse_vs_normal()
     x * y
     times_sparse[k] = toq()
 
-    tic()
-    xa * y
-    times_sparse_alt[k] = toq()
+    # tic()
+    # xa * y
+    # times_sparse_alt[k] = toq()
 
     tic()
     x * x
@@ -64,12 +69,23 @@ function test_simple_sparse_vs_normal()
     times_normal_normal[k] = toq()
   end
 
-  println("normal mean: ", mean(times_normal))
-  println("sparse mean: ", mean(times_sparse))
-  println("sparse alt mean: ", mean(times_sparse_alt))
-  println("sparse sparse mean: ", mean(times_sparse_sparse))
-  println("normal normal mean: ", mean(times_normal_normal))
+  t_normal = mean(times_normal)
+  t_sparse = mean(times_sparse)
 
-  # return times_normal, times_sparse, times_sparse_alt, times_sparse_sparse, times_normal_normal
+  @printf("normal mean: %.1es\n", t_normal)
+  @printf("sparse mean: %.1es\n", t_sparse)
+  if t_sparse < t_normal
+    @printf("sparse speedup factor: %.1f\n", abs(t_normal/t_sparse))
+  else
+    @printf("sparse slowdown(!) factor: %.1f\n", abs(t_sparse/t_normal))
+  end
+  # println("")
+  # println("sparse alt mean: ", mean(times_sparse_alt))
+  # println("sparse sparse mean: ", mean(times_sparse_sparse))
+  # println("normal normal mean: ", mean(times_normal_normal))
+
+  # return times_normal, times_sparse, times_sparse_sparse, times_normal_normal
+  return sparsity(x)
 end
-# Understand: Why does sparse product take longer????!!
+# Conclusion: sparsity is not a good enough criterium for if we will gain something
+#             or not.
