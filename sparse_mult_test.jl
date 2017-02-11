@@ -1,36 +1,3 @@
-spmats = Vector{SparseMatrixCSC{Float64,Int64}}(100)
-mats = Vector{Matrix{Float64}}(100)
-m = rand(500,500)
-for k in 1:100
-  spmats[k] = sprand(500,500,.2)
-  mats[k] = full(spmats[k])
-end
-
-
-function test_normal(x::Vector{Matrix{Float64}}, y::Matrix{Float64})
-  for m in x
-    m * y
-  end
-end
-
-
-function test_sparse(x::Vector{SparseMatrixCSC{Float64,Int64}}, y::Matrix{Float64})
-  for m in x
-    m * y
-  end
-end
-
-@time test_normal(mats, m);
-@time test_normal(mats, m);
-@time test_normal(mats, m);
-
-@time test_sparse(spmats, m);
-@time test_sparse(spmats, m);
-@time test_sparse(spmats, m);
-
-println("done")
-
-
 # check wether for a given matrix size and # of nz-element
 # sparse * dense is faster/slower than dense * dense
 function test_sparse_dense_vs_dense_dense(msize::Int=100, nzelements::Int=8, samplesize::Int=50)

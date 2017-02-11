@@ -11,6 +11,7 @@ type Stack
   Vtr::Array{Complex{Float64}, 2}
 
   greens::Array{Complex{Float64}, 2}
+  greens_svs::Vector{Float64} # only valid after fresh calculation of green's function (not after wrapping/update)
   greens_temp::Array{Complex{Float64}, 2}
 
   U::Array{Complex{Float64}, 2}
@@ -40,6 +41,7 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.vt_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
 
   s.greens = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.greens_svs = zeros(p.flv*l.sites)
   s.greens_temp = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
 
   s.Ul = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
@@ -129,40 +131,6 @@ function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, pref::Float
   end
 end
 
-function slice_matrix(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
-
-  M = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-
-  if pref > 0
-
-    for h in l.chkr_hop
-      M = h * M
-    end
-
-    M = l.chkr_mu * M
-    M = interaction_matrix_exp(p, l, slice) * M
-    M = l.chkr_mu * M
-
-    for h in reverse(l.chkr_hop)
-      M = h * M
-    end
-  else
-
-    for h in l.chkr_hop_inv
-      M = h * M
-    end
-
-    M = l.chkr_mu_inv * M
-    M = interaction_matrix_exp(p, l, slice, -1.) * M
-    M = l.chkr_mu_inv * M
-
-    for h in reverse(l.chkr_hop_inv)
-      M = h * M
-    end
-  end
-  return M
-end
-
 
 """
 Calculates G(slice) using s.Ur,s.Dr,s.Vtr=B(M) ... B(slice) and s.Ul,s.Dl,s.Vtl=B(slice-1) ... B(1)
@@ -171,6 +139,7 @@ function calculate_greens(s::Stack, p::Parameters, l::Lattice)
   tmp = s.Vtl * s.Ur
   inner = ctranspose(s.Vtr * s.Ul) + spdiagm(s.Dl) * tmp * spdiagm(s.Dr)
   I = decompose_udv!(inner)
+  s.greens_svs = 1./I[:S]
   s.greens = ctranspose(I[:Vt] * s.Vtr) * spdiagm(1./I[:S]) * ctranspose(s.Ul * I[:U])
 end
 
