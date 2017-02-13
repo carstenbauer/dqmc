@@ -42,13 +42,17 @@ function test_slice_matrix_chkr_speed(p::Parameters, l::Lattice, samples::Int=10
   println("Sample size: ", samples)
   t = 0.
   t_chkr = 0.
+  t_chkr_four_site = 0.
+  A = eye(Complex128, p.flv*l.sites)
   for k in 1:samples
     t += (@timed slice_matrix_no_chkr(p,l,200))[2]
     t_chkr += (@timed slice_matrix(p,l,200))[2]
+    t_chkr_four_site += (@timed multiply_slice_matrix_left!(p,l,200,A))[2]
   end
 
   println("avg time w/o checkerboard: ", t/samples)
   println("avg time with checkerboard: ", t_chkr/samples)
+  println("avg time with chkr four-site: ", t_chkr_four_site/samples)
   println("diff relto no chkr: ", (t_chkr-t)/samples)
   if t_chkr < t
     @printf("rel relto no chkr: -%.1f%%",  abs(t_chkr-t)/t * 100)
@@ -56,6 +60,14 @@ function test_slice_matrix_chkr_speed(p::Parameters, l::Lattice, samples::Int=10
     @printf("rel relto no chkr: +%.1f%%",  abs(t_chkr-t)/t * 100)
   end
 
+  println("")
+  println("diff relto no chkr: ", (t_chkr_four_site-t)/samples)
+  if t_chkr_four_site < t
+    @printf("rel relto no chkr: -%.1f%%",  abs(t_chkr_four_site-t)/t * 100)
+  else
+    @printf("rel relto no chkr: +%.1f%%",  abs(t_chkr_four_site-t)/t * 100)
+  end
+
 end
-test_slice_matrix_chkr_speed(p,l,500)
+test_slice_matrix_chkr_speed(p,l,100)
 # TODO: CHECKERBOARD NOT FASTER THAN NO-CHECKERBOARD! Must be fixed!

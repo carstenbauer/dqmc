@@ -28,6 +28,8 @@ type Lattice
   hopping_matrix_exp::Array{Float64, 2} # mu included
   hopping_matrix_exp_inv::Array{Float64, 2}
 
+  chkr_hop_4site::Array{SparseMatrixCSC, 3} # cols = subgroups A and B, rows = four-site matrices, slices = hopping flavors x and y
+
   chkr_hop::Array{SparseMatrixCSC, 1}
   chkr_hop_inv::Array{SparseMatrixCSC, 1}
   chkr_mu::SparseMatrixCSC{Float64, Int64}
