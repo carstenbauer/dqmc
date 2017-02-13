@@ -50,24 +50,14 @@ function test_slice_matrix_chkr_speed(p::Parameters, l::Lattice, samples::Int=10
     t_chkr_four_site += (@timed multiply_slice_matrix_left!(p,l,200,A))[2]
   end
 
-  println("avg time w/o checkerboard: ", t/samples)
-  println("avg time with checkerboard: ", t_chkr/samples)
-  println("avg time with chkr four-site: ", t_chkr_four_site/samples)
-  println("diff relto no chkr: ", (t_chkr-t)/samples)
+  @printf("avg time w/o checkerboard: %.1e\n", t/samples)
+  @printf("avg time with checkerboard: %.1e\n", t_chkr/samples)
+  @printf("difference: %.1e\n", (t_chkr-t)/samples)
   if t_chkr < t
-    @printf("rel relto no chkr: -%.1f%%",  abs(t_chkr-t)/t * 100)
+    @printf("speedup factor: %.1f\n",  abs(t/t_chkr))
   else
-    @printf("rel relto no chkr: +%.1f%%",  abs(t_chkr-t)/t * 100)
-  end
-
-  println("")
-  println("diff relto no chkr: ", (t_chkr_four_site-t)/samples)
-  if t_chkr_four_site < t
-    @printf("rel relto no chkr: -%.1f%%",  abs(t_chkr_four_site-t)/t * 100)
-  else
-    @printf("rel relto no chkr: +%.1f%%",  abs(t_chkr_four_site-t)/t * 100)
+    @printf("slowdown(!) factor: %.1f\n",  abs(t_chkr/t))
   end
 
 end
 test_slice_matrix_chkr_speed(p,l,100)
-# TODO: CHECKERBOARD NOT FASTER THAN NO-CHECKERBOARD! Must be fixed!

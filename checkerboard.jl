@@ -1,18 +1,5 @@
 # Checkerboard: Assaad four site version for square lattice
-function build_four_site_hopping_matrix(p::Parameters,l::Lattice,corner::Int,tflv::String="x")
-  sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
-  shift_sites_clockwise = circshift(sites_clockwise,-1)
-  hop = zeros(8)
-  if tflv=="y"
-    hop = -1 * repeat([l.t.yv, l.t.yh, l.t.yv, l.t.yh], outer=2)
-  else
-    hop = -1 * repeat([l.t.xv, l.t.xh, l.t.xv, l.t.xh], outer=2)
-  end
-  return sparse([sites_clockwise; shift_sites_clockwise],[shift_sites_clockwise; sites_clockwise],hop,l.sites,l.sites)
-end
-
-
-function init_checkerboard_matrices(p::Parameters, l::Lattice)
+function find_four_site_hopping_corners(l::Lattice)
   pc = Int(floor(l.sites/4))
 
   A_corners = zeros(Int, pc)
@@ -25,23 +12,56 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
       end
   end
   B_corners = l.neighbors[1,l.neighbors[2,A_corners]]
+  return A_corners, B_corners
+end
 
-  l.chkr_hop_4site = Array{SparseMatrixCSC, 3}(pc,2,2)
+function build_four_site_hopping_matrix(p::Parameters,l::Lattice,corner::Int,tflv::Int=1)
+  sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
+  shift_sites_clockwise = circshift(sites_clockwise,-1)
+  hop = zeros(8)
+  if tflv==2
+    hop = -1 * repeat([l.t.yv, l.t.yh, l.t.yv, l.t.yh], outer=2)
+  else
+    hop = -1 * repeat([l.t.xv, l.t.xh, l.t.xv, l.t.xh], outer=2)
+  end
+  return sparse([sites_clockwise; shift_sites_clockwise],[shift_sites_clockwise; sites_clockwise],hop,l.sites,l.sites)
+end
 
-  # TODO: Cutoff of numerical zeros necessary. Better construct exponentials explicitly (sinh cosh)
-  low_cutoff(X::Array{Float64}, c::Float64) = map(e->abs(e)<abs(c)?0.:e,X)
+
+# helper to cutoff numerical zeros (very smal elements)
+rem_eff_zeros!(X::Array{Float64}) = map(e->abs(e)<1e-15?zero(e):e,X)
+
+function init_checkerboard_matrices(p::Parameters, l::Lattice)
+
+  pc = Int(floor(l.sites/4))
+
+  A_corners, B_corners = find_four_site_hopping_corners(l)
+
+  chkr_hop_4site = Array{SparseMatrixCSC, 3}(pc,2,2) # i, group (A, B), hopping flavor (tx, ty)
+  chkr_hop_4site_inv = Array{SparseMatrixCSC, 3}(pc,2,2)
+
+  # TODO: Cutoff of numerical zeros necessary. Better construct exponentials explicitly (sinh cosh) when possible (no mag field)
   for c in 1:pc
-    l.chkr_hop_4site[c,1,1] = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, A_corners[c], "x"))),1e-15)) # eTx_As
-    l.chkr_hop_4site[c,1,2] = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, A_corners[c], "y"))),1e-15)) # eTy_As
-    l.chkr_hop_4site[c,2,1] = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, B_corners[c], "x"))),1e-15)) # eTx_Bs
-    l.chkr_hop_4site[c,2,2] = sparse(low_cutoff(expm(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, B_corners[c], "y"))),1e-15)) # eTy_Bs
+    chkr_hop_4site[c,1,1] = sparse(rem_eff_zeros!(expm_diag!(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, A_corners[c], 1))))) # eTx_As
+    chkr_hop_4site[c,1,2] = sparse(rem_eff_zeros!(expm_diag!(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, A_corners[c], 2))))) # eTy_As
+    chkr_hop_4site[c,2,1] = sparse(rem_eff_zeros!(expm_diag!(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, B_corners[c], 1))))) # eTx_Bs
+    chkr_hop_4site[c,2,2] = sparse(rem_eff_zeros!(expm_diag!(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, B_corners[c], 2))))) # eTy_Bs
+
+    chkr_hop_4site_inv[c,1,1] = sparse(rem_eff_zeros!(expm_diag!(0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, A_corners[c], 1))))) # eTx_As
+    chkr_hop_4site_inv[c,1,2] = sparse(rem_eff_zeros!(expm_diag!(0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, A_corners[c], 2))))) # eTy_As
+    chkr_hop_4site_inv[c,2,1] = sparse(rem_eff_zeros!(expm_diag!(0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, B_corners[c], 1))))) # eTx_Bs
+    chkr_hop_4site_inv[c,2,2] = sparse(rem_eff_zeros!(expm_diag!(0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, B_corners[c], 2))))) # eTy_Bs
   end
 
-  # Calculate full subgroup hopping matrix exps and compare to exact hopping matrix exp
-  eTx_A = full(foldl(*,l.chkr_hop_4site[:,1,1]))
-  eTx_B = full(foldl(*,l.chkr_hop_4site[:,2,1]))
-  eTy_A = full(foldl(*,l.chkr_hop_4site[:,1,2]))
-  eTy_B = full(foldl(*,l.chkr_hop_4site[:,2,2]))
+  eTx_A = foldl(*,chkr_hop_4site[:,1,1])
+  eTx_B = foldl(*,chkr_hop_4site[:,2,1])
+  eTy_A = foldl(*,chkr_hop_4site[:,1,2])
+  eTy_B = foldl(*,chkr_hop_4site[:,2,2])
+
+  eTx_A_inv = foldl(*,chkr_hop_4site_inv[:,1,1])
+  eTx_B_inv = foldl(*,chkr_hop_4site_inv[:,2,1])
+  eTy_A_inv = foldl(*,chkr_hop_4site_inv[:,1,2])
+  eTy_B_inv = foldl(*,chkr_hop_4site_inv[:,2,2])
 
   eT_A = cat([1,2],eTx_A,eTy_A,eTx_A,eTy_A)
   eT_B = cat([1,2],eTx_B,eTy_B,eTx_B,eTy_B)
@@ -50,101 +70,114 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
 
   l.chkr_hop = [eT_A, eT_B]
   l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
-  l.chkr_mu = spdiagm(fill(exp(-0.5 * p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_inv = spdiagm(fill(exp(0.5 * p.delta_tau * -p.mu), p.flv * l.sites))
+  # l.chkr_mu = spdiagm(fill(exp(-0.5 * p.delta_tau * -p.mu), p.flv * l.sites))
+  # l.chkr_mu_inv = spdiagm(fill(exp(0.5 * p.delta_tau * -p.mu), p.flv * l.sites))
+  #
+  # we take the square to save one multiplication in slice matrix construction
+  l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
+  l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
 
-  hop_mat_exp_chkr = l.chkr_hop[1] * l.chkr_hop[2] * l.chkr_mu
+  hop_mat_exp_chkr = l.chkr_hop[1] * l.chkr_hop[2] * sqrt(l.chkr_mu)
   println("Checkerboard - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
   println("Checkerboard - exact (rel):\t\t", maximum(reldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
 end
 
-function slice_matrix(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
 
-  M = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+# function test!{T<:Number}(M::Matrix{T})
+#   x = reshape(1:16,4,4)'
+#   M[:] = x
+# end
+#
+# M = rand(1:10,4,4)
+# @time test!(M);
 
-  if pref > 0
+
+function multiply_slice_matrix_left!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
 
     for h in l.chkr_hop
-      M = h * M
+      M[:] = h * M
     end
 
-    M = l.chkr_mu * M
-    M = interaction_matrix_exp(p, l, slice) * M
-    M = l.chkr_mu * M
+    M[:] = l.chkr_mu * M
+    M[:] = interaction_matrix_exp(p, l, slice) * M
 
     for h in reverse(l.chkr_hop)
-      M = h * M
+      M[:] = h * M
     end
-  else
+end
+
+function multiply_slice_matrix_right!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+
+  for h in l.chkr_hop
+    M[:] = M * h
+  end
+
+  M[:] = M * interaction_matrix_exp(p, l, slice)
+  M[:] = M * l.chkr_mu
+
+  for h in reverse(l.chkr_hop)
+    M[:] = M * h
+  end
+end
+
+function multiply_slice_matrix_inv_left!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
 
     for h in l.chkr_hop_inv
-      M = h * M
+      M[:] = h * M
     end
 
-    M = l.chkr_mu_inv * M
-    M = interaction_matrix_exp(p, l, slice, -1.) * M
-    M = l.chkr_mu_inv * M
+    M[:] = l.chkr_mu_inv * M
+    M[:] = interaction_matrix_exp(p, l, slice, -1.) * M
 
     for h in reverse(l.chkr_hop_inv)
-      M = h * M
+      M[:] = h * M
     end
-  end
-  return M
 end
 
+function multiply_slice_matrix_inv_right!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
 
-function multiply_four_site_chkr_hops_left!(A::Union{Array, SubArray}, subgroup::Int, tflv::Int)
-  # Max explicitly hardcodes the effect of the multiplication (only changing four rows)
-  for h in l.chkr_hop_4site[:,subgroup,tflv]
-    A[:] = h * A
+  for h in l.chkr_hop_inv
+    M[:] = M * h
   end
-end
 
-function multiply_four_site_chkr_hops_right!(A::Union{Array, SubArray}, subgroup::Int, tflv::Int)
-  # Max explicitly hardcodes the effect of the multiplication (only changing four columns)
-  for h in l.chkr_hop_4site[:,subgroup,tflv]
-    A[:] = A * h
+  M[:] = M * interaction_matrix_exp(p, l, slice, -1.)
+  M[:] = M * l.chkr_mu_inv
+
+  for h in reverse(l.chkr_hop_inv)
+    M[:] = M * h
   end
 end
 
-function block(p::Parameters, l::Lattice, M::Matrix, row::Int, col::Int)
-  return view(M, ((row-1)*l.sites+1):row*l.sites, ((col-1)*l.sites+1):col*l.sites )
+function multiply_slice_matrix_left{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+  X = copy(M)
+  multiply_slice_matrix_left!(p, l, slice, X)
+  return X
 end
 
-function multiply_slice_matrix_left!(p::Parameters, l::Lattice, slice::Int, A::Matrix{Complex128})
-  # e^(- dtau TA/2)
-  for col in 1:p.flv
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 1, col), 1, 1)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 2, col), 1, 2)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 3, col), 1, 1)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 4, col), 1, 2)
-  end
+function multiply_slice_matrix_right{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+  X = copy(M)
+  multiply_slice_matrix_right!(p, l, slice, X)
+  return X
+end
 
-  # e^(- dtau TB/2)
-  for col in 1:p.flv
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 1, col), 2, 1)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 2, col), 2, 2)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 3, col), 2, 1)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 4, col), 2, 2)
-  end
+function multiply_slice_matrix_inv_left{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+  X = copy(M)
+  multiply_slice_matrix_inv_left!(p, l, slice, X)
+  return X
+end
 
-  # e^(- dtau mu) e^(- dtau V) e^(- dtau mu)
-  A[:] = l.chkr_mu * interaction_matrix_exp(p, l, slice) * l.chkr_mu * A
+function multiply_slice_matrix_inv_right{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+  X = copy(M)
+  multiply_slice_matrix_inv_right!(p, l, slice, X)
+  return X
+end
 
-  # e^(- dtau TB/2)
-  for col in 1:p.flv
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 1, col), 2, 1)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 2, col), 2, 2)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 3, col), 2, 1)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 4, col), 2, 2)
+function slice_matrix(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
+  res = eye(Complex128, p.flv*l.sites)
+  if pref > 0
+    multiply_slice_matrix_left!(p, l, slice, res)
+  else
+    multiply_slice_matrix_inv_left!(p, l, slice, res)
   end
-
-  # e^(- dtau TA/2)
-  for col in 1:p.flv
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 1, col), 1, 1)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 2, col), 1, 2)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 3, col), 1, 1)
-      multiply_four_site_chkr_hops_left!(block(p,l, A, 4, col), 1, 2)
-  end
-  nothing
+  return res
 end
