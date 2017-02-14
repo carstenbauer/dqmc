@@ -1,1 +1,1 @@
-Determinant quantum Monte Carlo code in Julia
+Fermions + O(3) SDW order parameter on square lattice with determinant quantum Monte Carlo
