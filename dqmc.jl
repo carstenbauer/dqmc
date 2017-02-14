@@ -62,8 +62,7 @@ l = Lattice()
 # OPT: better filename parsing
 Lpos = maximum(search(p.lattice_file,"L_"))+1
 l.L = parse(Int, p.lattice_file[Lpos:Lpos+minimum(search(p.lattice_file[Lpos:end],"_"))-2])
-l.t = Hoppings([parse(Float64, f) for f in split(params["HOPPINGS"], ',')]...)
-println("Hoppings are ", str(l.t))
+l.t = reshape([parse(Float64, f) for f in split(params["HOPPINGS"], ',')],(2,2))
 init_lattice_from_filename(params["LATTICE_FILE"], l)
 println("Initializing neighbor-tables")
 @time init_neighbors_table(p,l)

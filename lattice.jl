@@ -1,15 +1,6 @@
 using LightXML
 using Helpers
 
-# define hoppings type
-type Hoppings
-  xh::Float64
-  xv::Float64
-  yh::Float64
-  yv::Float64
-end
-str(t::Hoppings) = "xh = $(t.xh), xv = $(t.xv), yh = $(t.yh), yv = $(t.yv)"
-
 # define lattice type
 type Lattice
   dim::Int
@@ -17,7 +8,7 @@ type Lattice
   L::Int
   n_neighbors::Int
   n_bonds::Int
-  t::Hoppings
+  t::Array{Float64, 2} # colidx = flavor, rowidx = hor,ver
   time_neighbors::Array{Int, 2} # colidx = slice, rowidx = up, down
   neighbors::Array{Int, 2} # colidx = site
                            # first = up, second = right, third and fourth not ordered
@@ -159,11 +150,11 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)
     src = l.bonds[b,1]
     trg = l.bonds[b,2]
     if l.bond_vecs[b,1] == 1
-      Tx[trg,src] = Tx[src,trg] = -l.t.xh
-      Ty[trg,src] = Ty[src,trg] = -l.t.yh
+      Tx[trg,src] = Tx[src,trg] = -l.t[1,1]
+      Ty[trg,src] = Ty[src,trg] = -l.t[1,2]
     else
-      Tx[trg,src] = Tx[src,trg] = -l.t.xv
-      Ty[trg,src] = Ty[src,trg] = -l.t.yv
+      Tx[trg,src] = Tx[src,trg] = -l.t[2,1]
+      Ty[trg,src] = Ty[src,trg] = -l.t[2,2]
     end
   end
 
