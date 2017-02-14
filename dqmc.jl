@@ -74,8 +74,10 @@ println("Initializing hopping exponentials")
 # init hsfield
 println("\nInitializing HS field")
 @time p.hsfield = rand(3,l.sites,p.slices)
+println("\nPrecalculating sinh cosh terms")
+@time init_interaction_sinh_cosh(p,l)
 println("Initializing boson action\n")
-calculate_boson_action(p,l)
+@time calculate_boson_action(p,l)
 
 # stack init and test
 s = Stack()
@@ -94,7 +96,7 @@ propagate(s, p, l)
 # println("Update test\t", maximum(abs(updated_greens - s.greens)))
 
 
-# println("\nThermalization - ", p.thermalization)
+println("\nThermalization - ", p.thermalization)
 acc_rate = 0.0
 tic()
 for i in 1:p.thermalization

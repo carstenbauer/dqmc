@@ -213,9 +213,9 @@ function multiply_slice_matrix_inv_right{T<:Number}(p::Parameters, l::Lattice, s
   return X
 end
 
-function slice_matrix(p::Parameters, l::Lattice, slice::Int, pref::Float64=1.)
+function slice_matrix(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
   res = eye(Complex128, p.flv*l.sites)
-  if pref > 0
+  if power > 0
     multiply_slice_matrix_left!(p, l, slice, res)
   else
     multiply_slice_matrix_inv_left!(p, l, slice, res)

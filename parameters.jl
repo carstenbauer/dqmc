@@ -20,5 +20,7 @@ type Parameters
   flv::Int # flavors: GF matrix has size flv*l.sites x flv*l.sites
 
   box::Distributions.Uniform{Float64}
+  interaction_sinh::Array{Float64, 2}
+  interaction_cosh::Array{Float64, 2}
   Parameters() = new()
 end
