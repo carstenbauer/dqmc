@@ -11,7 +11,6 @@ function interaction_matrix_exp(p::Parameters, l::Lattice, slice::Int, pref::Flo
   end
   Z = zeros(l.sites,l.sites)
 
-  # return [C Z R S; Z C conj(S) -R; R S C Z; conj(S) -R Z C]
   return [C S Z R; conj(S) C -R Z; Z -R C conj(S); R Z S C]
 end
 # SPEED: Implementation that sets all matrix element explicitly. Is it really more efficient?

@@ -39,6 +39,29 @@ function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int,
 end
 
 
+function calculate_slice_matrix_chain_udv_chkr(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+  U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  D = ones(Float64, p.flv*l.sites)
+  svs = zeros(p.flv*l.sites,length(start:stop))
+  svc = 1
+  for k in start:stop
+    if mod(k,safe_mult) == 0
+      U = slice_matrix(p,l,k) * U * spdiagm(D)
+      F = decompose_udv!(U)
+      U = F[:U]
+      D = F[:S]
+      Vt =  F[:Vt] * Vt
+      svs[:,svc] = log(D)
+      svc += 1
+    else
+      U = slice_matrix(p,l,k) * U
+    end
+  end
+  return (U,D,Vt,svs)
+end
+
+
 using PyPlot
 using PyCall
 @pyimport matplotlib.ticker as ticker
@@ -65,6 +88,7 @@ function plot_svs_of_slice_matrix_chain_udv(p::Parameters, l::Lattice)
   println(maximum(svs))
   nothing
 end
+plot_svs_of_slice_matrix_chain_udv(p,l)
 function plot_svs_of_slice_matrix_chain_both(p::Parameters, l::Lattice)
   T = calculate_slice_matrix_chain_naive(p,l,1,p.slices)
   svs = T[2]
@@ -88,7 +112,7 @@ function plot_svs_of_slice_matrix_chain_both(p::Parameters, l::Lattice)
   nothing
 end
 # TODO: Does not work anymore! Both plots show numerical error in svs
-# plot_svs_of_slice_matrix_chain_both(p,l)
+plot_svs_of_slice_matrix_chain_both(p,l)
 function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lattice)
 
   svs = Vector{Float64}(50)
@@ -129,6 +153,20 @@ function calculate_greens_udv(p::Parameters, l::Lattice, slice::Int)
 
   # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
   Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
+
+  # Calculate Greens function
+  tmp = Vtl * Ur
+  inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
+  I = decompose_udv!(inner)
+  return ctranspose(I[:Vt] * Vtr) * spdiagm(1./I[:S]) * ctranspose(Ul * I[:U])
+end
+
+function calculate_greens_udv_chkr(p::Parameters, l::Lattice, slice::Int)
+  # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
+  Ur, Dr, Vtr = calculate_slice_matrix_chain_udv_chkr(p,l,slice,p.slices)
+
+  # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
+  Ul, Dl, Vtl = calculate_slice_matrix_chain_udv_chkr(p,l,1,slice-1)
 
   # Calculate Greens function
   tmp = Vtl * Ur
