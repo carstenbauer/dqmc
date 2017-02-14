@@ -72,8 +72,8 @@ function plot_svs_of_slice_matrix_chain_naive(p::Parameters, l::Lattice)
   a = gca()
   a[:yaxis][:set_major_locator](ticker.MaxNLocator(symmetric=true))
   plot(svs[:,:]')
-  ylabel("log singular values of B(\\beta,0)")
-  xlabel("Inverse temperature \\beta")
+  ylabel("log singular values of \$B(\\beta,0)\$")
+  xlabel("Inverse temperature \$\\beta\$")
   nothing
 end
 function plot_svs_of_slice_matrix_chain_udv(p::Parameters, l::Lattice)
@@ -83,12 +83,25 @@ function plot_svs_of_slice_matrix_chain_udv(p::Parameters, l::Lattice)
   a = gca()
   a[:yaxis][:set_major_locator](ticker.MaxNLocator(symmetric=true))
   plot(svs[:,:]')
-  ylabel("log singular values of B(\\beta,0)")
-  xlabel("Inverse temperature \\beta")
+  ylabel("log singular values of \$B(\\beta,0)\$")
+  xlabel("Inverse temperature \$\\beta\$")
   println(maximum(svs))
   nothing
 end
 plot_svs_of_slice_matrix_chain_udv(p,l)
+function plot_svs_of_slice_matrix_chain_udv_chkr(p::Parameters, l::Lattice)
+  T = calculate_slice_matrix_chain_udv_chkr(p,l,1,p.slices)
+  svs = T[4]
+  figure()
+  a = gca()
+  a[:yaxis][:set_major_locator](ticker.MaxNLocator(symmetric=true))
+  plot(svs[:,:]')
+  ylabel("log singular values of \$B(\\beta,0)\$")
+  xlabel("Inverse temperature \$\\beta\$")
+  println(maximum(svs))
+  nothing
+end
+plot_svs_of_slice_matrix_chain_udv_chkr(p,l)
 function plot_svs_of_slice_matrix_chain_both(p::Parameters, l::Lattice)
   T = calculate_slice_matrix_chain_naive(p,l,1,p.slices)
   svs = T[2]
@@ -99,7 +112,7 @@ function plot_svs_of_slice_matrix_chain_both(p::Parameters, l::Lattice)
   b[:set_xlabel]("Inverse temperature \$\\beta\$")
   b[:set_ylabel]("log singular values of \$B(\\beta,0)\$")
 
-  T = calculate_slice_matrix_chain_udv(p,l,1,p.slices)
+  T = calculate_slice_matrix_chain_udv_chkr(p,l,1,p.slices)
   svs = T[4]
   a = fig[:add_subplot](122, sharey=b, sharex=b)
   a[:plot](svs[:,:]')
