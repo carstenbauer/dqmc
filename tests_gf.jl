@@ -14,6 +14,14 @@ function calculate_slice_matrix_chain_naive(p::Parameters, l::Lattice, start::In
 end
 
 
+# function combine_udv{T<:Number}(Ul::Matrix{T}, Dl::Vector{Float64}, Tl::Matrix{T}, Ur::Matrix{T}, Dr::Vector{Float64}, Tr::Matrix{T})
+#   M = spdiagm(Dl) * (Tl * Ur) * spdiagm(Dr)
+#   F = decompose_udv(M)
+#   Up, Dp, Tp = F[:U], F[:S], F[:Vt]
+#   return Ul * Up, Dp, Tp * Tr
+# end
+
+
 # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
 # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
 function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
@@ -22,14 +30,24 @@ function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int,
   D = ones(Float64, p.flv*l.sites)
   svs = zeros(p.flv*l.sites,length(start:stop))
   svc = 1
+  # oldlowest = 0.
+  # bp = false
   for k in start:stop
     if mod(k,safe_mult) == 0
       U = slice_matrix_no_chkr(p,l,k) * U * spdiagm(D)
-      F = decompose_udv!(U)
-      U = F[:U]
-      D = F[:S]
-      Vt =  F[:Vt] * Vt
+      # U = interaction_matrix_slow(p,l,k) * U * spdiagm(D)
+      # X = decompose_udv(interaction_matrix_slow(p,l,k))
+      # U, D, Vt = combine_udv(X[:U],X[:S],X[:Vt],U,D,Vt)
       svs[:,svc] = log(D)
+
+      # if svs[end,svc]>oldlowest && !bp
+      #   info("break point! slice: $k")
+      #   bp = true
+      #   display(abs(U))
+      # else
+      #   oldlowest = svs[end,svc]
+      # end
+
       svc += 1
     else
       U = slice_matrix_no_chkr(p,l,k) * U
@@ -48,7 +66,7 @@ function calculate_slice_matrix_chain_udv_chkr(p::Parameters, l::Lattice, start:
   for k in start:stop
     if mod(k,safe_mult) == 0
       U = slice_matrix(p,l,k) * U * spdiagm(D)
-      F = decompose_udv!(U)
+      F = decompose_udv(U)
       U = F[:U]
       D = F[:S]
       Vt =  F[:Vt] * Vt
@@ -65,67 +83,38 @@ end
 using PyPlot
 using PyCall
 @pyimport matplotlib.ticker as ticker
-function plot_svs_of_slice_matrix_chain_naive(p::Parameters, l::Lattice)
+function plot_svs_of_slice_matrix_chain(p::Parameters, l::Lattice)
   T = calculate_slice_matrix_chain_naive(p,l,1,p.slices)
   svs = T[2]
-  figure()
-  a = gca()
-  a[:yaxis][:set_major_locator](ticker.MaxNLocator(symmetric=true))
-  plot(svs[:,:]')
-  ylabel("log singular values of \$B(\\beta,0)\$")
-  xlabel("Inverse temperature \$\\beta\$")
-  nothing
-end
-function plot_svs_of_slice_matrix_chain_udv(p::Parameters, l::Lattice)
-  T = calculate_slice_matrix_chain_udv(p,l,1,p.slices)
-  svs = T[4]
-  figure()
-  a = gca()
-  a[:yaxis][:set_major_locator](ticker.MaxNLocator(symmetric=true))
-  plot(svs[:,:]')
-  ylabel("log singular values of \$B(\\beta,0)\$")
-  xlabel("Inverse temperature \$\\beta\$")
-  println(maximum(svs))
-  nothing
-end
-plot_svs_of_slice_matrix_chain_udv(p,l)
-function plot_svs_of_slice_matrix_chain_udv_chkr(p::Parameters, l::Lattice)
-  T = calculate_slice_matrix_chain_udv_chkr(p,l,1,p.slices)
-  svs = T[4]
-  figure()
-  a = gca()
-  a[:yaxis][:set_major_locator](ticker.MaxNLocator(symmetric=true))
-  plot(svs[:,:]')
-  ylabel("log singular values of \$B(\\beta,0)\$")
-  xlabel("Inverse temperature \$\\beta\$")
-  println(maximum(svs))
-  nothing
-end
-plot_svs_of_slice_matrix_chain_udv_chkr(p,l)
-function plot_svs_of_slice_matrix_chain_both(p::Parameters, l::Lattice)
-  T = calculate_slice_matrix_chain_naive(p,l,1,p.slices)
-  svs = T[2]
-  fig = figure()
-  b = fig[:add_subplot](121)
+  fig = figure(figsize=(20,7))
+  b = fig[:add_subplot](131)
   b[:yaxis][:set_major_locator](ticker.MaxNLocator(symmetric=true))
   b[:plot](svs[:,:]')
   b[:set_xlabel]("Inverse temperature \$\\beta\$")
   b[:set_ylabel]("log singular values of \$B(\\beta,0)\$")
 
-  T = calculate_slice_matrix_chain_udv_chkr(p,l,1,p.slices)
+  T = calculate_slice_matrix_chain_udv(p,l,1,p.slices,1)
   svs = T[4]
-  a = fig[:add_subplot](122, sharey=b, sharex=b)
+  a = fig[:add_subplot](132, sharey=b, sharex=b)
   a[:plot](svs[:,:]')
   setp(a[:get_yticklabels](), visible=false)
   a[:set_xlabel]("Inverse temperature \$\\beta\$")
+
+  T = calculate_slice_matrix_chain_udv_chkr(p,l,1,p.slices)
+  svs = T[4]
+  c = fig[:add_subplot](133, sharey=b, sharex=b)
+  c[:plot](svs[:,:]')
+  setp(c[:get_yticklabels](), visible=false)
+  c[:set_xlabel]("Inverse temperature \$\\beta\$")
 
   # tight_layout()
   subplots_adjust(wspace = 0.0)
   println(maximum(svs))
   nothing
 end
-# TODO: Does not work anymore! Both plots show numerical error in svs
-plot_svs_of_slice_matrix_chain_both(p,l)
+plot_svs_of_slice_matrix_chain(p,l)
+
+
 function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lattice)
 
   svs = Vector{Float64}(50)
