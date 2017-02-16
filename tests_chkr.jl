@@ -42,12 +42,10 @@ function test_slice_matrix_chkr_speed(p::Parameters, l::Lattice, samples::Int=10
   println("Sample size: ", samples)
   t = 0.
   t_chkr = 0.
-  t_chkr_four_site = 0.
   A = eye(Complex128, p.flv*l.sites)
   for k in 1:samples
     t += (@timed slice_matrix_no_chkr(p,l,200))[2]
     t_chkr += (@timed slice_matrix(p,l,200))[2]
-    t_chkr_four_site += (@timed multiply_slice_matrix_left!(p,l,200,A))[2]
   end
 
   @printf("avg time w/o checkerboard: %.1e\n", t/samples)
