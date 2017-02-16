@@ -2,52 +2,38 @@
 # Returns: tuple of result (matrix) and log singular values of the intermediate products
 function calculate_slice_matrix_chain_naive(p::Parameters, l::Lattice, start::Int, stop::Int)
   R = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  D = ones(Float64, p.flv*l.sites)
+  Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
   svs = zeros(p.flv*l.sites,length(start:stop))
   svc = 1
   for k in start:stop
     R = slice_matrix_no_chkr(p,l,k) * R
-    F = decompose_udv(R)
-    svs[:,svc] = log(F[:S])
+    U, D, Vt = decompose_udv(R)
+    svs[:,svc] = log(D)
     svc += 1
   end
   return (R, svs)
 end
 
 
-# function combine_udv{T<:Number}(Ul::Matrix{T}, Dl::Vector{Float64}, Tl::Matrix{T}, Ur::Matrix{T}, Dr::Vector{Float64}, Tr::Matrix{T})
-#   M = spdiagm(Dl) * (Tl * Ur) * spdiagm(Dr)
-#   F = decompose_udv(M)
-#   Up, Dp, Tp = F[:U], F[:S], F[:Vt]
-#   return Ul * Up, Dp, Tp * Tr
-# end
-
-
 # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
 # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
 function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
+  Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  Vtnew = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
   svs = zeros(p.flv*l.sites,length(start:stop))
   svc = 1
-  # oldlowest = 0.
-  # bp = false
   for k in start:stop
     if mod(k,safe_mult) == 0
       U = slice_matrix_no_chkr(p,l,k) * U * spdiagm(D)
-      # U = interaction_matrix_slow(p,l,k) * U * spdiagm(D)
-      # X = decompose_udv(interaction_matrix_slow(p,l,k))
-      # U, D, Vt = combine_udv(X[:U],X[:S],X[:Vt],U,D,Vt)
+      U, D, Vtnew = decompose_udv!(U)
+      Vt =  Vtnew * Vt
       svs[:,svc] = log(D)
-
-      # if svs[end,svc]>oldlowest && !bp
-      #   info("break point! slice: $k")
-      #   bp = true
-      #   display(abs(U))
-      # else
-      #   oldlowest = svs[end,svc]
-      # end
-
       svc += 1
     else
       U = slice_matrix_no_chkr(p,l,k) * U
@@ -59,17 +45,17 @@ end
 
 function calculate_slice_matrix_chain_udv_chkr(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
+  Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  Vtnew = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
   svs = zeros(p.flv*l.sites,length(start:stop))
   svc = 1
   for k in start:stop
     if mod(k,safe_mult) == 0
       U = slice_matrix(p,l,k) * U * spdiagm(D)
-      F = decompose_udv(U)
-      U = F[:U]
-      D = F[:S]
-      Vt =  F[:Vt] * Vt
+      U, D, Vtnew = decompose_udv(U)
+      Vt =  Vtnew * Vt
       svs[:,svc] = log(D)
       svc += 1
     else
@@ -122,7 +108,7 @@ function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lat
     U, D, Vt, svals = calculate_slice_matrix_chain_udv(p,l,1,p.slices,safe_mult)
     U = U * spdiagm(D)
     F = decompose_udv!(U)
-    D = F[:S]
+    D = F[2]
     svs[safe_mult] = log(D[end])
   end
 
@@ -160,7 +146,7 @@ function calculate_greens_udv(p::Parameters, l::Lattice, slice::Int)
   tmp = Vtl * Ur
   inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
   I = decompose_udv!(inner)
-  return ctranspose(I[:Vt] * Vtr) * spdiagm(1./I[:S]) * ctranspose(Ul * I[:U])
+  return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
 end
 
 function calculate_greens_udv_chkr(p::Parameters, l::Lattice, slice::Int)
@@ -174,7 +160,7 @@ function calculate_greens_udv_chkr(p::Parameters, l::Lattice, slice::Int)
   tmp = Vtl * Ur
   inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
   I = decompose_udv!(inner)
-  return ctranspose(I[:Vt] * Vtr) * spdiagm(1./I[:S]) * ctranspose(Ul * I[:U])
+  return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
 end
 
 function calculate_greens_2udv(p::Parameters, l::Lattice, slice::Int)
@@ -189,13 +175,13 @@ function calculate_greens_2udv(p::Parameters, l::Lattice, slice::Int)
   inner = spdiagm(Dl) * tmp * spdiagm(Dr)
   I = decompose_udv!(inner)
 
-  U = Ul*I[:U]
-  D = spdiagm(I[:S])
-  Vt = I[:Vt] * Vtr
+  U = Ul*I[1]
+  D = spdiagm(I[2])
+  Vt = I[3] * Vtr
 
   F = decompose_udv!(ctranspose(Vt*U) + D)
 
-  return ctranspose(F[:Vt] * Vt) * spdiagm(1./F[:S]) * ctranspose(U * F[:U])
+  return ctranspose(F[3] * Vt) * spdiagm(1./F[2]) * ctranspose(U * F[1])
 end
 # equivalent to version above with only one SVD decomp. up to max absdiff of ~1e-10
 
@@ -216,23 +202,17 @@ end
 function calculate_greens_naive_udvinv(p::Parameters, l::Lattice, slice::Int)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Br = calculate_slice_matrix_chain_naive(p,l,slice,p.slices)[1]
-  F = decompose_udv!(Br)
-  Ur = F[:U]
-  Dr = F[:S]
-  Vtr = F[:Vt]
+  Ur, Dr, Vtr = decompose_udv!(Br)
 
   # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
   Bl = calculate_slice_matrix_chain_naive(p,l,1,slice-1)[1]
-  F = decompose_udv!(Bl)
-  Ul = F[:U]
-  Dl = F[:S]
-  Vtl = F[:Vt]
+  Ul, Dl, Vtl = decompose_udv!(Bl)
 
   # Calculate Greens function
   tmp = Vtl * Ur
   inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
   I = decompose_udv!(inner)
-  return ctranspose(I[:Vt] * Vtr) * spdiagm(1./I[:S]) * ctranspose(Ul * I[:U])
+  return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
 end
 
 
@@ -469,9 +449,9 @@ function calculate_greens_and_det_and_svs_udv(p::Parameters, l::Lattice, slice::
   tmp = Vtl * Ur
   inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
   I = decompose_udv!(inner)
-  U = ctranspose(I[:Vt] * Vtr)
-  D = spdiagm(1./I[:S])
-  Vt = ctranspose(Ul * I[:U])
+  U = ctranspose(I[3] * Vtr)
+  D = spdiagm(1./I[2])
+  Vt = ctranspose(Ul * I[1])
   return (U*D*Vt, det(U)*det(D)*det(Vt), diag(D))
 end
 
@@ -479,8 +459,8 @@ end
 function test_greens_det_naive(s::Stack, p::Parameters, l::Lattice)
   greens, det_udv, svs_udv = calculate_greens_and_det_and_svs_udv(p,l,s.current_slice)
   det_naive = det(greens)
-  F = svdfact(greens)
-  svs_naive = F[:S][end:-1:1]
+  F = decompose_udv(greens)
+  svs_naive = F[2][end:-1:1]
   println("svs_udv, svs_naive, abs diff, rel diff")
   display(cat(2,svs_udv,svs_naive,absdiff(svs_naive, svs_udv), reldiff(svs_naive, svs_udv)))
 end

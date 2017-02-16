@@ -16,7 +16,7 @@ type Stack
 
   U::Array{Complex{Float64}, 2}
   D::Array{Float64, 1}
-  V::Array{Complex{Float64}, 2}
+  Vt::Array{Complex{Float64}, 2}
 
   delta_i::Array{Complex{Float64}, 2}
   M::Array{Complex{Float64}, 2}
@@ -53,7 +53,8 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
 
   s.U = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.D = zeros(Float64, p.flv*l.sites)
-  s.V = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.Vt = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
 
   s.delta_i = zeros(Complex{Float64}, p.flv, p.flv)
   s.M = zeros(Complex{Float64}, p.flv, p.flv)
@@ -96,10 +97,8 @@ function add_slice_sequence_left(s::Stack, p::Parameters, l::Lattice, idx::Int)
   end
 
   curr_U =  curr_U * spdiagm(s.d_stack[:, idx])
-  F = decompose_udv!(curr_U)
-  s.u_stack[:, :, idx + 1] = F[:U]
-  s.d_stack[:, idx + 1] = F[:S]
-  s.vt_stack[:, :, idx + 1] =  F[:Vt] * s.vt_stack[:, :, idx]
+  s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], s.Vt = decompose_udv!(curr_U)
+  s.vt_stack[:, :, idx + 1] =  s.Vt * s.vt_stack[:, :, idx]
 end
 
 
@@ -113,10 +112,8 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
     curr_Vt = curr_Vt * slice_matrix_no_chkr(p, l, slice)
   end
   curr_Vt =  spdiagm(s.d_stack[:, idx + 1]) * curr_Vt
-  F = decompose_udv!(curr_Vt)
-  s.u_stack[:, :, idx] = s.u_stack[:, :, idx + 1] * F[:U]
-  s.d_stack[:, idx] = F[:S]
-  s.vt_stack[:, :, idx] = F[:Vt]
+  s.U, s.d_stack[:, idx], s.vt_stack[:, :, idx] = decompose_udv!(curr_Vt)
+  s.u_stack[:, :, idx] = s.u_stack[:, :, idx + 1] * s.U
 end
 
 
@@ -136,9 +133,9 @@ Calculates G(slice) using s.Ur,s.Dr,s.Vtr=B(M) ... B(slice) and s.Ul,s.Dl,s.Vtl=
 function calculate_greens(s::Stack, p::Parameters, l::Lattice)
   tmp = s.Vtl * s.Ur
   inner = ctranspose(s.Vtr * s.Ul) + spdiagm(s.Dl) * tmp * spdiagm(s.Dr)
-  I = decompose_udv!(inner)
-  s.greens_svs = 1./I[:S]
-  s.greens = ctranspose(I[:Vt] * s.Vtr) * spdiagm(1./I[:S]) * ctranspose(s.Ul * I[:U])
+  s.U, s.D, s.Vt = decompose_udv!(inner)
+  s.greens_svs = 1./s.D
+  s.greens = ctranspose(s.Vt * s.Vtr) * spdiagm(1./s.D) * ctranspose(s.Ul * s.U)
 end
 
 

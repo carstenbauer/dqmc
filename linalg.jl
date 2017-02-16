@@ -1,9 +1,14 @@
-function decompose_udv{T<:Number}(A::Matrix{T})
-  svdfact(A)
+function decompose_udv!{T<:Number}(A::Matrix{T})
+
+  Base.LinAlg.LAPACK.gesvd!('A','A',A)
+
+  # F = svdfact!(A) # based on Base.LinAlg.LAPACK.gesdd!('A',A)
+  # return F[:U], F[:S], F[:Vt]
 end
 
-function decompose_udv!{T<:Number}(A::Matrix{T})
-  svdfact!(A)
+function decompose_udv{T<:Number}(A::Matrix{T})
+  X = copy(A)
+  return decompose_udv!(X)
 end
 
 function expm_diag!{T<:Number}(A::Matrix{T})

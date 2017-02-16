@@ -13,7 +13,7 @@ include("observable.jl")
 include("measurements.jl")
 
 # @inbounds begin
-
+begin
 ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]
 prefix = convert(String, ARGS[1])
 idx = 1
@@ -93,6 +93,7 @@ initialize_stack(s, p, l)
 @time build_stack(s, p, l)
 println("Propagate ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
+end
 # println("Update test\t", maximum(abs(updated_greens - s.greens)))
 
 
