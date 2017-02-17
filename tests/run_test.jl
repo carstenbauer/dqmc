@@ -86,8 +86,11 @@ println("Propagate ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
 
 # testing
-include("tests_gf.jl")
-plot_gf_error_propagation(s,p,l,"exact")
+# include("tests_gf.jl")
+# plot_gf_error_propagation(s,p,l,"exact")
 
 # include("tests_gf_stabilization.jl")
 # plot_svs_of_slice_matrix_chain(p,l)
+
+include("tests_chkr.jl")
+plot_greens_chkr_error_delta_tau_scaling(p,l)

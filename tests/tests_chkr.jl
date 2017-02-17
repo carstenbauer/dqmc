@@ -1,4 +1,9 @@
+include("tests_gf_functions.jl")
+
 using PyPlot
+"""
+Slice matrix
+"""
 function plot_slice_matrix_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
 
   delta_tau_prev = p.delta_tau
@@ -26,16 +31,14 @@ function plot_slice_matrix_chkr_error_delta_tau_scaling(p::Parameters, l::Lattic
   loglog(delta_tau_range,maxabsdiffs, label="numerics")
   loglog(delta_tau_range,delta_tau_range, label="\$ O(\\Delta\\tau) \$")
   loglog(delta_tau_range,delta_tau_range.^2, label="\$ O(\\Delta\\tau^2) \$")
-  title("Checkerboard error in \$ B_n \$")
+  title("Checkerboard error in \$ B_n \$ (L=$(l.L))")
   ylabel("max abs diff \$ (B_n, B_n^{chkr}) \$")
   xlabel("\$ \\Delta\\tau\$")
   legend()
 
+  savefig("chkr_slice_matrix_error_L_$(l.L).png")
 end
 # plot_slice_matrix_chkr_error_delta_tau_scaling(p,l)
-# absdiff seems to scale with p.delta_tau, shouldnt it be more like p.delta_tau^2?
-# Update: After forgotten l.chkr_mu has been added, chkr error in B_n is effectively zero (too small?!). Why?
-
 
 function test_slice_matrix_chkr_speed(p::Parameters, l::Lattice, samples::Int=100)
 
@@ -58,4 +61,44 @@ function test_slice_matrix_chkr_speed(p::Parameters, l::Lattice, samples::Int=10
   end
 
 end
-test_slice_matrix_chkr_speed(p,l,100)
+# test_slice_matrix_chkr_speed(p,l,100)
+
+
+"""
+Green's function
+"""
+function plot_greens_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
+
+  delta_tau_prev = p.delta_tau
+  delta_tau_range = [.1, .01, .001, .0001]
+  maxabsdiffs = zeros(length(delta_tau_range))
+  maxreldiffs = zeros(length(delta_tau_range))
+  for (k, delta_tau) in enumerate(delta_tau_range)
+    p.delta_tau = delta_tau
+    init_hopping_matrix_exp(p,l)
+    init_checkerboard_matrices(p,l)
+
+    greens = calculate_greens_udv(p,l,1)
+    greens_chkr = calculate_greens_udv_chkr(p,l,1)
+
+    maxabsdiffs[k] = maximum(absdiff(greens,greens_chkr))
+    maxreldiffs[k] = maximum(reldiff(greens,greens_chkr))
+  end
+
+  # restore old delta_tau
+  p.delta_tau = delta_tau_prev
+  init_hopping_matrix_exp(p,l)
+  init_checkerboard_matrices(p,l)
+
+  figure()
+  loglog(delta_tau_range,maxabsdiffs, label="numerics")
+  loglog(delta_tau_range,delta_tau_range, label="\$ O(\\Delta\\tau) \$")
+  loglog(delta_tau_range,delta_tau_range.^2, label="\$ O(\\Delta\\tau^2) \$")
+  title("Checkerboard error in \$ G \$ (L=$(l.L))")
+  ylabel("max abs diff \$ (G, G_{chkr}) \$")
+  xlabel("\$ \\Delta\\tau\$")
+  legend()
+
+  savefig("chkr_greens_error_L_$(l.L).png")
+
+end
