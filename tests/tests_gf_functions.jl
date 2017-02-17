@@ -4,6 +4,10 @@ Calculate slice matrix chain
 # Calculate B(stop) ... B(start) naively (without stabilization)
 # Returns: tuple of result (matrix) and log singular values of the intermediate products
 function calculate_slice_matrix_chain_naive(p::Parameters, l::Lattice, start::Int, stop::Int)
+  assert(0 < start <= p.slices)
+  assert(0 < stop <= p.slices)
+  assert(start <= stop)
+
   R = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
@@ -24,6 +28,10 @@ end
 # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
 # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
 function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+  assert(0 < start <= p.slices)
+  assert(0 < stop <= p.slices)
+  assert(start <= stop)
+
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
   Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
@@ -47,6 +55,10 @@ end
 
 
 function calculate_slice_matrix_chain_udv_chkr(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+  assert(0 < start <= p.slices)
+  assert(0 < stop <= p.slices)
+  assert(start <= stop)
+
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
   Vt = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
@@ -79,7 +91,13 @@ function calculate_greens_udv(p::Parameters, l::Lattice, slice::Int)
   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(p,l,slice,p.slices)
 
   # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
-  Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
+  if slice-1 >= 1
+    Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
+  else
+    Ul = eye(Complex128, p.flv * l.sites)
+    Dl = ones(Float64, p.flv * l.sites)
+    Vtl = eye(Complex128, p.flv * l.sites)
+  end
 
   # Calculate Greens function
   tmp = Vtl * Ur
@@ -93,7 +111,13 @@ function calculate_greens_udv_chkr(p::Parameters, l::Lattice, slice::Int)
   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv_chkr(p,l,slice,p.slices)
 
   # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
-  Ul, Dl, Vtl = calculate_slice_matrix_chain_udv_chkr(p,l,1,slice-1)
+  if slice-1 >= 1
+    Ul, Dl, Vtl = calculate_slice_matrix_chain_udv_chkr(p,l,1,slice-1)
+  else
+    Ul = eye(Complex128, p.flv * l.sites)
+    Dl = ones(Float64, p.flv * l.sites)
+    Vtl = eye(Complex128, p.flv * l.sites)
+  end
 
   # Calculate Greens function
   tmp = Vtl * Ur
@@ -107,7 +131,13 @@ function calculate_greens_2udv(p::Parameters, l::Lattice, slice::Int)
   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(p,l,slice,p.slices)
 
   # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
-  Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
+  if slice-1 >= 1
+    Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
+  else
+    Ul = eye(Complex128, p.flv * l.sites)
+    Dl = ones(Float64, p.flv * l.sites)
+    Vtl = eye(Complex128, p.flv * l.sites)
+  end
 
   # Calculate Greens function
   tmp = Vtl * Ur
@@ -130,7 +160,11 @@ function calculate_greens_naive(p::Parameters, l::Lattice, slice::Int)
   Br = calculate_slice_matrix_chain_naive(p,l,slice,p.slices)[1]
 
   # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
-  Bl = calculate_slice_matrix_chain_naive(p,l,1,slice-1)[1]
+  if slice-1 >= 1
+    Bl = calculate_slice_matrix_chain_naive(p,l,1,slice-1)[1]
+  else
+    Bl = eye(Complex128, p.flv * l.sites)
+  end
 
   # Calculate Greens function
   invgreens = eye(p.flv*l.sites)+ Bl * Br
@@ -144,7 +178,11 @@ function calculate_greens_naive_udvinv(p::Parameters, l::Lattice, slice::Int)
   Ur, Dr, Vtr = decompose_udv!(Br)
 
   # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
-  Bl = calculate_slice_matrix_chain_naive(p,l,1,slice-1)[1]
+  if slice-1 >= 1
+    Bl = calculate_slice_matrix_chain_naive(p,l,1,slice-1)[1]
+  else
+    Bl = eye(Complex128, p.flv * l.sites)
+  end
   Ul, Dl, Vtl = decompose_udv!(Bl)
 
   # Calculate Greens function
@@ -159,15 +197,11 @@ end
 Helpers
 """
 function compare_greens(g1::Array{Complex{Float64}, 2}, g2::Array{Complex{Float64}, 2})
-  println("max dev: ", maximum(abs(g1 - g2)))
-  println("mean dev: ", mean(abs(g1 - g2)))
+  println("max dev: ", maximum(absdiff(g1,g2)))
+  println("mean dev: ", mean(absdiff(g1,g2)))
   println("max rel dev: ", maximum(reldiff(g1,g2)))
   println("mean rel dev: ", mean(reldiff(g1,g2)))
-  # println("max diag dev: ", maximum(diag(abs(g1 - g2))))
-  # println("mean diag dev: ", mean(diag(abs(g1 - g2))))
-  # println("max diag rel dev: ", maximum(diag(reldiff(g1,g2))))
-  # println("mean diag rel dev: ", mean(diag(reldiff(g1,g2))))
-  return isapprox(g1,g2,atol=1e-2)
+  return isapprox(g1,g2,atol=1e-2,rtol=1e-1)
 end
 
 function check_current_gf(s,p,l)
