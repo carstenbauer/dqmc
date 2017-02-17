@@ -54,5 +54,4 @@ function test_sparse_dense_vs_dense_dense(msize::Int=100, nzelements::Int=8, sam
   # return times_normal, times_sparse, times_sparse_sparse, times_normal_normal
   return sparsity(x)
 end
-# Conclusion: sparsity is not a good enough criterium for if we will gain something
-#             or not.
+# sparsity of >99% to gain something
