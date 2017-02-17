@@ -2,6 +2,8 @@
 **/*.h5
 playground.jl
 **/*.bin
+**/*.png
+**/*.pdf
 tmp.cpp
 **/*.nb
 images/

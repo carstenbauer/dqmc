@@ -93,7 +93,8 @@ function add_slice_sequence_left(s::Stack, p::Parameters, l::Lattice, idx::Int)
   curr_U = copy(s.u_stack[:, :, idx])
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
-    curr_U = slice_matrix_no_chkr(p, l, slice) * curr_U
+    # curr_U = slice_matrix_no_chkr(p, l, slice) * curr_U
+    multiply_slice_matrix_left!(p, l, slice, curr_U)
   end
 
   curr_U =  curr_U * spdiagm(s.d_stack[:, idx])
@@ -109,7 +110,8 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
   curr_Vt = copy(s.vt_stack[:, :, idx + 1])
 
   for slice in reverse(s.ranges[idx])
-    curr_Vt = curr_Vt * slice_matrix_no_chkr(p, l, slice)
+    # curr_Vt = curr_Vt * slice_matrix_no_chkr(p, l, slice)
+    multiply_slice_matrix_right!(p, l, slice, curr_Vt)
   end
   curr_Vt =  spdiagm(s.d_stack[:, idx + 1]) * curr_Vt
   s.U, s.d_stack[:, idx], s.vt_stack[:, :, idx] = decompose_udv!(curr_Vt)
@@ -160,14 +162,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         add_slice_sequence_left(s, p, l, idx)
         s.Ul[:], s.Dl[:], s.Vtl[:] = s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], s.vt_stack[:, :, idx + 1]
 
-        s.greens_temp[:] = s.greens[:]
-        # s.greens_temp[:] = multiply_slice_matrix_right(p, l, s.greens_temp, s.current_slice - 1, -1.)
-        # s.greens_temp[:] = multiply_slice_matrix_left(p, l, s.greens_temp, s.current_slice - 1, 1.)
-
-        A = slice_matrix_no_chkr(p, l, s.current_slice -1 , -1.)
-        l.temp_square = s.greens_temp * A
-        A = slice_matrix_no_chkr(p, l, s.current_slice -1, 1.)
-        s.greens_temp = A * l.temp_square
+        s.greens_temp = copy(s.greens)
+        multiply_slice_matrix_inv_right!(p, l, s.current_slice - 1, s.greens_temp)
+        multiply_slice_matrix_left!(p, l, s.current_slice - 1, s.greens_temp)
 
         calculate_greens(s, p, l)
         diff = maximum(abs(s.greens_temp - s.greens))
@@ -182,13 +179,8 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         propagate(s, p, l)
       end
     else
-      A = slice_matrix_no_chkr(p, l, s.current_slice, -1.)
-      l.temp_square = s.greens * A
-      A = slice_matrix_no_chkr(p, l, s.current_slice, 1.)
-      s.greens = A * l.temp_square
-
-      # s.greens = multiply_slice_matrix_right(p, l, s.greens, s.current_slice, -1.)
-      # s.greens = multiply_slice_matrix_left(p, l, s.greens, s.current_slice, 1.)
+      multiply_slice_matrix_inv_right!(p, l, s.current_slice, s.greens)
+      multiply_slice_matrix_left!(p, l, s.current_slice, s.greens)
       s.current_slice += 1
     end
   else
@@ -204,13 +196,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         calculate_greens(s, p, l)
 
         # wrap gf to next slice
-        A = slice_matrix_no_chkr(p, l, s.current_slice, -1.)
-        l.temp_square = A * s.greens
-        A = slice_matrix_no_chkr(p, l, s.current_slice, 1.)
-        s.greens = l.temp_square * A
-        #
-        # s.greens = multiply_slice_matrix_left(p, l, s.greens, p.slices, -1.)
-        # s.greens = multiply_slice_matrix_right(p, l, s.greens, p.slices, 1.)
+        multiply_slice_matrix_inv_left!(p, l, p.slices, s.greens)
+        multiply_slice_matrix_right!(p, l, p.slices, s.greens)
+
       elseif s.current_slice > 0 && s.current_slice < p.slices
         s.greens_temp[:] = s.greens[:]
         s.Ul[:], s.Dl[:], s.Vtl[:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.vt_stack[:, :, idx]
@@ -223,13 +211,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
           # @printf("%d \t-1 Propagation stability\t %.4f\n", s.current_slice, diff)
         # end
 
-        A = slice_matrix_no_chkr(p, l, s.current_slice, -1.)
-        l.temp_square = A * s.greens
-        A = slice_matrix_no_chkr(p, l, s.current_slice, 1.)
-        s.greens = l.temp_square * A
-        #
-        # s.greens = multiply_slice_matrix_left(p, l, s.greens, s.current_slice, -1.)
-        # s.greens = multiply_slice_matrix_right(p, l, s.greens, s.current_slice, 1.)
+        multiply_slice_matrix_inv_left!(p, l, s.current_slice, s.greens)
+        multiply_slice_matrix_right!(p, l, s.current_slice, s.greens)
+
       elseif s.current_slice == 0
         add_slice_sequence_right(s, p, l, 1)
         s.direction = 1
@@ -237,13 +221,8 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
       end
     else
       # wrap gf to next slice
-      s.current_slice -= 1
-      A = slice_matrix_no_chkr(p, l, s.current_slice, -1.)
-      l.temp_square = A * s.greens
-      A = slice_matrix_no_chkr(p, l, s.current_slice, 1.)
-      s.greens = l.temp_square * A
-      # s.greens = multiply_slice_matrix_left(p, l, s.greens, s.current_slice, -1.)
-      # s.greens = multiply_slice_matrix_right(p, l, s.greens, s.current_slice, 1.)
+      multiply_slice_matrix_inv_left!(p, l, s.current_slice, s.greens)
+      multiply_slice_matrix_right!(p, l, s.current_slice, s.greens)
     end
   end
   nothing

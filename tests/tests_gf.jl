@@ -23,77 +23,117 @@ using PyPlot
 """
 Stack logic consistency
 """
-function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice)
+function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice, mode::String="chkr")
   # p.slices = 200
   # p.safe_mult = 1
   p.hsfield = rand(3,l.sites,p.slices)
   initialize_stack(s,p,l)
   build_stack(s,p,l)
-  mean_dev = Vector{Float64}(p.slices)
-  mean_rel_dev = Vector{Float64}(p.slices)
-  max_dev = Vector{Float64}(p.slices)
-  max_rel_dev = Vector{Float64}(p.slices)
+  gf = similar(s.greens)
+
+  mean_absdiff = Vector{Float64}(p.slices)
+  mean_reldiff = Vector{Float64}(p.slices)
+  max_absdiff = Vector{Float64}(p.slices)
+  max_reldiff = Vector{Float64}(p.slices)
   slices = Vector{Int}(p.slices)
   println("Starting down sweep")
   for n in 1:p.slices
     println(n)
     propagate(s,p,l)
-    gf = calculate_greens_udv(p,l,s.current_slice)
-    mean_dev[n] = mean(absdiff(gf,s.greens))
-    mean_rel_dev[n] = mean(reldiff(gf,s.greens))
-    max_dev[n] = maximum(absdiff(gf,s.greens))
-    max_rel_dev[n] = maximum(reldiff(gf,s.greens))
+
+    if mode == "chkr"
+      gf = calculate_greens_udv_chkr(p,l,s.current_slice)
+    else
+      gf = calculate_greens_udv(p,l,s.current_slice)
+    end
+
+    mean_absdiff[n] = mean(absdiff(gf,s.greens))
+    mean_reldiff[n] = mean(reldiff(gf,s.greens))
+    max_absdiff[n] = maximum(absdiff(gf,s.greens))
+    max_reldiff[n] = maximum(reldiff(gf,s.greens))
     slices[n] = s.current_slice
   end
 
-  mean_devUP = Vector{Float64}(p.slices)
-  mean_rel_devUP = Vector{Float64}(p.slices)
-  max_devUP = Vector{Float64}(p.slices)
-  max_rel_devUP = Vector{Float64}(p.slices)
+  mean_absdiffUP = Vector{Float64}(p.slices)
+  mean_reldiffUP = Vector{Float64}(p.slices)
+  max_absdiffUP = Vector{Float64}(p.slices)
+  max_reldiffUP = Vector{Float64}(p.slices)
   slicesUP = Vector{Int}(p.slices)
   println("Starting up sweep")
   for n in 1:p.slices
     println(n)
     propagate(s,p,l)
-    gf = calculate_greens_udv(p,l,s.current_slice)
-    mean_devUP[n] = maximum(absdiff(gf,s.greens))
-    mean_rel_devUP[n] = maximum(reldiff(gf,s.greens))
-    max_devUP[n] = maximum(absdiff(gf,s.greens))
-    max_rel_devUP[n] = maximum(reldiff(gf,s.greens))
+
+    if mode == "chkr"
+      gf = calculate_greens_udv_chkr(p,l,s.current_slice)
+    else
+      gf = calculate_greens_udv(p,l,s.current_slice)
+    end
+
+    mean_absdiffUP[n] = maximum(absdiff(gf,s.greens))
+    mean_reldiffUP[n] = maximum(reldiff(gf,s.greens))
+    max_absdiffUP[n] = maximum(absdiff(gf,s.greens))
+    max_reldiffUP[n] = maximum(reldiff(gf,s.greens))
     slicesUP[n] = s.current_slice
   end
 
+  if mode == "chkr"
+    write("mean_absdiff_chkr_L_$(l.L)_safe_mult_$(p.safe_mult).bin", [mean_absdiff; mean_absdiffUP])
+    write("mean_reldiff_chkr_L_$(l.L)_safe_mult_$(p.safe_mult).bin", [mean_reldiff; mean_reldiffUP])
+    write("max_absdiff_chkr_L_$(l.L)_safe_mult_$(p.safe_mult).bin", [max_absdiff; max_absdiffUP])
+    write("max_reldiff_chkr_L_$(l.L)_safe_mult_$(p.safe_mult).bin", [max_reldiff; max_reldiffUP])
+  else
+    write("mean_absdiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", [mean_absdiff; mean_absdiffUP])
+    write("mean_reldiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", [mean_reldiff; mean_reldiffUP])
+    write("max_absdiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", [max_absdiff; max_absdiffUP])
+    write("max_reldiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", [max_reldiff; max_reldiffUP])
+  end
+
   # mean devs
-  fig, (ax1, ax2, ax3, ax4) = subplots(2,2,sharey=true,figsize=(20,10))
-  ax1[:plot](slices,mean_dev,"C0")
+  fig = figure(figsize=(20,10))
+  ax1 = fig[:add_subplot](2,2,1)
+  ax1[:plot](slices,mean_absdiff,"C0")
   ax1[:invert_xaxis]()
-  ax3[:plot](slicesUP,mean_devUP,"C0")
-  ax2[:plot](slices,mean_rel_dev,"C3")
+  ax3 = fig[:add_subplot](2,2,2,sharey=ax1)
+  ax3[:plot](slicesUP,mean_absdiffUP,"C0")
+  setp(ax3[:get_yticklabels](), visible=false)
+  ax2 = fig[:add_subplot](2,2,3)
+  ax2[:plot](slices,mean_reldiff,"C3")
   ax2[:invert_xaxis]()
-  ax4[:plot](slicesUP,mean_rel_devUP,"C3")
+  ax4 = fig[:add_subplot](2,2,4,sharey=ax2)
+  ax4[:plot](slicesUP,mean_reldiffUP,"C3")
+  setp(ax4[:get_yticklabels](), visible=false)
   subplots_adjust(wspace = 0.0)
 
   ax1[:set_ylabel]("mean absdiff")
   ax2[:set_ylabel]("mean reldiff")
-  fig[:text](.5, .95, "Mean errors (L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
+  fig[:text](.5, .95, "Mean errors" * (mode == "chkr" ? " chkr " : " ") * "(L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
   fig[:text](.5, .03, "time slice", ha="center")
 
   # max devs
-  fig, (ax1, ax2, ax3, ax4) = subplots(2,2,sharey=true,figsize=(20,10))
-  ax1[:plot](slices,max_dev,"C0")
+  fig2 = figure(figsize=(20,10))
+  ax1 = fig2[:add_subplot](2,2,1)
+  ax1[:plot](slices,max_absdiff,"C0")
   ax1[:invert_xaxis]()
-  ax3[:plot](slicesUP,max_devUP,"C0")
-  ax2[:plot](slices,max_rel_dev,"C3")
+  ax3 = fig2[:add_subplot](2,2,2,sharey=ax1)
+  ax3[:plot](slicesUP,max_absdiffUP,"C0")
+  setp(ax3[:get_yticklabels](), visible=false)
+  ax2 = fig2[:add_subplot](2,2,3)
+  ax2[:plot](slices,max_reldiff,"C3")
   ax2[:invert_xaxis]()
-  ax4[:plot](slicesUP,max_rel_devUP,"C3")
+  ax4 = fig2[:add_subplot](2,2,4,sharey=ax2)
+  ax4[:plot](slicesUP,max_reldiffUP,"C3")
+  setp(ax4[:get_yticklabels](), visible=false)
   subplots_adjust(wspace = 0.0)
 
   ax1[:set_ylabel]("max absdiff")
   ax2[:set_ylabel]("max reldiff")
-  fig[:text](.5, .95, "Maximum errors (L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
-  fig[:text](.5, .03, "time slice", ha="center")
+  fig2[:text](.5, .95, "Maximum errors" * (mode == "chkr" ? " chkr " : " ") * "(L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
+  fig2[:text](.5, .03, "time slice", ha="center")
 
-  show()
+  fig[:savefig]("greens_error_mean" * (mode == "chkr" ? "_chkr_" : "_" ) * "L_$(l.L)_safe_mult_$(p.safe_mult).png")
+  fig2[:savefig]("greens_error_max" * (mode == "chkr" ? "_chkr_" : "_" ) * "L_$(l.L)_safe_mult_$(p.safe_mult).png")
+  # show()
 end
 # plot_gf_error_propagation(s,p,l)
 
