@@ -18,64 +18,84 @@ end
 # Worked.
 
 
+
+using PyPlot
 """
 Stack logic consistency
 """
 function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice)
-  p.slices = 200
-  p.safe_mult = 1
+  # p.slices = 200
+  # p.safe_mult = 1
   p.hsfield = rand(3,l.sites,p.slices)
   initialize_stack(s,p,l)
   build_stack(s,p,l)
   mean_dev = Vector{Float64}(p.slices)
+  mean_rel_dev = Vector{Float64}(p.slices)
+  max_dev = Vector{Float64}(p.slices)
+  max_rel_dev = Vector{Float64}(p.slices)
   slices = Vector{Int}(p.slices)
+  println("Starting down sweep")
   for n in 1:p.slices
+    println(n)
     propagate(s,p,l)
     gf = calculate_greens_udv(p,l,s.current_slice)
     mean_dev[n] = mean(absdiff(gf,s.greens))
+    mean_rel_dev[n] = mean(reldiff(gf,s.greens))
+    max_dev[n] = maximum(absdiff(gf,s.greens))
+    max_rel_dev[n] = maximum(reldiff(gf,s.greens))
     slices[n] = s.current_slice
   end
 
   mean_devUP = Vector{Float64}(p.slices)
+  mean_rel_devUP = Vector{Float64}(p.slices)
+  max_devUP = Vector{Float64}(p.slices)
+  max_rel_devUP = Vector{Float64}(p.slices)
   slicesUP = Vector{Int}(p.slices)
+  println("Starting up sweep")
   for n in 1:p.slices
+    println(n)
     propagate(s,p,l)
     gf = calculate_greens_udv(p,l,s.current_slice)
-    mean_devUP[n] = mean(absdiff(gf,s.greens))
+    mean_devUP[n] = maximum(absdiff(gf,s.greens))
+    mean_rel_devUP[n] = maximum(reldiff(gf,s.greens))
+    max_devUP[n] = maximum(absdiff(gf,s.greens))
+    max_rel_devUP[n] = maximum(reldiff(gf,s.greens))
     slicesUP[n] = s.current_slice
   end
 
-  # second round (more or less copy paste of above)
-  mean_dev2 = Vector{Float64}(p.slices)
-  slices = Vector{Int}(p.slices)
-  for n in 1:p.slices
-    propagate(s,p,l)
-    gf = calculate_greens_udv(p,l,s.current_slice)
-    mean_dev2[n] = mean(absdiff(gf,s.greens))
-    slices[n] = s.current_slice
-  end
-
-  mean_dev2UP = Vector{Float64}(p.slices)
-  slicesUP = Vector{Int}(p.slices)
-  for n in 1:p.slices
-    propagate(s,p,l)
-    gf = calculate_greens_udv(p,l,s.current_slice)
-    mean_dev2UP[n] = mean(absdiff(gf,s.greens))
-    slicesUP[n] = s.current_slice
-  end
-
-  fig, (ax1, ax2, ax3, ax4) = subplots(2,2,sharey=true)
+  # mean devs
+  fig, (ax1, ax2, ax3, ax4) = subplots(2,2,sharey=true,figsize=(20,10))
   ax1[:plot](slices,mean_dev,"C0")
   ax1[:invert_xaxis]()
   ax3[:plot](slicesUP,mean_devUP,"C0")
-  ax2[:plot](slices,mean_dev2,"C3")
+  ax2[:plot](slices,mean_rel_dev,"C3")
   ax2[:invert_xaxis]()
-  ax4[:plot](slicesUP,mean_dev2UP,"C3")
+  ax4[:plot](slicesUP,mean_rel_devUP,"C3")
   subplots_adjust(wspace = 0.0)
-  fig[:text](.03, .5, "mean abs error", ha="center", va="center", rotation="vertical")
+
+  ax1[:set_ylabel]("mean absdiff")
+  ax2[:set_ylabel]("mean reldiff")
+  fig[:text](.5, .95, "Mean errors (L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
   fig[:text](.5, .03, "time slice", ha="center")
+
+  # max devs
+  fig, (ax1, ax2, ax3, ax4) = subplots(2,2,sharey=true,figsize=(20,10))
+  ax1[:plot](slices,max_dev,"C0")
+  ax1[:invert_xaxis]()
+  ax3[:plot](slicesUP,max_devUP,"C0")
+  ax2[:plot](slices,max_rel_dev,"C3")
+  ax2[:invert_xaxis]()
+  ax4[:plot](slicesUP,max_rel_devUP,"C3")
+  subplots_adjust(wspace = 0.0)
+
+  ax1[:set_ylabel]("max absdiff")
+  ax2[:set_ylabel]("max reldiff")
+  fig[:text](.5, .95, "Maximum errors (L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
+  fig[:text](.5, .03, "time slice", ha="center")
+
   show()
 end
+# plot_gf_error_propagation(s,p,l)
 
 
 """

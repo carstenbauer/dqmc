@@ -1,11 +1,12 @@
 include("tests_gf_functions.jl")
 
-"""
-Singular values stabilization
-"""
+
 using PyPlot
 using PyCall
 @pyimport matplotlib.ticker as ticker
+"""
+Singular values stabilization
+"""
 function plot_svs_of_slice_matrix_chain(p::Parameters, l::Lattice)
   T = calculate_slice_matrix_chain_naive(p,l,1,p.slices)
   svs = T[2]
@@ -32,10 +33,11 @@ function plot_svs_of_slice_matrix_chain(p::Parameters, l::Lattice)
 
   # tight_layout()
   subplots_adjust(wspace = 0.0)
+  show()
   println(maximum(svs))
   nothing
 end
-plot_svs_of_slice_matrix_chain(p,l)
+# plot_svs_of_slice_matrix_chain(p,l)
 # Worked
 
 
@@ -68,7 +70,7 @@ function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lat
   show()
   nothing
 end
-plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p,l)
+# plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p,l)
 # Worked.
 
 

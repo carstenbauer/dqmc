@@ -1,4 +1,6 @@
-# Checkerboard: Assaad four site version for square lattice
+"""
+Checkerboard initialization: Assaad four site version for square lattice
+"""
 function find_four_site_hopping_corners(l::Lattice)
   pc = Int(floor(l.sites/4))
 
@@ -82,7 +84,6 @@ function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::T
   return chkr_hop_4site, chkr_hop_4site_inv
 end
 
-
 # helper to cutoff numerical zeros (very smal elements)
 rem_eff_zeros!(X::Array{Float64}) = map(e->abs(e)<1e-15?zero(e):e,X)
 
@@ -123,15 +124,18 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
   println("Checkerboard - exact (rel):\t\t", maximum(reldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
 end
 
-
-# function test!{T<:Number}(M::Matrix{T})
-#   x = reshape(1:16,4,4)'
-#   M[:] = x
-# end
-#
-# M = rand(1:10,4,4)
-# @time test!(M);
-
+"""
+Slice matrix
+"""
+function slice_matrix(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
+  res = eye(Complex128, p.flv*l.sites)
+  if power > 0
+    multiply_slice_matrix_left!(p, l, slice, res)
+  else
+    multiply_slice_matrix_inv_left!(p, l, slice, res)
+  end
+  return res
+end
 
 function multiply_slice_matrix_left!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
 
@@ -211,14 +215,4 @@ function multiply_slice_matrix_inv_right{T<:Number}(p::Parameters, l::Lattice, s
   X = copy(M)
   multiply_slice_matrix_inv_right!(p, l, slice, X)
   return X
-end
-
-function slice_matrix(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
-  res = eye(Complex128, p.flv*l.sites)
-  if power > 0
-    multiply_slice_matrix_left!(p, l, slice, res)
-  else
-    multiply_slice_matrix_inv_left!(p, l, slice, res)
-  end
-  return res
 end

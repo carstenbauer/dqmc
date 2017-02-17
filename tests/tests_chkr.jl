@@ -32,7 +32,7 @@ function plot_slice_matrix_chkr_error_delta_tau_scaling(p::Parameters, l::Lattic
   legend()
 
 end
-plot_slice_matrix_chkr_error_delta_tau_scaling(p,l)
+# plot_slice_matrix_chkr_error_delta_tau_scaling(p,l)
 # absdiff seems to scale with p.delta_tau, shouldnt it be more like p.delta_tau^2?
 # Update: After forgotten l.chkr_mu has been added, chkr error in B_n is effectively zero (too small?!). Why?
 
