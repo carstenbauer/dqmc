@@ -4,7 +4,8 @@ include("tests_gf_functions.jl")
 Inversion in greens calculation
 """
 function test_greens_udv_vs_naive_vs_naiveudvinv(p::Parameters, l::Lattice)
-  slice = rand(1:p.slices)
+  # slice = rand(1:p.slices)
+  slice = 15
   gfudv = calculate_greens_udv(p,l,slice)
   gfnaive = calculate_greens_naive(p,l,slice)
   gfnaiveudvinv = calculate_greens_naive_udvinv(p,l,slice)
