@@ -168,3 +168,30 @@ function test_greens_det_naive(s::Stack, p::Parameters, l::Lattice)
   println("svs_udv, svs_naive, abs diff, rel diff")
   display(cat(2,svs_udv,svs_naive,absdiff(svs_naive, svs_udv), reldiff(svs_naive, svs_udv)))
 end
+
+
+function test_calculate_greens_symmetry(s::Stack, p::Parameters, l::Lattice)
+  U, D, Vt = decompose_udv!(rand(Complex128, p.flv*l.sites, p.flv*l.sites))
+
+  # U,D,Vt right = eye
+  s.Ul = copy(U)
+  s.Dl = copy(D)
+  s.Vtl = copy(Vt)
+  s.Ur = eye(Complex128, p.flv*l.sites, p.flv*l.sites)
+  s.Dr = ones(p.flv*l.sites)
+  s.Vtr = eye(Complex128, p.flv*l.sites, p.flv*l.sites)
+  gl = calculate_greens(s,p,l)
+
+  # U,D,Vt left = eye
+  s.Ur = copy(U)
+  s.Dr = copy(D)
+  s.Vtr = copy(Vt)
+  s.Ul = eye(Complex128, p.flv*l.sites, p.flv*l.sites)
+  s.Dl = ones(p.flv*l.sites)
+  s.Vtl = eye(Complex128, p.flv*l.sites, p.flv*l.sites)
+  gr = calculate_greens(s,p,l)
+
+  compare(gl,gr)
+
+end
+# Worked
