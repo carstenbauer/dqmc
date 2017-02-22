@@ -26,7 +26,7 @@ type Stack
 
   ranges::Array{UnitRange, 1}
   n_elements::Int
-  current_slice::Int
+  current_slice::Int # running internally over 0:p.slices+1, where 0 and p.slices+1 are artifcial to prepare next sweep direction.
   direction::Int
 
   Stack() = new()
@@ -35,6 +35,12 @@ end
 
 function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.n_elements = convert(Int, p.slices / p.safe_mult) + 1
+
+  s.ranges = UnitRange[]
+
+  for i in 1:s.n_elements - 1
+    push!(s.ranges, 1 + (i - 1) * p.safe_mult:i * p.safe_mult)
+  end
 
   s.u_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
   s.d_stack = zeros(Float64, p.flv*l.sites, s.n_elements)
@@ -61,12 +67,6 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
 
   s.eye_flv = eye(p.flv,p.flv)
   s.eye_full = eye(p.flv*l.sites,p.flv*l.sites)
-
-  s.ranges = UnitRange[]
-
-  for i in 1:s.n_elements - 1
-    push!(s.ranges, 1 + (i - 1) * p.safe_mult:i * p.safe_mult)
-  end
 
 end
 
@@ -147,80 +147,78 @@ end
 function propagate(s::Stack, p::Parameters, l::Lattice)
   if s.direction == 1
     if mod(s.current_slice, p.safe_mult) == 0
-      s.current_slice += 1
+      s.current_slice +=1 # slice we are going to
       if s.current_slice == 1
-        s.Ur[:], s.Dr[:], s.Vtr[:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.vt_stack[:, :, 1]
-        s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites)
+        s.Ur[:, :], s.Dr[:], s.Vtr[:, :] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.vt_stack[:, :, 1]
+        s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
         s.d_stack[:, 1] = ones(p.flv*l.sites)
-        s.vt_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites)
-        s.Ul[:], s.Dl[:], s.Vtl[:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.vt_stack[:, :, 1]
-        calculate_greens(s, p, l)
+        s.vt_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+        s.Ul[:,:], s.Dl[:], s.Vtl[:,:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.vt_stack[:, :, 1]
 
-      elseif s.current_slice > 1 && s.current_slice < p.slices
-        idx = Int((s.current_slice - 1) / p.safe_mult)
-        s.Ur[:], s.Dr[:], s.Vtr[:] = s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], s.vt_stack[:, :, idx + 1]
+        calculate_greens(s, p, l) # greens_1 ( === greens_{m+1} )
+
+      elseif 1 < s.current_slice <= p.slices
+        idx = Int((s.current_slice - 1)/p.safe_mult)
+
+        s.Ur[:, :], s.Dr[:], s.Vtr[:, :] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.vt_stack[:, :, idx+1]
         add_slice_sequence_left(s, p, l, idx)
-        s.Ul[:], s.Dl[:], s.Vtl[:] = s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], s.vt_stack[:, :, idx + 1]
+        s.Ul[:,:], s.Dl[:], s.Vtl[:,:] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.vt_stack[:, :, idx+1]
 
-        s.greens_temp = copy(s.greens)
-        multiply_slice_matrix_inv_right!(p, l, s.current_slice - 1, s.greens_temp)
-        multiply_slice_matrix_left!(p, l, s.current_slice - 1, s.greens_temp)
+        calculate_greens(s, p, l) # greens_{slice we are propagating to}
 
-        calculate_greens(s, p, l)
-        diff = maximum(abs(s.greens_temp - s.greens))
-        # if diff > 1e-4
-          # @printf("%d \t+1 Propagation stability\t %.4f\n", s.current_slice, diff)
-        # end
-      else
+      else # we are going to p.slices+1
         idx = s.n_elements - 1
         add_slice_sequence_left(s, p, l, idx)
         s.direction = -1
-        s.current_slice = p.slices + 1
+        s.current_slice = p.slices+1 # redundant
         propagate(s, p, l)
       end
+
     else
-      multiply_slice_matrix_inv_right!(p, l, s.current_slice, s.greens)
+      # Wrapping
       multiply_slice_matrix_left!(p, l, s.current_slice, s.greens)
+      multiply_slice_matrix_inv_right!(p, l, s.current_slice, s.greens)
       s.current_slice += 1
     end
-  else
-    if mod(s.current_slice - 1, p.safe_mult) == 0
-      s.current_slice -= 1
-      idx = Int(s.current_slice / p.safe_mult) + 1
+
+  else # s.direction == -1
+    if mod(s.current_slice-1, p.safe_mult) == 0
+      s.current_slice -= 1 # slice we are going to
       if s.current_slice == p.slices
         s.Ul[:, :], s.Dl[:], s.Vtl[:, :] = s.u_stack[:, :, end], s.d_stack[:, end], s.vt_stack[:, :, end]
         s.u_stack[:, :, end] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
         s.d_stack[:, end] = ones(p.flv*l.sites)
         s.vt_stack[:, :, end] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-        s.Ur[:], s.Dr[:], s.Vtr[:] = s.u_stack[:, :, end], s.d_stack[:, end], s.vt_stack[:, :, end]
-        calculate_greens(s, p, l)
+        s.Ur[:,:], s.Dr[:], s.Vtr[:,:] = s.u_stack[:, :, end], s.d_stack[:, end], s.vt_stack[:, :, end]
 
-        # wrap gf to next slice
-        multiply_slice_matrix_inv_left!(p, l, p.slices, s.greens)
-        multiply_slice_matrix_right!(p, l, p.slices, s.greens)
+        calculate_greens(s, p, l) # greens_{p.slices+1} === greens_1
 
-      elseif s.current_slice > 0 && s.current_slice < p.slices
-        s.greens_temp[:] = s.greens[:]
-        s.Ul[:], s.Dl[:], s.Vtl[:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.vt_stack[:, :, idx]
+        # wrap to greens_{p.slices}
+        multiply_slice_matrix_inv_left!(p, l, s.current_slice, s.greens)
+        multiply_slice_matrix_right!(p, l, s.current_slice, s.greens)
+
+      elseif 0 < s.current_slice < p.slices
+        idx = Int(s.current_slice / p.safe_mult) + 1
+        s.Ul[:, :], s.Dl[:], s.Vtl[:, :] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.vt_stack[:, :, idx]
         add_slice_sequence_right(s, p, l, idx)
-        s.Ur[:], s.Dr[:], s.Vtr[:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.vt_stack[:, :, idx]
-        calculate_greens(s, p, l)
-        # println(real(diag(s.greens)))
-        diff = maximum(abs(s.greens_temp - s.greens))
-        # if diff > 1e-4
-          # @printf("%d \t-1 Propagation stability\t %.4f\n", s.current_slice, diff)
-        # end
+        s.Ur[:,:], s.Dr[:], s.Vtr[:,:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.vt_stack[:, :, idx]
+
+        calculate_greens(s, p , l)
 
         multiply_slice_matrix_inv_left!(p, l, s.current_slice, s.greens)
         multiply_slice_matrix_right!(p, l, s.current_slice, s.greens)
 
-      elseif s.current_slice == 0
-        add_slice_sequence_right(s, p, l, 1)
+      else # we are going to 0
+        idx = 1
+        add_slice_sequence_right(s, p, l, idx)
         s.direction = 1
-        propagate(s, p, l)
+        s.current_slice = 0 # redundant
+        propagate(s,p,l)
       end
+
     else
-      # wrap gf to next slice
+      # Wrapping
+      s.current_slice -= 1
       multiply_slice_matrix_inv_left!(p, l, s.current_slice, s.greens)
       multiply_slice_matrix_right!(p, l, s.current_slice, s.greens)
     end

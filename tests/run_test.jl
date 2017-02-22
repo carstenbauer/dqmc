@@ -80,14 +80,13 @@ println("Initializing boson action\n")
 # stack init
 s = Stack()
 initialize_stack(s, p, l)
-
 @time build_stack(s, p, l)
-println("Propagate ", s.current_slice, " ", s.direction)
+println("Initial propagate: ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
 
 # testing
 include("tests_gf.jl")
-plot_gf_error_propagation(s,p,l,"exact")
+plot_gf_error_propagation(s,p,l,"chkr")
 
 # include("tests_gf_stabilization.jl")
 # plot_svs_of_slice_matrix_chain(p,l)
