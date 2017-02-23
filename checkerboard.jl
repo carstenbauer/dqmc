@@ -85,7 +85,8 @@ function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::T
 end
 
 # helper to cutoff numerical zeros (very smal elements)
-rem_eff_zeros!(X::Array{Float64}) = map(e->abs(e)<1e-15?zero(e):e,X)
+rem_eff_zeros!(X::Array{Float64}) = map!(e->abs(e)<1e-15?zero(e):e,X)
+rem_eff_zeros!(X::Array{Complex128}) = map!(e->abs(e)<1e-15?zero(e):e,X)
 
 function init_checkerboard_matrices(p::Parameters, l::Lattice)
 
