@@ -13,7 +13,7 @@ include("observable.jl")
 include("measurements.jl")
 
 # @inbounds begin
-ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]
+# ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]
 prefix = convert(String, ARGS[1])
 idx = 1
 try
