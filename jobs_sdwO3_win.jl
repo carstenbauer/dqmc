@@ -1,8 +1,8 @@
 include("xml_parameters.jl")
 
-julia_code_file = "/projects/ag-trebst/bauer/codes/julia-sdw-dqmc/dqmc.jl"
-output_root = "/projects/ag-trebst/bauer/sdwO3/julia-dqmc"
-lattice_dir = "/projects/ag-trebst/bauer/lattices"
+julia_code_file = "C:/Users/carsten/Desktop/sciebo/codes/julia-sdw-dqmc/dqmc.jl"
+output_root = "C:/Users/carsten/Desktop"
+lattice_dir = "C:/Users/carsten/Desktop/sciebo/lattices"
 
 if !isdir(output_root) mkdir(output_root) end
 cd(output_root)
