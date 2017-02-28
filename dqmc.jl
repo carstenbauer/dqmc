@@ -142,7 +142,7 @@ for i in 1:p.measurements
     @inbounds propagate(s, p, l)
     acc_rate += local_updates(s, p, l)
 
-    if s.current_slice == 200 && s.direction == 1 # measure criterium
+    if s.current_slice == 1 && s.direction == 1 # measure criterium
       # println("\t\tMeasuring")
       add_element(boson_action, p.boson_action)
 
