@@ -3,6 +3,7 @@ start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 
 using Helpers
+using Git
 include("linalg.jl")
 include("parameters.jl")
 include("xml_parameters.jl")
@@ -33,6 +34,13 @@ close(f)
 params = Dict{Any, Any}()
 try
   params = xml2parameters(prefix, idx)
+
+  # Check and store code version (git commit)
+  if haskey(params,"GIT_COMMIT") && Git.head(dir=dirname(@__FILE__)) != params["GIT_COMMIT"]
+    warn("Git commit in input xml file does not match current commit of code.")
+  end
+  params["GIT_COMMIT"] = Git.head(dir=dirname(@__FILE__))
+
   parameters2hdf5(params, output_file)
 catch e
   println(e)
