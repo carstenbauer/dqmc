@@ -1,4 +1,7 @@
 # dqmc.jl called with arguments: sdwO3_L_4_B_2_dt_0.1_1 ${SLURM_ARRAY_TASK_ID}
+start_time = now()
+println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
+
 using Helpers
 include("linalg.jl")
 include("parameters.jl")
@@ -185,3 +188,7 @@ end
 toq();
 
 # end # inbounds
+
+end_time = now()
+println("Ended: ", Dates.format(end_time, "d.u yyyy HH:MM"))
+@printf("Duration: %.2f minutes", (end_time - start_time).value/1000./60.)
