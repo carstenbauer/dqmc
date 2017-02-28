@@ -37,7 +37,7 @@ job_cheops = """
 
     export OMP_NUM_THREADS=1
     export MKL_NUM_THREADS=1
-    source ~/.bashrc
+    source /projects/ag-trebst/julia-0.5/julia_env
     cd $(output_root)/$(dir)/$(prefix)/
     julia $(julia_code_file) $(prefix) \$\{SLURM_ARRAY_TASK_ID\}
     """
