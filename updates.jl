@@ -1,7 +1,7 @@
 function local_updates(s::Stack, p::Parameters, l::Lattice)
   acc_rat = 0.0
   @inbounds for i in 1:l.sites
-    new_op = rand(p.box, 3)
+    new_op = p.hsfield[:,i,s.current_slice] + rand(p.box, 3)
     exp_delta_S_boson = exp(-calculate_boson_action_diff(p,l,i,new_op))
     detratio = calculate_detratio(s,p,l,i,new_op)
 
@@ -46,4 +46,24 @@ function update_greens!(s::Stack, p::Parameters, l::Lattice, i::Int)
   first_term = /((s.greens - s.eye_full)[:,i:l.sites:end], s.M)
   second_term = s.delta_i * s.greens[i:l.sites:end,:]
   s.greens = s.greens + first_term * second_term
+end
+
+
+function global_update(s::Stack, p::Parameters, l::Lattice)
+  global_op_shift = rand(p.box, 3)
+  new_hsfield = mapslices(x -> x + global_op_shift, p.hsfield, [1])
+  S_new = calculate_boson_action(p, l, new_hsfield)
+  
+  exp_delta_S_boson = exp(-(S_new - p.boson_action))
+  # detratio = ?
+  p_acc = 0.0
+
+  if p_acc > 1.0 || rand() < p_acc
+      p.hsfield[:] = new_hsfield[:]
+      p.boson_action = S_new
+      init_interaction_sinh_cosh(p,l)
+      # s.greens = ?
+      return true
+  end
+  return false
 end
