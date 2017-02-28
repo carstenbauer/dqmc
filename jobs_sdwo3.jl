@@ -4,6 +4,7 @@ lattice_dir = "/projects/ag-trebst/bauer/lattices"
 
 include("$(dirname(julia_code_file))/xml_parameters.jl")
 using Git
+cd(dirname(julia_code_file))
 if Git.unstaged() || Git.staged() error("GIT: Code has staged or unstaged changes. Commit before running simulations.") end
 commit = Git.head()
 
