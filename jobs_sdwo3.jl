@@ -3,6 +3,9 @@ output_root = "/projects/ag-trebst/bauer/sdwO3/julia-dqmc"
 lattice_dir = "/projects/ag-trebst/bauer/lattices"
 
 include("$(dirname(julia_code_file))/xml_parameters.jl")
+using Git
+if Git.unstaged() || Git.staged() error("GIT: Code has staged or unstaged changes. Commit before running simulations.") end
+commit = Git.head()
 
 if !isdir(output_root) mkdir(output_root) end
 cd(output_root)
@@ -24,6 +27,8 @@ cd(prefix)
 p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "SLICES"=>[Int(beta / dt)], "DELTA_TAU"=>[dt], "SAFE_MULT"=>[10], "U"=>[1.0], "R"=>[8.0, 9.0, 10.0], "LAMBDA"=>[3., 4., 5.], "HOPPINGS"=>["1.0,0.5,0.5,1.0"], "MU"=>[0.5], "SEED"=>[55796], "BOX_HALF_LENGTH"=>[0.2])
 p["THERMALIZATION"] = 50
 p["MEASUREMENTS"] = 50
+
+p["GIT_COMMIT"] = commit
 parameterset2xml(p, prefix)
 
 
