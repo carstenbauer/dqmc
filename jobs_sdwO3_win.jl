@@ -29,7 +29,7 @@ p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "S
 p["THERMALIZATION"] = 50
 p["MEASUREMENTS"] = 50
 
-p["GIT_COMMIT"] = commit
+p["GIT_COMMIT"] = [commit]
 parameterset2xml(p, prefix)
 
 
