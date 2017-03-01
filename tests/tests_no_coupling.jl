@@ -1,8 +1,8 @@
 include("tests_gf_functions.jl")
 
-```
+"""
 Free fermion system tests
-```
+"""
 function test_interactions_are_zero(s::Stack,p::Parameters,l::Lattice)
     assert(p.lambda == 0)
     eV = interaction_matrix_exp(p,l,1)
