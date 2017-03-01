@@ -12,7 +12,8 @@ include("checkerboard.jl")
 include("interactions.jl")
 include("action.jl")
 include("stack.jl")
-include("updates.jl")
+include("local_updates.jl")
+include("global_updates.jl")
 include("observable.jl")
 include("measurements.jl")
 
@@ -103,6 +104,14 @@ for i in 1:p.thermalization
 
   for u in 1:2 * p.slices
     @inbounds propagate(s, p, l)
+
+    if s.current_slice == p.slices && s.direction == -1 && mod(i, 1) == 0
+      # attempt global update after every fifth down-up sweep
+      println("Attempting global update...")
+      b = global_update(s, p, l)
+      println("Accepted: ", b)
+    end
+
     acc_rate += local_updates(s, p, l)
   end
 

@@ -29,6 +29,17 @@ type Stack
   current_slice::Int # running internally over 0:p.slices+1, where 0 and p.slices+1 are artifcial to prepare next sweep direction.
   direction::Int
 
+  # -------- Global update backup
+  gb_u_stack::Array{Complex{Float64}, 3}
+  gb_d_stack::Array{Float64, 2}
+  gb_vt_stack::Array{Complex{Float64}, 3}
+
+  gb_greens::Array{Complex{Float64}, 2}
+  gb_greens_svs::Vector{Float64}
+
+  gb_hsfield::Array{Float64, 3}
+  # --------
+
   Stack() = new()
 end
 
@@ -67,6 +78,14 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
 
   s.eye_flv = eye(p.flv,p.flv)
   s.eye_full = eye(p.flv*l.sites,p.flv*l.sites)
+
+  # Global update backup
+  s.gb_u_stack = similar(s.u_stack)
+  s.gb_d_stack = similar(s.d_stack)
+  s.gb_vt_stack = similar(s.vt_stack)
+  s.gb_greens = similar(s.greens)
+  s.gb_greens_svs = similar(s.greens_svs)
+  s.gb_hsfield = similar(p.hsfield)
 
 end
 

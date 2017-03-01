@@ -47,23 +47,3 @@ function update_greens!(s::Stack, p::Parameters, l::Lattice, i::Int)
   second_term = s.delta_i * s.greens[i:l.sites:end,:]
   s.greens = s.greens + first_term * second_term
 end
-
-
-function global_update(s::Stack, p::Parameters, l::Lattice)
-  global_op_shift = rand(p.box, 3)
-  new_hsfield = mapslices(x -> x + global_op_shift, p.hsfield, [1])
-  S_new = calculate_boson_action(p, l, new_hsfield)
-  
-  exp_delta_S_boson = exp(-(S_new - p.boson_action))
-  # detratio = ?
-  p_acc = 0.0
-
-  if p_acc > 1.0 || rand() < p_acc
-      p.hsfield[:] = new_hsfield[:]
-      p.boson_action = S_new
-      init_interaction_sinh_cosh(p,l)
-      # s.greens = ?
-      return true
-  end
-  return false
-end

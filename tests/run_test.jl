@@ -7,7 +7,7 @@ include("../checkerboard.jl")
 include("../interactions.jl")
 include("../action.jl")
 include("../stack.jl")
-include("../updates.jl")
+include("../local_updates.jl")
 include("../observable.jl")
 include("../measurements.jl")
 

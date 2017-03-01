@@ -29,6 +29,13 @@ function interaction_matrix_exp(p::Parameters, l::Lattice, slice::Int, power::Fl
 end
 
 
+blockview{T<:Number}(l::Lattice, A::Matrix{T}, row::Int, col::Int) = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
+function blockreplace!{T<:Number}(l::Lattice, A::Matrix{T}, row::Int, col::Int, B::Union{Matrix{T},SubArray{T,2}})
+  A[(row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites] = B
+  nothing
+end
+
+
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
 function interaction_matrix_exp_op(p::Parameters, l::Lattice, op::Vector{Float64}, power::Float64=1.)
   sh = power * sinh(p.lambda * p.delta_tau*norm(op))/norm(op)
@@ -57,10 +64,10 @@ function interaction_matrix_slow(p::Parameters, l::Lattice, slice::Int, power::F
 end
 
 
-function init_interaction_sinh_cosh(p::Parameters, l::Lattice)
-  p.interaction_sinh = zeros(l.sites,p.slices)
-  p.interaction_cosh = zeros(l.sites,p.slices)
-
+"""
+Precalculation of sinh and cosh terms in interaction matrix
+"""
+function update_interaction_sinh_cosh_all(p::Parameters, l::Lattice)
   for n in 1:p.slices
     for i in 1:l.sites
       p.interaction_sinh[i,n] = sinh(p.lambda * p.delta_tau * norm(p.hsfield[:,i,n]))/norm(p.hsfield[:,i,n])
@@ -69,15 +76,14 @@ function init_interaction_sinh_cosh(p::Parameters, l::Lattice)
   end
 end
 
-
 function update_interaction_sinh_cosh(p::Parameters, l::Lattice, site::Int, slice::Int, new_op::Vector{Float64})
   p.interaction_sinh[site,slice] = sinh(p.lambda * p.delta_tau * norm(new_op))/norm(new_op)
   p.interaction_cosh[site,slice] = cosh(p.lambda * p.delta_tau * norm(new_op))
 end
 
+function init_interaction_sinh_cosh(p::Parameters, l::Lattice)
+  p.interaction_sinh = zeros(l.sites,p.slices)
+  p.interaction_cosh = zeros(l.sites,p.slices)
 
-blockview{T<:Number}(l::Lattice, A::Matrix{T}, row::Int, col::Int) = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
-function blockreplace!{T<:Number}(l::Lattice, A::Matrix{T}, row::Int, col::Int, B::Union{Matrix{T},SubArray{T,2}})
-  A[(row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites] = B
-  nothing
+  update_interaction_sinh_cosh_all(p,l)
 end
