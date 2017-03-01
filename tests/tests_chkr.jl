@@ -102,3 +102,20 @@ function plot_greens_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
   savefig("chkr_greens_error_L_$(l.L).png")
 
 end
+
+
+"""
+Time slice wrapping
+"""
+function wrap_greens_chkr(gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+  temp = copy(gf)
+  if direction == -1
+    multiply_slice_matrix_inv_left!(p, l, slice - 1, temp)
+    multiply_slice_matrix_right!(p, l, slice - 1, temp)
+    return temp
+  else
+    multiply_slice_matrix_left!(p, l, slice, temp)
+    multiply_slice_matrix_inv_right!(p, l, slice, temp)
+    return temp
+  end
+end
