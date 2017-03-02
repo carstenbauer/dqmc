@@ -122,7 +122,7 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
 
   hop_mat_exp_chkr = l.chkr_hop[1] * l.chkr_hop[2] * sqrt(l.chkr_mu)
   println("Checkerboard - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
-  println("Checkerboard - exact (rel):\t\t", maximum(reldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
+  println("Checkerboard - exact (eff rel):\t\t", maximum(effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
 end
 
 """
