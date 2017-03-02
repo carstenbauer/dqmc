@@ -11,7 +11,7 @@ type Stack
   Vtr::Array{Complex{Float64}, 2}
 
   greens::Array{Complex{Float64}, 2}
-  greens_svs::Vector{Float64} # only valid after fresh calculation of green's function (not after wrapping/update)
+  greens_inv_svs::Vector{Float64} # only valid after fresh calculation of green's function (not after wrapping/update)
   greens_temp::Array{Complex{Float64}, 2}
 
   U::Array{Complex{Float64}, 2}
@@ -35,7 +35,7 @@ type Stack
   gb_vt_stack::Array{Complex{Float64}, 3}
 
   gb_greens::Array{Complex{Float64}, 2}
-  gb_greens_svs::Vector{Float64}
+  gb_greens_inv_svs::Vector{Float64}
 
   gb_hsfield::Array{Float64, 3}
   # --------
@@ -58,7 +58,7 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.vt_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
 
   s.greens = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.greens_svs = zeros(p.flv*l.sites)
+  s.greens_inv_svs = zeros(p.flv*l.sites)
   s.greens_temp = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
 
   s.Ul = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
@@ -84,14 +84,13 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.gb_d_stack = similar(s.d_stack)
   s.gb_vt_stack = similar(s.vt_stack)
   s.gb_greens = similar(s.greens)
-  s.gb_greens_svs = similar(s.greens_svs)
+  s.gb_greens_inv_svs = similar(s.greens_inv_svs)
   s.gb_hsfield = similar(p.hsfield)
 
 end
 
 
 function build_stack(s::Stack, p::Parameters, l::Lattice)
-  println("Building stack")
   s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.d_stack[:, 1] = ones(p.flv*l.sites)
   s.vt_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
@@ -155,7 +154,7 @@ function calculate_greens(s::Stack, p::Parameters, l::Lattice)
   tmp = s.Vtl * s.Ur
   inner = ctranspose(s.Vtr * s.Ul) + spdiagm(s.Dl) * tmp * spdiagm(s.Dr)
   s.U, s.D, s.Vt = decompose_udv!(inner)
-  s.greens_svs = 1./s.D
+  s.greens_inv_svs = s.D
   s.greens = ctranspose(s.Vt * s.Vtr) * spdiagm(1./s.D) * ctranspose(s.Ul * s.U)
 end
 

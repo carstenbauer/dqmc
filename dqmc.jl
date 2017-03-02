@@ -88,17 +88,19 @@ println("\nInitializing HS field")
 println("\nPrecalculating sinh cosh terms")
 @time init_interaction_sinh_cosh(p,l)
 println("Initializing boson action\n")
-@time calculate_boson_action(p,l)
+@time p.boson_action = calculate_boson_action(p,l)
 
 # stack init and test
 s = Stack()
 initialize_stack(s, p, l)
+println("Building stack")
 @time build_stack(s, p, l)
 println("Initial propagate: ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
 
 println("\nThermalization - ", p.thermalization)
 acc_rate = 0.0
+acc_rate_global = 0.0
 tic()
 for i in 1:p.thermalization
 
@@ -107,9 +109,9 @@ for i in 1:p.thermalization
 
     if s.current_slice == p.slices && s.direction == -1 && mod(i, 1) == 0
       # attempt global update after every fifth down-up sweep
-      println("Attempting global update...")
-      b = global_update(s, p, l)
-      println("Accepted: ", b)
+      # println("Attempting global update...")
+      acc_rate_global += global_update(s, p, l)
+      # println("Accepted: ", b)
     end
 
     acc_rate += local_updates(s, p, l)
@@ -119,7 +121,8 @@ for i in 1:p.thermalization
     acc_rate = acc_rate / (10 * 2 * p.slices)
     println("\t", i)
     @printf("\t\tup-down sweep dur: %.2fs\n", toq()/10)
-    @printf("\t\tacceptance rate: %.1f%%\n", acc_rate*100)
+    @printf("\t\tacc rate (local) : %.1f%%\n", acc_rate*100)
+    @printf("\t\tacc rate (global): %.1f%%\n", acc_rate_global*100/10)
 
     # adaption (first half of thermalization)
     if i < p.thermalization / 2 + 1
@@ -132,6 +135,7 @@ for i in 1:p.thermalization
       end
     end
     acc_rate = 0.0
+    acc_rate_global = 0.0
     tic()
   end
 

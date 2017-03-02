@@ -4,7 +4,7 @@ function global_update_backup_swap!(s::Stack, p::Parameters, l::Lattice)
   s.gb_d_stack, s.d_stack = s.d_stack, s.gb_d_stack
   s.gb_vt_stack, s.vt_stack = s.vt_stack, s.gb_vt_stack
   s.gb_greens, s.greens = s.greens, s.gb_greens # this is greens at time slice == p.slices
-  s.gb_greens_svs, s.greens_svs = s.greens_svs, s.gb_greens_svs # these are svs of greens at time slice == p.slices + 1
+  s.gb_greens_inv_svs, s.greens_inv_svs = s.greens_inv_svs, s.gb_greens_inv_svs # these are svs of greens at time slice == p.slices + 1
 end
 
 
@@ -20,40 +20,49 @@ end
 
 function global_update(s::Stack, p::Parameters, l::Lattice)
 
-  S_old = calculate_boson_action(p, l)
-  if S_old != p.boson_action warn("Incorrect boson action found during attempt to do global update.") end
+  assert(s.current_slice == p.slices && s.direction == -1)
+
+  S_old = p.boson_action
+  if !isapprox(S_old,calculate_boson_action(p, l)) warn("Incorrect boson action found during attempt to do global update.") end
 
   global_update_backup_swap!(s,p,l)
   s.gb_hsfield = copy(p.hsfield)
 
-  global_update_perform_shift!(s,p,l) # TODO: Comment out and see if s.gb_greens is equl to s.greens after stack rebuild.
+  global_update_perform_shift!(s,p,l)
   update_interaction_sinh_cosh_all(p,l)
-  # rebuild stack
   build_stack(s, p, l)
-  # initial propagate
   propagate(s, p, l)
-  # now we have s.greens = G_{p.slices} (up to one down-wrap) and s.greens_svs = svs of G_{p.slices + 1}
+  # now we have s.greens = G_{p.slices} (up to one down-wrap) and s.greens_inv_svs = svs of G_{p.slices + 1}
 
   p.boson_action = calculate_boson_action(p, l)
+
+  # @printf("S_new: %.2e\n", p.boson_action)
+  # @printf("S_old: %.2e\n", S_old)
+  # @printf("S_new - S_old: %.2e\n", p.boson_action - S_old)
   p_boson = exp(-(p.boson_action - S_old)) # exp_delta_S_boson
 
   # calculate detratio = fermion accept. prob.
   log_prob = 0.
   for j in 1:p.flv*l.sites
-      # TODO: max has different/wrong order here?
-      log_prob += log(s.greens_svs[j]) - log(s.gb_greens_svs[j])
+      log_prob += log(s.greens_inv_svs[j]) - log(s.gb_greens_inv_svs[j])
   end
   p_fermion = exp(log_prob)
 
   p_acc = p_boson * real(p_fermion)
 
+  # @printf("p_boson %.2e\n",abs(p_boson))
+  # @printf("p_fermion %.2e\n",abs(p_fermion))
+  # @printf("p_acc %.2e\n",abs(p_acc))
+  # println("")
+
   if p_acc > 1.0 || rand() < p_acc
-    return true
+    return 1
   else
+    # undo global move
     p.boson_action = S_old
     p.hsfield = s.gb_hsfield
     global_update_backup_swap!(s,p,l)
-    return false
+    return 0
   end
 
 end
