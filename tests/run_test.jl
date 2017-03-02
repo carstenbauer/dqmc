@@ -75,18 +75,19 @@ println("\nInitializing HS field")
 println("\nPrecalculating sinh cosh terms")
 @time init_interaction_sinh_cosh(p,l)
 println("Initializing boson action\n")
-@time calculate_boson_action(p,l)
+@time p.boson_action = calculate_boson_action(p,l)
 
 # stack init
 s = Stack()
 initialize_stack(s, p, l)
+println("Building stack")
 @time build_stack(s, p, l)
 println("Initial propagate: ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
 
 # testing
 include("tests_gf.jl")
-plot_gf_error_propagation(s,p,l,"chkr")
+plot_gf_error_propagation(s,p,l,"exact")
 
 # include("tests_gf_stabilization.jl")
 # plot_svs_of_slice_matrix_chain(p,l)

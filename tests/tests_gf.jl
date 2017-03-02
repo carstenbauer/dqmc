@@ -49,9 +49,9 @@ function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice, mode::St
     end
 
     mean_absdiff[n] = mean(absdiff(gf,s.greens))
-    mean_reldiff[n] = mean(reldiff(gf,s.greens))
+    mean_reldiff[n] = mean(effreldiff(gf,s.greens))
     max_absdiff[n] = maximum(absdiff(gf,s.greens))
-    max_reldiff[n] = maximum(reldiff(gf,s.greens))
+    max_reldiff[n] = maximum(effreldiff(gf,s.greens))
     slices[n] = s.current_slice
   end
 
@@ -72,9 +72,9 @@ function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice, mode::St
     end
 
     mean_absdiffUP[n] = maximum(absdiff(gf,s.greens))
-    mean_reldiffUP[n] = maximum(reldiff(gf,s.greens))
+    mean_reldiffUP[n] = maximum(effreldiff(gf,s.greens))
     max_absdiffUP[n] = maximum(absdiff(gf,s.greens))
-    max_reldiffUP[n] = maximum(reldiff(gf,s.greens))
+    max_reldiffUP[n] = maximum(effreldiff(gf,s.greens))
     slicesUP[n] = s.current_slice
   end
 
@@ -107,7 +107,7 @@ function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice, mode::St
   subplots_adjust(wspace = 0.0)
 
   ax1[:set_ylabel]("mean absdiff")
-  ax2[:set_ylabel]("mean reldiff")
+  ax2[:set_ylabel]("mean effreldiff")
   fig[:text](.5, .95, "Mean errors" * (mode == "chkr" ? " chkr " : " ") * "(L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
   fig[:text](.5, .03, "time slice", ha="center")
 
@@ -128,7 +128,7 @@ function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice, mode::St
   subplots_adjust(wspace = 0.0)
 
   ax1[:set_ylabel]("max absdiff")
-  ax2[:set_ylabel]("max reldiff")
+  ax2[:set_ylabel]("max effreldiff")
   fig2[:text](.5, .95, "Maximum errors" * (mode == "chkr" ? " chkr " : " ") * "(L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
   fig2[:text](.5, .03, "time slice", ha="center")
 

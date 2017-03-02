@@ -104,6 +104,29 @@ function plot_greens_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
 end
 
 
+function test_greens_chkr_speed(p::Parameters, l::Lattice, samples::Int=10)
+
+  println("Sample size: ", samples)
+  t = 0.
+  t_chkr = 0.
+  A = eye(Complex128, p.flv*l.sites)
+  for k in 1:samples
+    t += (@timed calculate_greens_udv(p,l,1))[2]
+    t_chkr += (@timed calculate_greens_udv_chkr(p,l,1))[2]
+  end
+
+  @printf("avg time w/o checkerboard: %.1e\n", t/samples)
+  @printf("avg time with checkerboard: %.1e\n", t_chkr/samples)
+  @printf("difference: %.1e\n", (t_chkr-t)/samples)
+  if t_chkr < t
+    @printf("speedup factor: %.1f\n",  abs(t/t_chkr))
+  else
+    @printf("slowdown(!) factor: %.1f\n",  abs(t_chkr/t))
+  end
+
+end
+
+
 """
 Time slice wrapping
 """
@@ -118,4 +141,74 @@ function wrap_greens_chkr(gf::Array{Complex{Float64},2},slice::Int,direction::In
     multiply_slice_matrix_inv_right!(p, l, slice, temp)
     return temp
   end
+end
+
+function wrap_greens_chkr(gf::Array{Complex{Float64},2},slice::Int,direction::Int,n::Int)
+  current_slice = slice
+  g = gf
+  assert(abs(direction) == 1)
+
+  for k in 1:n
+    g = wrap_greens_chkr(g, current_slice, direction)
+    current_slice += direction
+  end
+
+  return g
+end
+
+function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
+  slice = rand(1:p.slices-10)
+  gf = calculate_greens_udv_chkr(p,l,slice)
+
+  # wrapping down
+  println("")
+  println("Downwards\n\n")
+  gfwrapped = wrap_greens_chkr(gf, slice, -1)
+  gfwrapped2 = wrap_greens_chkr(gf, slice, -1, 2)
+  gfwrapped3 = wrap_greens_chkr(gf, slice, -1, 3)
+  gfwrapped10 = wrap_greens_chkr(gf, slice, -1, 10)
+  gfexact = calculate_greens_udv_chkr(p,l,slice - 1)
+  gfexact2 = calculate_greens_udv_chkr(p,l,slice - 2)
+  gfexact3 = calculate_greens_udv_chkr(p,l,slice - 3)
+  gfexact10 = calculate_greens_udv_chkr(p,l,slice - 10)
+
+  println("Comparing wrapped down vs num exact")
+  compare(gfwrapped,gfexact)
+  println("")
+  println("Comparing twice wrapped down vs num exact")
+  compare(gfwrapped2,gfexact2)
+  println("")
+  println("Comparing 3-times wrapped down vs num exact")
+  compare(gfwrapped3,gfexact3)
+  println("")
+  println("Comparing 10-times wrapped up vs num exact")
+  compare(gfwrapped10,gfexact10)
+
+  # wrapping up
+  println("")
+  println("")
+  println("Upwards\n\n")
+  gfwrapped = wrap_greens_chkr(gf, slice, 1)
+  gfwrapped2 = wrap_greens_chkr(gf,slice, 1, 2)
+  gfwrapped3 = wrap_greens_chkr(gf,slice, 1, 3)
+  gfwrapped10 = wrap_greens_chkr(gf,slice, 1, 10)
+  gfexact = calculate_greens_udv_chkr(p,l,slice + 1)
+  gfexact2 = calculate_greens_udv_chkr(p,l,slice + 2)
+  gfexact3 = calculate_greens_udv_chkr(p,l,slice + 3)
+  gfexact10 = calculate_greens_udv_chkr(p,l,slice + 10)
+
+  println("")
+  println("Comparing wrapped up vs num exact")
+  compare(gfwrapped,gfexact)
+  println("")
+  println("Comparing twice wrapped up vs num exact")
+  compare(gfwrapped2,gfexact2)
+  println("")
+  println("Comparing 3-times wrapped up vs num exact")
+  compare(gfwrapped3,gfexact3)
+  println("")
+  println("Comparing 10-times wrapped up vs num exact")
+  compare(gfwrapped10,gfexact10)
+
+  nothing
 end

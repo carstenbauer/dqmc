@@ -142,7 +142,7 @@ function test_gf_wrapping(p::Parameters, l::Lattice)
 
   # wrapping down
   gfwrapped = wrap_greens(gf,slice,-1)
-  gfwrapped2 = wrap_greens(gfwrapped,slice,-1)
+  gfwrapped2 = wrap_greens(gfwrapped,slice-1,-1)
   gfexact = calculate_greens_udv(p,l,slice - 1)
   gfexact2 = calculate_greens_udv(p,l,slice - 2)
 
@@ -154,18 +154,17 @@ function test_gf_wrapping(p::Parameters, l::Lattice)
 
   # wrapping up
   gfwrapped = wrap_greens(gf,slice,1)
-  gfwrapped2 = wrap_greens(gfwrapped,slice,1)
+  gfwrapped2 = wrap_greens(gfwrapped,slice+1,1)
   gfexact = calculate_greens_udv(p,l,slice + 1)
   gfexact2 = calculate_greens_udv(p,l,slice + 2)
 
   println("")
   println("")
-  println("Comparing wrapped down vs num exact")
+  println("Comparing wrapped up vs num exact")
   compare_greens(gfwrapped,gfexact)
   println("")
-  println("Comparing twice wrapped down vs num exact")
+  println("Comparing twice wrapped up vs num exact")
   compare_greens(gfwrapped2,gfexact2)
 
   nothing
 end
-# Single wrapping: Fine. Twice wrapping: deviation to large?
