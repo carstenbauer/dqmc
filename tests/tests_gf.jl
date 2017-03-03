@@ -24,47 +24,37 @@ using PyPlot
 """
 Stack logic consistency
 """
-function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice, mode::String="chkr")
-  # p.slices = 50
-  p.hsfield = rand(3,l.sites,p.slices)
+function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice)
   initialize_stack(s,p,l)
   build_stack(s,p,l)
   propagate(s,p,l)
-  gf = similar(s.greens)
 
-  mean_absdiff = Vector{Float64}(2*p.slices)
-  mean_reldiff = Vector{Float64}(2*p.slices)
-  max_absdiff = Vector{Float64}(2*p.slices)
-  max_reldiff = Vector{Float64}(2*p.slices)
+  mean_absdiff = zeros(2*p.slices)
+  mean_reldiff = zeros(2*p.slices)
+  max_absdiff = zeros(2*p.slices)
+  max_reldiff = zeros(2*p.slices)
   slices = Vector{Int}(2*p.slices)
   for n in 1:2*p.slices
     propagate(s,p,l)
+    println("")
     println("current slice: ", s.current_slice, "(", n,")")
 
-    if mode == "chkr"
-      gf = calculate_greens_udv_chkr(p,l,s.current_slice)
-    else
-      gf = calculate_greens_udv(p,l,s.current_slice)
-    end
-
-    mean_absdiff[n] = mean(absdiff(gf,s.greens))
-    mean_reldiff[n] = mean(effreldiff(gf,s.greens))
-    max_absdiff[n] = maximum(absdiff(gf,s.greens))
-    max_reldiff[n] = maximum(effreldiff(gf,s.greens))
+    g = calculate_greens_udv(p,l,s.current_slice)
+    mean_absdiff[n] = mean(absdiff(g,s.greens))
+    println("mean absdiff: ", mean_absdiff[n])
+    mean_reldiff[n] = mean(effreldiff(g,s.greens))
+    println("mean reldiff: ", mean_reldiff[n])
+    max_absdiff[n] = maximum(absdiff(g,s.greens))
+    println("max absdiff: ", max_absdiff[n])
+    max_reldiff[n] = maximum(effreldiff(g,s.greens))
+    println("max reldiff: ", max_reldiff[n])
     slices[n] = s.current_slice
   end
 
-  if mode == "chkr"
-    write("mean_absdiff_chkr_L_$(l.L)_safe_mult_$(p.safe_mult).bin", mean_absdiff)
-    write("mean_effreldiff_chkr_L_$(l.L)_safe_mult_$(p.safe_mult).bin", mean_reldiff)
-    write("max_absdiff_chkr_L_$(l.L)_safe_mult_$(p.safe_mult).bin", max_absdiff)
-    write("max_effreldiff_chkr_L_$(l.L)_safe_mult_$(p.safe_mult).bin", max_reldiff)
-  else
-    write("mean_absdiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", mean_absdiff)
-    write("mean_effreldiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", mean_reldiff)
-    write("max_absdiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", max_absdiff)
-    write("max_effreldiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", max_reldiff)
-  end
+  write("mean_absdiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", mean_absdiff)
+  write("mean_effreldiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", mean_reldiff)
+  write("max_absdiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", max_absdiff)
+  write("max_effreldiff_L_$(l.L)_safe_mult_$(p.safe_mult).bin", max_reldiff)
 
   # mean devs
   fig = figure(figsize=(20,10))
@@ -76,7 +66,7 @@ function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice, mode::St
 
   ax1[:set_ylabel]("mean absdiff")
   ax2[:set_ylabel]("mean effreldiff")
-  fig[:text](.5, .95, "Mean errors" * (mode == "chkr" ? " chkr " : " ") * "(L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
+  fig[:text](.5, .95, "Mean errors (L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
   # fig[:text](.5, .03, "time slice", ha="center")
 
   # max devs
@@ -89,11 +79,11 @@ function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice, mode::St
 
   ax1[:set_ylabel]("max absdiff")
   ax2[:set_ylabel]("max effreldiff")
-  fig2[:text](.5, .95, "Maximum errors" * (mode == "chkr" ? " chkr " : " ") * "(L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
+  fig2[:text](.5, .95, "Maximum errors (L=$(l.L), safe_mult=$(p.safe_mult))", ha="center")
   fig2[:text](.5, .03, "time slice", ha="center")
 
-  fig[:savefig]("greens_error_mean" * (mode == "chkr" ? "_chkr_" : "_" ) * "L_$(l.L)_safe_mult_$(p.safe_mult).png")
-  fig2[:savefig]("greens_error_max" * (mode == "chkr" ? "_chkr_" : "_" ) * "L_$(l.L)_safe_mult_$(p.safe_mult).png")
+  fig[:savefig]("greens_error_mean L_$(l.L)_safe_mult_$(p.safe_mult).png")
+  fig2[:savefig]("greens_error_max L_$(l.L)_safe_mult_$(p.safe_mult).png")
   # show()
 end
 # plot_gf_error_propagation(s,p,l)

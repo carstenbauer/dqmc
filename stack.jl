@@ -179,6 +179,7 @@ end
 ################################################################################
 # Propagation
 ################################################################################
+# include("tests/tests_gf_functions.jl")
 function propagate(s::Stack, p::Parameters, l::Lattice)
   if s.direction == 1
     if mod(s.current_slice, p.safe_mult) == 0
@@ -254,5 +255,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
       s.current_slice -= 1
     end
   end
+  # compare(s.greens,calculate_greens_udv(p,l,s.current_slice))
+  # compare(s.greens,calculate_greens_udv_chkr(p,l,s.current_slice))
   nothing
 end
