@@ -179,7 +179,6 @@ end
 ################################################################################
 # Propagation
 ################################################################################
-# include("tests/tests_gf_functions.jl")
 function propagate(s::Stack, p::Parameters, l::Lattice)
   if s.direction == 1
     if mod(s.current_slice, p.safe_mult) == 0
@@ -200,7 +199,15 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         add_slice_sequence_left(s, p, l, idx)
         s.Ul[:,:], s.Dl[:], s.Vtl[:,:] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.vt_stack[:, :, idx+1]
 
+        s.greens_temp = copy(s.greens)
+        wrap_greens_chkr!(s.greens_temp, s.current_slice - 1, 1)
+
         calculate_greens(s, p, l) # greens_{slice we are propagating to}
+
+        diff = maximum(absdiff(s.greens_temp, s.greens))
+        if diff > 1e-4
+          @printf("->%d \t+1 Propagation stability\t %.4f\n", s.current_slice, diff)
+        end
 
       else # we are going to p.slices+1
         idx = s.n_elements - 1
@@ -237,7 +244,14 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         add_slice_sequence_right(s, p, l, idx)
         s.Ur[:,:], s.Dr[:], s.Vtr[:,:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.vt_stack[:, :, idx]
 
+        s.greens_temp = copy(s.greens)
+
         calculate_greens(s, p , l)
+
+        diff = maximum(absdiff(s.greens_temp, s.greens))
+        if diff > 1e-4
+          @printf("->%d \t-1 Propagation stability\t %.4f\n", s.current_slice, diff)
+        end
 
         wrap_greens_chkr!(s.greens, s.current_slice + 1, -1)
 

@@ -68,7 +68,7 @@ function test_local_update_gf(s::Stack, p::Parameters, l::Lattice)
   p.hsfield = rand(3,l.sites,p.slices)
   s.current_slice = rand(1:p.slices)
 
-  gfbefore = calculate_greens_udv(p,l,s.current_slice)
+  gfbefore = calculate_greens_udv_chkr(p,l,s.current_slice)
   s.greens = copy(gfbefore)
 
   for site in 1:l.sites
@@ -78,10 +78,10 @@ function test_local_update_gf(s::Stack, p::Parameters, l::Lattice)
     p.hsfield[:,site,s.current_slice] = new_op[:]
   end
 
-  gfafter = calculate_greens_udv(p,l,s.current_slice)
+  gfafter = calculate_greens_udv_chkr(p,l,s.current_slice)
 
   println("Num exact vs updated")
-  compare_greens(s.greens, gfafter)
+  compare(s.greens, gfafter)
   # println("")
   # println("Before vs After (num exact)")
   # compare_greens(gfbefore, gfafter)

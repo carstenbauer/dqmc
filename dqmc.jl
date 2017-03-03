@@ -16,6 +16,7 @@ include("local_updates.jl")
 include("global_updates.jl")
 include("observable.jl")
 include("measurements.jl")
+include("tests/tests_gf_functions.jl")
 
 # @inbounds begin
 # ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]
@@ -114,7 +115,12 @@ for i in 1:p.thermalization
       # println("Accepted: ", b)
     end
 
+    # println("Before local")
+    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
     acc_rate += local_updates(s, p, l)
+    # println("After local")
+    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
+    # println("")
   end
 
   if mod(i, 10) == 0
