@@ -130,19 +130,6 @@ end
 """
 Time slice wrapping
 """
-function wrap_greens_chkr(gf::Array{Complex{Float64},2},slice::Int,direction::Int)
-  temp = copy(gf)
-  if direction == -1
-    multiply_slice_matrix_inv_left!(p, l, slice - 1, temp)
-    multiply_slice_matrix_right!(p, l, slice - 1, temp)
-    return temp
-  else
-    multiply_slice_matrix_left!(p, l, slice, temp)
-    multiply_slice_matrix_inv_right!(p, l, slice, temp)
-    return temp
-  end
-end
-
 function wrap_greens_chkr(gf::Array{Complex{Float64},2},slice::Int,direction::Int,n::Int)
   current_slice = slice
   g = gf
@@ -157,7 +144,7 @@ function wrap_greens_chkr(gf::Array{Complex{Float64},2},slice::Int,direction::In
 end
 
 function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
-  slice = rand(1:p.slices-10)
+  slice = rand(10:p.slices)
   gf = calculate_greens_udv_chkr(p,l,slice)
 
   # wrapping down
@@ -212,3 +199,4 @@ function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
 
   nothing
 end
+# worked

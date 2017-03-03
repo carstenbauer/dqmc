@@ -147,6 +147,23 @@ function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Floa
 end
 
 
+function wrap_greens_chkr!(gf::Array{Complex{Float64},2},curr_slice::Int,direction::Int)
+  if direction == -1
+    multiply_slice_matrix_inv_left!(p, l, curr_slice - 1, gf)
+    multiply_slice_matrix_right!(p, l, curr_slice - 1, gf)
+  else
+    multiply_slice_matrix_left!(p, l, curr_slice, gf)
+    multiply_slice_matrix_inv_right!(p, l, curr_slice, gf)
+  end
+end
+
+function wrap_greens_chkr(gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+  temp = copy(gf)
+  wrap_greens_chkr!(temp, slice, direction)
+  return temp
+end
+
+
 """
 Calculates G(slice) using s.Ur,s.Dr,s.Vtr=B(M) ... B(slice) and s.Ul,s.Dl,s.Vtl=B(slice-1) ... B(1)
 """
@@ -194,8 +211,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
     else
       # Wrapping
-      multiply_slice_matrix_left!(p, l, s.current_slice, s.greens)
-      multiply_slice_matrix_inv_right!(p, l, s.current_slice, s.greens)
+      wrap_greens_chkr!(s.greens, s.current_slice, 1)
       s.current_slice += 1
     end
 
@@ -212,8 +228,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         calculate_greens(s, p, l) # greens_{p.slices+1} === greens_1
 
         # wrap to greens_{p.slices}
-        multiply_slice_matrix_inv_left!(p, l, s.current_slice, s.greens)
-        multiply_slice_matrix_right!(p, l, s.current_slice, s.greens)
+        wrap_greens_chkr!(s.greens, s.current_slice + 1, -1)
 
       elseif 0 < s.current_slice < p.slices
         idx = Int(s.current_slice / p.safe_mult) + 1
@@ -223,8 +238,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
         calculate_greens(s, p , l)
 
-        multiply_slice_matrix_inv_left!(p, l, s.current_slice, s.greens)
-        multiply_slice_matrix_right!(p, l, s.current_slice, s.greens)
+        wrap_greens_chkr!(s.greens, s.current_slice + 1, -1)
 
       else # we are going to 0
         idx = 1
@@ -236,9 +250,8 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
     else
       # Wrapping
+      wrap_greens_chkr!(s.greens, s.current_slice, -1)
       s.current_slice -= 1
-      multiply_slice_matrix_inv_left!(p, l, s.current_slice, s.greens)
-      multiply_slice_matrix_right!(p, l, s.current_slice, s.greens)
     end
   end
   nothing

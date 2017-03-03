@@ -1,4 +1,8 @@
+start_time = now()
+println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
+
 using Helpers
+using Git
 include("../linalg.jl")
 include("../parameters.jl")
 include("../xml_parameters.jl")
@@ -8,6 +12,7 @@ include("../interactions.jl")
 include("../action.jl")
 include("../stack.jl")
 include("../local_updates.jl")
+include("../global_updates.jl")
 include("../observable.jl")
 include("../measurements.jl")
 
@@ -29,6 +34,13 @@ close(f)
 params = Dict{Any, Any}()
 try
   params = xml2parameters(prefix, idx)
+
+  # Check and store code version (git commit)
+  if haskey(params,"GIT_COMMIT") && Git.head(dir=dirname(@__FILE__)) != params["GIT_COMMIT"]
+    warn("Git commit in input xml file does not match current commit of code.")
+  end
+  params["GIT_COMMIT"] = Git.head(dir=dirname(@__FILE__))
+
   parameters2hdf5(params, output_file)
 catch e
   println(e)
@@ -63,25 +75,25 @@ l.L = parse(Int, p.lattice_file[Lpos:Lpos+minimum(search(p.lattice_file[Lpos:end
 l.t = reshape([parse(Float64, f) for f in split(params["HOPPINGS"], ',')],(2,2))
 init_lattice_from_filename(params["LATTICE_FILE"], l)
 println("Initializing neighbor-tables")
-@time init_neighbors_table(p,l)
-@time init_time_neighbors_table(p,l)
+init_neighbors_table(p,l)
+init_time_neighbors_table(p,l)
 println("Initializing hopping exponentials")
-@time init_hopping_matrix_exp(p,l)
-@time init_checkerboard_matrices(p,l)
+init_hopping_matrix_exp(p,l)
+init_checkerboard_matrices(p,l)
 
 # init hsfield
 println("\nInitializing HS field")
-@time p.hsfield = rand(3,l.sites,p.slices)
+p.hsfield = rand(3,l.sites,p.slices)
 println("\nPrecalculating sinh cosh terms")
-@time init_interaction_sinh_cosh(p,l)
+init_interaction_sinh_cosh(p,l)
 println("Initializing boson action\n")
-@time p.boson_action = calculate_boson_action(p,l)
+p.boson_action = calculate_boson_action(p,l)
 
-# stack init
+# stack init and test
 s = Stack()
 initialize_stack(s, p, l)
 println("Building stack")
-@time build_stack(s, p, l)
+build_stack(s, p, l)
 println("Initial propagate: ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
 
