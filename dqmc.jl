@@ -60,6 +60,7 @@ srand(parse(Int, params["SEED"]))
 p.mu = parse(Float64, params["MU"])
 p.lambda = parse(Float64, params["LAMBDA"])
 p.r = parse(Float64, params["R"])
+p.c = parse(Float64, params["C"])
 p.u = parse(Float64, params["U"])
 p.beta = p.slices * p.delta_tau
 p.flv = 4

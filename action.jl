@@ -6,7 +6,7 @@ function calculate_boson_action(p::Parameters, l::Lattice,
 
       # temporal gradient
       diff = hsfield[:,i,s] - hsfield[:,i,l.time_neighbors[2,s]]
-      S += 0.5/p.delta_tau * dot(diff,diff);
+      S += 0.5/p.delta_tau * 1./p.c^2 * dot(diff,diff);
 
       # spatial gradient
       # Count only top and right neighbor (avoid overcounting)
@@ -52,7 +52,7 @@ function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, new_o
 
   dS = 0.0
 
-  dS += 1.0/p.delta_tau  * (sq_diff - dot(op_time_neighbors, diff));
+  dS += 1.0/(p.delta_tau * p.c^2)  * (sq_diff - dot(op_time_neighbors, diff));
 
   dS += 0.5 * p.delta_tau * (4 * sq_diff - 2.0 * dot(op_space_neighbors, diff));
 
