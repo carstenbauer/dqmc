@@ -14,7 +14,7 @@ include("../stack.jl")
 include("../local_updates.jl")
 include("../global_updates.jl")
 include("../observable.jl")
-include("../measurements.jl")
+include("../boson_measurements.jl")
 
 # @inbounds begin
 # ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]

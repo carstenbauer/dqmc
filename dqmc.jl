@@ -15,7 +15,7 @@ include("stack.jl")
 include("local_updates.jl")
 include("global_updates.jl")
 include("observable.jl")
-include("measurements.jl")
+include("boson_measurements.jl")
 # include("tests/tests_gf_functions.jl")
 
 # @inbounds begin
