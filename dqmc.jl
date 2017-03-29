@@ -176,7 +176,7 @@ for i in 1:p.measurements
       # println("\t\tMeasuring")
       add_element(boson_action, p.boson_action)
 
-      curr_mean_abs_op, curr_mean_op = measure_op(s,p,l)
+      curr_mean_abs_op, curr_mean_op = measure_op(p,l)
       add_element(mean_abs_op, curr_mean_abs_op)
       add_element(mean_op, curr_mean_op)
 
