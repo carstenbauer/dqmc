@@ -62,6 +62,7 @@ p.lambda = parse(Float64, params["LAMBDA"])
 p.r = parse(Float64, params["R"])
 p.c = parse(Float64, params["C"])
 p.u = parse(Float64, params["U"])
+p.global_updates = haskey(params,"GLOBAL_UPDATES")?parse(Bool, lowercase(params["GLOBAL_UPDATES"])):true;
 p.beta = p.slices * p.delta_tau
 p.flv = 4
 if haskey(params,"BOX_HALF_LENGTH")
@@ -109,7 +110,7 @@ for i in 1:p.thermalization
   for u in 1:2 * p.slices
     @inbounds propagate(s, p, l)
 
-    if s.current_slice == p.slices && s.direction == -1 && mod(i, 1) == 0
+    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, 5) == 0)
       # attempt global update after every fifth down-up sweep
       # println("Attempting global update...")
       acc_rate_global += global_update(s, p, l)
@@ -160,7 +161,7 @@ println("\nMeasurements - ", p.measurements)
 cs = min(p.measurements, 128)
 
 configurations = Observable{Float64}("configurations", size(p.hsfield), cs)
-greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
+# greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
 
 boson_action = Observable{Float64}("boson action", cs)
 mean_abs_op = Observable{Float64}("mean abs op", cs)
@@ -173,7 +174,7 @@ for i in 1:p.measurements
     @inbounds propagate(s, p, l)
     acc_rate += local_updates(s, p, l)
 
-    if s.current_slice == 1 && s.direction == 1 # measure criterium
+    if s.current_slice == p.slices && s.direction == 1 # measure criterium
       # println("\t\tMeasuring")
       add_element(boson_action, p.boson_action)
 
@@ -182,13 +183,13 @@ for i in 1:p.measurements
       add_element(mean_op, curr_mean_op)
 
       add_element(configurations, p.hsfield)
-      add_element(greens, s.greens)
+      # add_element(greens, s.greens)
 
       if mod(i, cs) == 0
           println("Dumping...")
         @time begin
           obs2hdf5(output_file, configurations)
-          obs2hdf5(output_file, greens)
+          # obs2hdf5(output_file, greens)
 
           obs2hdf5(output_file, boson_action)
           obs2hdf5(output_file, mean_abs_op)
@@ -198,7 +199,7 @@ for i in 1:p.measurements
           clear(mean_op)
 
           clear(configurations)
-          clear(greens)
+          # clear(greens)
           println("Dumping block of $cs datapoints was a success")
         end
       end

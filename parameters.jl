@@ -25,5 +25,7 @@ type Parameters
   interaction_sinh::Array{Float64, 2}
   interaction_cosh::Array{Float64, 2}
 
+  global_updates::Bool
+
   Parameters() = new()
 end
