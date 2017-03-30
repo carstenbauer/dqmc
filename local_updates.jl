@@ -22,7 +22,6 @@ function local_updates(s::Stack, p::Parameters, l::Lattice)
       acc_rat += 1
       p.hsfield[:,i,s.current_slice] = new_op[:]
       p.boson_action += -log(exp_delta_S_boson)
-      update_interaction_sinh_cosh(p,l,i,s.current_slice,new_op)
       update_greens!(s,p,l,i)
     end
   end

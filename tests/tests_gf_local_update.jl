@@ -33,10 +33,8 @@ function delta_naive(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector
   V1 = interaction_matrix_exp(p,l,s.current_slice,-1.0)
   bkp = copy(p.hsfield[:,i,s.current_slice])
   p.hsfield[:,i,s.current_slice] = new_op[:]
-  update_interaction_sinh_cosh(p,l,i,s.current_slice,new_op)
   V2 = interaction_matrix_exp(p,l,s.current_slice)
   p.hsfield[:,i,s.current_slice] = bkp[:]
-  update_interaction_sinh_cosh(p,l,i,s.current_slice,bkp)
   return (V1 * V2 - eye(p.flv*l.sites,p.flv*l.sites))
 end
 
@@ -95,10 +93,8 @@ function delta_naive_full_no_chkr(s::Stack, p::Parameters, l::Lattice, i::Int, n
   V1 = interaction_matrix_exp(p,l,s.current_slice,-1.0)
   bkp = copy(p.hsfield[:,i,s.current_slice])
   p.hsfield[:,i,s.current_slice] = new_op[:]
-  update_interaction_sinh_cosh(p,l,i,s.current_slice,new_op)
   V2 = interaction_matrix_exp(p,l,s.current_slice)
   p.hsfield[:,i,s.current_slice] = bkp[:]
-  update_interaction_sinh_cosh(p,l,i,s.current_slice,bkp)
 
   return ( l.hopping_matrix_exp_inv * V1 * V2 * l.hopping_matrix_exp  - eye(p.flv*l.sites,p.flv*l.sites))
 end
@@ -112,10 +108,8 @@ function delta_naive_full(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::V
   Blinv = slice_matrix(p,l,s.current_slice,-1.)
   bkp = copy(p.hsfield[:,i,s.current_slice])
   p.hsfield[:,i,s.current_slice] = new_op[:]
-  update_interaction_sinh_cosh(p,l,i,s.current_slice,new_op)
   Blprime = slice_matrix(p,l,s.current_slice)
   p.hsfield[:,i,s.current_slice] = bkp[:]
-  update_interaction_sinh_cosh(p,l,i,s.current_slice,bkp)
 
   return ( Blinv * Blprime - eye(p.flv*l.sites,p.flv*l.sites))
 end
@@ -144,7 +138,6 @@ function plot_delta_full_error(s,p,l)
   meaneffreldiff_i = zeros(length(dtrange))
   for (k, dt) in enumerate(dtrange)
     p.delta_tau = dt
-    update_interaction_sinh_cosh_all(p,l)
 
     delta_n = delta_naive(s,p,l,site,new_op)
     # delta_n_full = delta_naive_full_no_chkr(s,p,l,site,new_op)
@@ -318,16 +311,13 @@ function plot_gf_update_error(s,p,l)
   meaneffreldiff_naive = zeros(length(dtrange))
   for (k, dt) in enumerate(dtrange)
     p.delta_tau = dt
-    update_interaction_sinh_cosh_all(p,l)
 
     calculate_detratio(s,p,l,site,new_op)
     g_normal = update_greens(s,p,l,site)
     g_naive = update_greens_naive(s,p,l,site,new_op)
     p.hsfield[:,site,slice] = new_op[:]
-    update_interaction_sinh_cosh(p,l,site,slice,new_op)
     g = calculate_greens_udv_chkr(p,l,slice)
     p.hsfield[:,site,slice] = old_op[:]
-    update_interaction_sinh_cosh(p,l,site,slice,new_op)
 
     maxabsdiff[k] = maximum(absdiff(g_normal, g))
     meanabsdiff[k] = mean(absdiff(g_normal, g))

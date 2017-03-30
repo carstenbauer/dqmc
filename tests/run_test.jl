@@ -84,8 +84,6 @@ init_checkerboard_matrices(p,l)
 # init hsfield
 println("\nInitializing HS field")
 p.hsfield = rand(3,l.sites,p.slices)
-println("\nPrecalculating sinh cosh terms")
-init_interaction_sinh_cosh(p,l)
 println("Initializing boson action\n")
 p.boson_action = calculate_boson_action(p,l)
 

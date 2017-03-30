@@ -29,7 +29,6 @@ function global_update(s::Stack, p::Parameters, l::Lattice)
   s.gb_hsfield = copy(p.hsfield)
 
   global_update_perform_shift!(s,p,l)
-  update_interaction_sinh_cosh_all(p,l)
   build_stack(s, p, l)
   propagate(s, p, l)
   # now we have s.greens = G_{p.slices} (up to one down-wrap) and s.greens_inv_svs = svs of G_{p.slices + 1}

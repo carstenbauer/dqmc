@@ -6,9 +6,10 @@ function interaction_matrix_exp(p::Parameters, l::Lattice, slice::Int, power::Fl
   S = blockview(l, eV, 1, 2)
   R = blockview(l, eV, 1, 4)
   for i in 1:l.sites
-    C[i,i] = p.interaction_cosh[i,slice]
-    S[i,i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * power * p.interaction_sinh[i,slice]
-    R[i,i] = (-p.hsfield[3,i,slice]) * power * p.interaction_sinh[i,slice]
+    sh = sinh(p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))/norm(p.hsfield[:,i,slice])
+    C[i,i] = cosh(p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))
+    S[i,i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * power * sh
+    R[i,i] = (-p.hsfield[3,i,slice]) * power * sh
   end
 
   cS = conj(S)
@@ -61,29 +62,4 @@ function interaction_matrix_slow(p::Parameters, l::Lattice, slice::Int, power::F
   Z = zeros(l.sites,l.sites)
 
   return [C S Z R; conj(S) C -R Z; Z -R C conj(S); R Z S C]
-end
-
-
-"""
-Precalculation of sinh and cosh terms in interaction matrix
-"""
-function update_interaction_sinh_cosh_all(p::Parameters, l::Lattice)
-  for n in 1:p.slices
-    for i in 1:l.sites
-      p.interaction_sinh[i,n] = sinh(p.lambda * p.delta_tau * norm(p.hsfield[:,i,n]))/norm(p.hsfield[:,i,n])
-      p.interaction_cosh[i,n] = cosh(p.lambda * p.delta_tau * norm(p.hsfield[:,i,n]))
-    end
-  end
-end
-
-function update_interaction_sinh_cosh(p::Parameters, l::Lattice, site::Int, slice::Int, new_op::Vector{Float64})
-  p.interaction_sinh[site,slice] = sinh(p.lambda * p.delta_tau * norm(new_op))/norm(new_op)
-  p.interaction_cosh[site,slice] = cosh(p.lambda * p.delta_tau * norm(new_op))
-end
-
-function init_interaction_sinh_cosh(p::Parameters, l::Lattice)
-  p.interaction_sinh = zeros(l.sites,p.slices)
-  p.interaction_cosh = zeros(l.sites,p.slices)
-
-  update_interaction_sinh_cosh_all(p,l)
 end

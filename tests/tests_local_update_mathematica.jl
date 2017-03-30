@@ -30,13 +30,11 @@ hsfield = copy(p.hsfield)
 newhsfield = copy(p.hsfield)
 newhsfield[:,site,slice] = new_op[:]
 p.hsfield[:] = newhsfield[:]
-update_interaction_sinh_cosh(p,l,site,slice,new_op)
 newV = interaction_matrix_exp(p,l,slice)
 
 h5write("tests/DetRatioCheck.h5", "newV_real", real(newV))
 h5write("tests/DetRatioCheck.h5", "newV_imag", imag(newV))
 
-update_interaction_sinh_cosh(p,l,site,slice,new_op)
 p.hsfield[:] = hsfield[:]
 
 s.current_slice = slice

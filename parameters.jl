@@ -22,9 +22,6 @@ type Parameters
 
   box::Distributions.Uniform{Float64}
 
-  interaction_sinh::Array{Float64, 2}
-  interaction_cosh::Array{Float64, 2}
-
   global_updates::Bool
 
   Parameters() = new()
