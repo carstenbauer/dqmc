@@ -28,7 +28,7 @@ function build_four_site_hopping_matrix(p::Parameters,l::Lattice,corner::Int,tfl
   return sparse([sites_clockwise; shift_sites_clockwise],[shift_sites_clockwise; sites_clockwise],hop,l.sites,l.sites)
 end
 
-function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::Tuple{Array{Int64,1},Array{Int64,1}})
+function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
 
   pc = Int(floor(l.sites/4))
   chkr_hop_4site = Array{SparseMatrixCSC, 3}(pc,2,2) # i, group (A, B), hopping flavor (tx, ty)
@@ -52,7 +52,7 @@ function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::T
 
         th = l.t[1,tflv]
         tv = l.t[2,tflv]
-        fac = -0.5 * p.delta_tau
+        fac = -prefac * p.delta_tau
 
         chkr_hop_4site[c,g,tflv][i,i] = chkr_hop_4site[c,g,tflv][j,j] = chkr_hop_4site[c,g,tflv][m,m] = chkr_hop_4site[c,g,tflv][n,n] = cosh(fac * -th) * cosh(fac * -tv) #
         chkr_hop_4site[c,g,tflv][i,n] = chkr_hop_4site[c,g,tflv][j,m] = chkr_hop_4site[c,g,tflv][m,j] = chkr_hop_4site[c,g,tflv][n,i] = sinh(fac * -th) * sinh(fac * -tv)
@@ -94,33 +94,47 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
 
   corners = find_four_site_hopping_corners(l)
 
-  chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp(p,l, corners)
+  chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp(p,l, corners, 0.5)
+  chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp(p,l, corners, 1.)
 
+  eTx_A_half = foldl(*,chkr_hop_4site_half[:,1,1])
+  eTx_B_half = foldl(*,chkr_hop_4site_half[:,2,1])
+  eTy_A_half = foldl(*,chkr_hop_4site_half[:,1,2])
+  eTy_B_half = foldl(*,chkr_hop_4site_half[:,2,2])
   eTx_A = foldl(*,chkr_hop_4site[:,1,1])
   eTx_B = foldl(*,chkr_hop_4site[:,2,1])
   eTy_A = foldl(*,chkr_hop_4site[:,1,2])
   eTy_B = foldl(*,chkr_hop_4site[:,2,2])
 
+  eTx_A_half_inv = foldl(*,chkr_hop_4site_half_inv[:,1,1])
+  eTx_B_half_inv = foldl(*,chkr_hop_4site_half_inv[:,2,1])
+  eTy_A_half_inv = foldl(*,chkr_hop_4site_half_inv[:,1,2])
+  eTy_B_half_inv = foldl(*,chkr_hop_4site_half_inv[:,2,2])
   eTx_A_inv = foldl(*,chkr_hop_4site_inv[:,1,1])
   eTx_B_inv = foldl(*,chkr_hop_4site_inv[:,2,1])
   eTy_A_inv = foldl(*,chkr_hop_4site_inv[:,1,2])
   eTy_B_inv = foldl(*,chkr_hop_4site_inv[:,2,2])
 
+  eT_A_half = cat([1,2],eTx_A_half,eTy_A_half,eTx_A_half,eTy_A_half)
+  eT_B_half = cat([1,2],eTx_B_half,eTy_B_half,eTx_B_half,eTy_B_half)
+  eT_A_half_inv = cat([1,2],eTx_A_half_inv,eTy_A_half_inv,eTx_A_half_inv,eTy_A_half_inv)
+  eT_B_half_inv = cat([1,2],eTx_B_half_inv,eTy_B_half_inv,eTx_B_half_inv,eTy_B_half_inv)
   eT_A = cat([1,2],eTx_A,eTy_A,eTx_A,eTy_A)
   eT_B = cat([1,2],eTx_B,eTy_B,eTx_B,eTy_B)
   eT_A_inv = cat([1,2],eTx_A_inv,eTy_A_inv,eTx_A_inv,eTy_A_inv)
   eT_B_inv = cat([1,2],eTx_B_inv,eTy_B_inv,eTx_B_inv,eTy_B_inv)
 
+  l.chkr_hop_half = [eT_A_half, eT_B_half]
+  l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
   l.chkr_hop = [eT_A, eT_B]
   l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
-  # l.chkr_mu = spdiagm(fill(exp(-0.5 * p.delta_tau * -p.mu), p.flv * l.sites))
-  # l.chkr_mu_inv = spdiagm(fill(exp(0.5 * p.delta_tau * -p.mu), p.flv * l.sites))
-  #
-  # we take the square to save one multiplication in slice matrix construction
+
+  l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
+  l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
   l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
   l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
 
-  hop_mat_exp_chkr = l.chkr_hop[1] * l.chkr_hop[2] * sqrt(l.chkr_mu)
+  hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
   r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
   println("Checkerboard - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
@@ -142,58 +156,42 @@ end
 
 function multiply_slice_matrix_left!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
 
-    for h in l.chkr_hop
-      M[:] = h * M
-    end
+  M[:] = l.chkr_hop_half[2] * M
+  M[:] = l.chkr_hop[1] * M
+  M[:] = l.chkr_hop_half[2] * M
 
-    M[:] = l.chkr_mu * M
-    M[:] = interaction_matrix_exp(p, l, slice) * M
-
-    for h in reverse(l.chkr_hop)
-      M[:] = h * M
-    end
+  M[:] = l.chkr_mu * M
+  M[:] = interaction_matrix_exp(p, l, slice) * M
 end
 
 function multiply_slice_matrix_right!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
 
-  for h in l.chkr_hop
-    M[:] = M * h
-  end
-
   M[:] = M * interaction_matrix_exp(p, l, slice)
   M[:] = M * l.chkr_mu
 
-  for h in reverse(l.chkr_hop)
-    M[:] = M * h
-  end
+  M[:] = M * l.chkr_hop_half[2]
+  M[:] = M * l.chkr_hop[1]
+  M[:] = M * l.chkr_hop_half[2]
 end
 
 function multiply_slice_matrix_inv_left!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
 
-    for h in l.chkr_hop_inv
-      M[:] = h * M
-    end
+  M[:] = interaction_matrix_exp(p, l, slice, -1.) * M
+  M[:] = l.chkr_mu_inv * M
 
-    M[:] = l.chkr_mu_inv * M
-    M[:] = interaction_matrix_exp(p, l, slice, -1.) * M
-
-    for h in reverse(l.chkr_hop_inv)
-      M[:] = h * M
-    end
+  M[:] = l.chkr_hop_half_inv[2] * M
+  M[:] = l.chkr_hop_inv[1] * M
+  M[:] = l.chkr_hop_half_inv[2] * M
 end
 
 function multiply_slice_matrix_inv_right!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
 
-  for h in l.chkr_hop_inv
-    M[:] = M * h
-  end
+  M[:] = l.chkr_hop_half_inv[2] * M
+  M[:] = l.chkr_hop_inv[1] * M
+  M[:] = l.chkr_hop_half_inv[2] * M
 
-  M[:] = M * interaction_matrix_exp(p, l, slice, -1.)
   M[:] = M * l.chkr_mu_inv
-
-  for h in reverse(l.chkr_hop_inv)
-    M[:] = M * h
-  end
+  M[:] = M * interaction_matrix_exp(p, l, slice, -1.)
 end
 
 function multiply_slice_matrix_left{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})

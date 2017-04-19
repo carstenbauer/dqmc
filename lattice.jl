@@ -19,8 +19,12 @@ type Lattice
   hopping_matrix_exp::Array{Float64, 2} # mu included
   hopping_matrix_exp_inv::Array{Float64, 2}
 
-  chkr_hop::Array{SparseMatrixCSC, 1}
+  chkr_hop_half::Array{SparseMatrixCSC, 1}
+  chkr_hop_half_inv::Array{SparseMatrixCSC, 1}
+  chkr_hop::Array{SparseMatrixCSC, 1} # without prefactor 0.5 in matrix exponentials
   chkr_hop_inv::Array{SparseMatrixCSC, 1}
+  chkr_mu_half::SparseMatrixCSC{Float64, Int64}
+  chkr_mu_half_inv::SparseMatrixCSC{Float64, Int64}
   chkr_mu::SparseMatrixCSC{Float64, Int64}
   chkr_mu_inv::SparseMatrixCSC{Float64, Int64}
 
