@@ -21,8 +21,10 @@ type Parameters
   flv::Int # flavors: GF matrix has size flv*l.sites x flv*l.sites
 
   box::Distributions.Uniform{Float64}
+  box_global::Distributions.Uniform{Float64}
 
   global_updates::Bool
+  global_rate::Int64
 
   Parameters() = new()
 end

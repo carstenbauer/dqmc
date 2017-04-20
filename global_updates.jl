@@ -9,7 +9,9 @@ end
 
 
 function global_update_perform_shift!(s::Stack, p::Parameters, l::Lattice)
-  global_op_shift = rand(p.box, 3)
+  # glob_dist = Uniform{Float64}(p.box.a/2., p.box.b/2.)
+  # global_op_shift = rand(glob_dist, 3)
+  global_op_shift = rand(p.box_global, 3)
   for i in 1:l.sites
     for n in 1:p.slices
       p.hsfield[:,i,n] += global_op_shift

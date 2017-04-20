@@ -3,10 +3,9 @@ using LightXML
 using Iterators
 import HDF5
 
-function xml2parameters(prefix::String, idx::Int)
-  println("Prefix is ", prefix, " and idx is ", idx)
+function xml2parameters(fname::String)
   params = Dict{Any, Any}()
-  xdoc = parse_file(prefix * ".task" * string(idx) * ".in.xml")
+  xdoc = parse_file(fname)
   xroot = LightXML.root(xdoc)
   for c in child_nodes(xroot)
     if is_elementnode(c)

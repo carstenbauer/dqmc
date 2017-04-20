@@ -35,7 +35,8 @@ close(f)
 # load parameters xml
 params = Dict{Any, Any}()
 try
-  params = xml2parameters(prefix, idx)
+  println("Prefix is ", prefix, " and idx is ", idx)
+  params = xml2parameters(prefix * ".task" * string(idx) * ".in.xml")
 
   # Check and store code version (git commit)
   if haskey(params,"GIT_COMMIT") && Git.head(dir=dirname(@__FILE__)) != params["GIT_COMMIT"]
@@ -70,6 +71,16 @@ if haskey(params,"BOX_HALF_LENGTH")
 else
   p.box = Uniform(-0.2,0.2)
 end
+if haskey(params,"BOX_GLOBAL_HALF_LENGTH")
+  p.box_global = Uniform(-parse(Float64, params["BOX_GLOBAL_HALF_LENGTH"]),parse(Float64, params["BOX_GLOBAL_HALF_LENGTH"]))
+else
+  p.box_global = Uniform(-0.1,0.1)
+end
+if haskey(params,"GLOBAL_RATE")
+  p.global_rate = parse(Int64, params["GLOBAL_RATE"])
+else
+  p.global_rate = 5
+end
 
 # load lattice xml and prepare hopping matrices
 l = Lattice()
@@ -102,16 +113,21 @@ propagate(s, p, l)
 println("\nThermalization - ", p.thermalization)
 acc_rate = 0.0
 acc_rate_global = 0.0
+prop_global = 0
+acc_global = 0
 tic()
 for i in 1:p.thermalization
 
   for u in 1:2 * p.slices
     @inbounds propagate(s, p, l)
 
-    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, 5) == 0)
+    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
       # attempt global update after every fifth down-up sweep
       # println("Attempting global update...")
-      acc_rate_global += global_update(s, p, l)
+      prop_global += 1
+      b = global_update(s, p, l)
+      acc_rate_global += b
+      acc_global += b
       # println("Accepted: ", b)
     end
 
@@ -125,10 +141,12 @@ for i in 1:p.thermalization
 
   if mod(i, 10) == 0
     acc_rate = acc_rate / (10 * 2 * p.slices)
+    acc_rate_global = acc_rate_global / (10 / p.global_rate)
     println("\t", i)
     @printf("\t\tup-down sweep dur: %.2fs\n", toq()/10)
     @printf("\t\tacc rate (local) : %.1f%%\n", acc_rate*100)
-    @printf("\t\tacc rate (global): %.1f%%\n", acc_rate_global*100/10)
+    @printf("\t\tacc rate (global): %.1f%%\n", acc_rate_global*100)
+    @printf("\t\tacc rate (global, overall): %.1f%%\n", acc_global/prop_global*100)
 
     # adaption (first half of thermalization)
     if i < p.thermalization / 2 + 1
@@ -138,6 +156,14 @@ for i in 1:p.thermalization
       else
         @printf("\t\tenlarging box: %.2f\n", 1.1*p.box.b)
         p.box = Uniform(-1.1*p.box.b,1.1*p.box.b)
+      end
+
+      if acc_global/prop_global < 0.5
+        @printf("\t\tshrinking box_global: %.2f\n", 0.9*p.box_global.b)
+        p.box_global = Uniform(-0.9*p.box_global.b,0.9*p.box_global.b)
+      else
+        @printf("\t\tenlarging box_global: %.2f\n", 1.1*p.box_global.b)
+        p.box_global = Uniform(-1.1*p.box_global.b,1.1*p.box_global.b)
       end
     end
     acc_rate = 0.0
@@ -150,13 +176,12 @@ toq();
 
 println("")
 initialize_stack(s, p, l)
-@time build_stack(s, p, l)
+build_stack(s, p, l)
 println("Initial propagate: ", s.current_slice, " ", s.direction)
 propagate(s, p, l)
 
-
 println("\nMeasurements - ", p.measurements)
-cs = min(p.measurements, 128)
+cs = min(p.measurements, 100)
 
 configurations = Observable{Float64}("configurations", size(p.hsfield), cs)
 # greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
@@ -166,10 +191,23 @@ mean_abs_op = Observable{Float64}("mean abs op", cs)
 mean_op = Observable{Float64}("mean op", (3), cs)
 
 acc_rate = 0.0
+acc_rate_global = 0.0
 tic()
 for i in 1:p.measurements
   for u in 1:2 * p.slices
     @inbounds propagate(s, p, l)
+
+    # GLOBAL UPDATE
+    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
+      # attempt global update after every fifth down-up sweep
+      # println("Attempting global update...")
+      prop_global += 1
+      b = global_update(s, p, l)
+      acc_rate_global += b
+      acc_global += b
+      # println("Accepted: ", b)
+    end
+
     acc_rate += local_updates(s, p, l)
 
     if s.current_slice == p.slices && s.direction == 1 # measure criterium
@@ -205,10 +243,14 @@ for i in 1:p.measurements
   end
   if mod(i, 10) == 0
     acc_rate = acc_rate / (10 * 2 * p.slices)
+    acc_rate_global = acc_rate_global / (10 / p.global_rate)
     println("\t", i)
     @printf("\t\tup-down sweep dur: %.2fs\n", toq()/10)
-    @printf("\t\tacceptance rate: %.1f%%\n", acc_rate*100)
+    @printf("\t\tacc rate (local) : %.1f%%\n", acc_rate*100)
+    @printf("\t\tacc rate (global): %.1f%%\n", acc_rate_global*100)
+    @printf("\t\tacc rate (global, overall): %.1f%%\n", acc_global/prop_global*100)
     acc_rate = 0.0
+    acc_rate_global = 0.0
     tic()
   end
 end
