@@ -1,16 +1,18 @@
-function measure_op(p::Parameters, l::Lattice)
-  mean_abs_op = mean(abs(p.hsfield))
-  mean_op = vec(mean(p.hsfield,[2,3]))
+function measure_op(conf::Array{Float64, 3})
+  mean_abs_op = mean(abs(conf))
+  mean_op = vec(mean(conf,[2,3]))
   return (mean_abs_op, mean_op)
 end
 
 FFTW.set_num_threads(Sys.CPU_CORES)
 # bosonic correlation function C(qy,qx,iw)
-function measure_phi_correlations(p::Parameters, l::Lattice)
-  phiFT = fft(reshape(p.hsfield,3,l.L,l.L,p.slices),[2,3,4])
+function measure_phi_correlations(conf::Array{Float64, 3})
+  count, sites, slices = size(conf)
+  L = Int(sqrt(sites))
+  phiFT = fft(reshape(conf,3,L,L,slices),[2,3,4])
   phiFT .*= conj(phiFT)
-  n = Int(l.L/2+1)
-  nt = Int(p.slices/2+1)
+  n = Int(L/2+1)
+  nt = Int(slices/2+1)
   return real(squeeze(sum(phiFT,1),1))[1:n,1:n,1:nt] # sum over op components
 end
 
@@ -19,23 +21,24 @@ end
 # first element of C in w direction is 0 freq, last element of C in qx and qy direction is (-pi,-pi)
 # (DSP.fftfreq(#elements, sampling rate = 1/a = 1 in our case))
 # just reverse qx and qy dimensions to get q-Q dependence
-function measure_chi(p::Parameters, l::Lattice)
-  mapslices(x->rotr90(rotr90(x)),measure_phi_correlations(s,p,l),[1,2])
+function measure_chi(conf::Array{Float64, 3})
+  mapslices(x->rotr90(rotr90(x)),measure_phi_correlations(conf),[1,2])
 end
 
 # X(Q,0) = X(pi,pi,0) = C(0,0)
-function measure_chi_static(p::Parameters, l::Lattice)
-  measure_phi_correlations(s,p,l)[1,1,1] # 0 component = idx 1 element in Julia
+function measure_chi_static(conf::Array{Float64, 3})
+  measure_phi_correlations(conf)[1,1,1] # 0 component = idx 1 element in Julia
 end
 
 # This is slightly FASTER than fft variant above
-function measure_chi_static_direct(p::Parameters, l::Lattice)
+function measure_chi_static_direct(conf::Array{Float64, 3})
   chi = 0.0
-  for i in 1:l.sites
-    for j in 1:l.sites
-      for t1 in 1:p.slices
-        for t2 in 1:p.slices
-          chi += dot(p.hsfield[:,i,t1], p.hsfield[:,j,t2])
+  count, sites, slices = size(conf)
+  for i in 1:sites
+    for j in 1:sites
+      for t1 in 1:slices
+        for t2 in 1:slices
+          chi += dot(conf[:,i,t1], conf[:,j,t2])
         end
       end
     end
@@ -44,8 +47,8 @@ function measure_chi_static_direct(p::Parameters, l::Lattice)
 end
 
 # Binder factors m^2, m^4
-function measure_binder_factors(p::Parameters, l::Lattice)
-  m = mean(p.hsfield,[2,3]) # average over sites and timeslices
+function measure_binder_factors(conf::Array{Float64, 3})
+  m = mean(conf,[2,3]) # average over sites and timeslices
   m2 = dot(m,m)
   return (m2, m2*m2)
 end
