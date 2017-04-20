@@ -188,7 +188,7 @@ println("\nMeasurements - ", p.measurements)
 cs = min(p.measurements, 100)
 
 configurations = Observable{Float64}("configurations", size(p.hsfield), cs)
-greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
+# greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
 
 boson_action = Observable{Float64}("boson_action", cs)
 mean_abs_op = Observable{Float64}("mean_abs_op", cs)
@@ -223,7 +223,7 @@ for i in 1:p.measurements
       add_element(mean_op, curr_mean_op)
 
       add_element(configurations, p.hsfield)
-      add_element(greens, s.greens)
+      # add_element(greens, s.greens) # !! s.greens is only the effective Green's function !!
 
       if mod(i, cs) == 0
           println("Dumping...")
@@ -239,7 +239,7 @@ for i in 1:p.measurements
           clear(mean_op)
 
           clear(configurations)
-          clear(greens)
+          # clear(greens)
           println("Dumping block of $cs datapoints was a success")
         end
       end
