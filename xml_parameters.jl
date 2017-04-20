@@ -27,12 +27,12 @@ function parameters2hdf5(params::Dict, filename::String)
   f = HDF5.h5open(filename, "r+")
   for (k, v) in params
     try
-      if HDF5.exists(f, "parameters/" * k)
-        if read(f["parameters/"*k]) != v
+      if HDF5.exists(f, "params/" * k)
+        if read(f["params/"*k]) != v
           error(k, " exists but differs from current ")
         end
       else
-        f["parameters/" * k] = v
+        f["params/" * k] = v
       end
     catch e
     end

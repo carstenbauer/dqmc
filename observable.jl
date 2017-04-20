@@ -52,27 +52,27 @@ function obs2hdf5{T}(filename::String, obs::Observable{T})
   h5open(filename, isfile(filename)?"r+":"w") do f
 
     new_count = -1
-    if !exists(f, "simulation/results/" * obs.name)
+    if !exists(f, "obs/" * obs.name)
       # initialze chunk storage
-      write(f, "simulation/results/" * obs.name * "/count", obs.count)
+      write(f, "obs/" * obs.name * "/count", obs.count)
       if T<:Real
-        d_create(f, "simulation/results/" * obs.name * "/timeseries", T, ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
+        d_create(f, "obs/" * obs.name * "/timeseries", T, ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
 
         if obs.eldims == 0
-          write(f, "simulation/results/" * obs.name * "/mean", mean(obs.timeseries))
+          write(f, "obs/" * obs.name * "/mean", mean(obs.timeseries))
         end
       else
-        d_create(f, "simulation/results/" * obs.name * "/timeseries_real", T.types[1], ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
-        d_create(f, "simulation/results/" * obs.name * "/timeseries_imag", T.types[1], ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
+        d_create(f, "obs/" * obs.name * "/timeseries_real", T.types[1], ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
+        d_create(f, "obs/" * obs.name * "/timeseries_imag", T.types[1], ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
       end
       new_count = obs.count
     else
       # update counter
-      new_count = read(f["simulation/results/" * obs.name * "/count"]) + obs.count
-      o_delete(f, "simulation/results/" * obs.name * "/count")
-      write(f, "simulation/results/" * obs.name * "/count", new_count)
+      new_count = read(f["obs/" * obs.name * "/count"]) + obs.count
+      o_delete(f, "obs/" * obs.name * "/count")
+      write(f, "obs/" * obs.name * "/count", new_count)
     end
-    g = f["simulation/results/" * obs.name]
+    g = f["obs/" * obs.name]
 
     # update (append to) time series
     colons = [Colon() for k in 1:obs.eldims]
@@ -97,11 +97,42 @@ function obs2hdf5{T}(filename::String, obs::Observable{T})
 end
 
 
+function confs2hdf5{T}(filename::String, obs::Observable{T})
+
+  if obs.count != obs.alloc
+    warn("Saving incomplete time series chunk of observable \"$obs.name\".")
+  end
+
+  h5open(filename, isfile(filename)?"r+":"w") do f
+
+    new_count = -1
+    if !exists(f, "configurations")
+      # initialze chunk storage
+      write(f, "count", obs.count)
+      d_create(f, "configurations", T, ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
+      new_count = obs.count
+    else
+      # update counter
+      new_count = read(f["count"]) + obs.count
+      o_delete(f, "count")
+      write(f, "count", new_count)
+    end
+
+    # update (append to) time series
+    colons = [Colon() for k in 1:obs.eldims]
+
+    set_dims!(f["configurations"],(obs.elsize...,new_count))
+    f["configurations"][colons...,end-obs.count+1:end] = obs.timeseries[colons...,:]
+
+  end
+end
+
+
 function hdf52obs(filename::String, obsname::String)
   h5open(filename, "r+") do f
-    if !exists(f, "/simulation/results/" * obsname) error("Observable does not exist in \"$filename\"")
+    if !exists(f, "/obs/" * obsname) error("Observable does not exist in \"$filename\"")
     else
-      o = f["/simulation/results/" * obsname]
+      o = f["/obs/" * obsname]
       if exists(o, "timeseries") # Real
         chunksize = get_chunk(o["timeseries"])[end]
         elsize = size(o["timeseries"])[1:end-1]
@@ -129,10 +160,10 @@ end
 
 function delete{T}(filename::String, obs::Observable{T})
   h5open(filename, "r+") do f
-    if !exists(f, "simulation/results/" * obs.name)
+    if !exists(f, "obs/" * obs.name)
       info("Nothing to be done.")
     else
-      o_delete(f, "simulation/results/" * obs.name)
+      o_delete(f, "obs/" * obs.name)
     end
   end
 end
@@ -140,6 +171,6 @@ end
 
 function listobs(filename::String)
   h5open(filename, "r+") do f
-    return names(f["/simulation/results"])
+    return names(f["/obs"])
   end
 end

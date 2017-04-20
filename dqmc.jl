@@ -29,7 +29,7 @@ output_file = prefix * ".task" * string(idx) * ".out.h5"
 
 # hdf5 write test
 f = HDF5.h5open(output_file, "w")
-f["parameters/TEST"] = 42
+f["params/TEST"] = 42
 close(f)
 
 # load parameters xml
@@ -145,8 +145,10 @@ for i in 1:p.thermalization
     println("\t", i)
     @printf("\t\tup-down sweep dur: %.2fs\n", toq()/10)
     @printf("\t\tacc rate (local) : %.1f%%\n", acc_rate*100)
-    @printf("\t\tacc rate (global): %.1f%%\n", acc_rate_global*100)
-    @printf("\t\tacc rate (global, overall): %.1f%%\n", acc_global/prop_global*100)
+    if p.global_updates
+      @printf("\t\tacc rate (global): %.1f%%\n", acc_rate_global*100)
+      @printf("\t\tacc rate (global, overall): %.1f%%\n", acc_global/prop_global*100)
+    end
 
     # adaption (first half of thermalization)
     if i < p.thermalization / 2 + 1
@@ -158,12 +160,14 @@ for i in 1:p.thermalization
         p.box = Uniform(-1.1*p.box.b,1.1*p.box.b)
       end
 
+      if p.global_updates
       if acc_global/prop_global < 0.5
         @printf("\t\tshrinking box_global: %.2f\n", 0.9*p.box_global.b)
         p.box_global = Uniform(-0.9*p.box_global.b,0.9*p.box_global.b)
       else
         @printf("\t\tenlarging box_global: %.2f\n", 1.1*p.box_global.b)
         p.box_global = Uniform(-1.1*p.box_global.b,1.1*p.box_global.b)
+      end
       end
     end
     acc_rate = 0.0
@@ -184,11 +188,11 @@ println("\nMeasurements - ", p.measurements)
 cs = min(p.measurements, 100)
 
 configurations = Observable{Float64}("configurations", size(p.hsfield), cs)
-# greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
+greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
 
-boson_action = Observable{Float64}("boson action", cs)
-mean_abs_op = Observable{Float64}("mean abs op", cs)
-mean_op = Observable{Float64}("mean op", (3), cs)
+boson_action = Observable{Float64}("boson_action", cs)
+mean_abs_op = Observable{Float64}("mean_abs_op", cs)
+mean_op = Observable{Float64}("mean_op", (3), cs)
 
 acc_rate = 0.0
 acc_rate_global = 0.0
@@ -219,13 +223,13 @@ for i in 1:p.measurements
       add_element(mean_op, curr_mean_op)
 
       add_element(configurations, p.hsfield)
-      # add_element(greens, s.greens)
+      add_element(greens, s.greens)
 
       if mod(i, cs) == 0
           println("Dumping...")
         @time begin
-          obs2hdf5(output_file, configurations)
-          # obs2hdf5(output_file, greens)
+          confs2hdf5(output_file, configurations)
+          obs2hdf5(output_file, greens)
 
           obs2hdf5(output_file, boson_action)
           obs2hdf5(output_file, mean_abs_op)
@@ -235,7 +239,7 @@ for i in 1:p.measurements
           clear(mean_op)
 
           clear(configurations)
-          # clear(greens)
+          clear(greens)
           println("Dumping block of $cs datapoints was a success")
         end
       end
@@ -247,8 +251,10 @@ for i in 1:p.measurements
     println("\t", i)
     @printf("\t\tup-down sweep dur: %.2fs\n", toq()/10)
     @printf("\t\tacc rate (local) : %.1f%%\n", acc_rate*100)
-    @printf("\t\tacc rate (global): %.1f%%\n", acc_rate_global*100)
-    @printf("\t\tacc rate (global, overall): %.1f%%\n", acc_global/prop_global*100)
+    if p.global_updates
+      @printf("\t\tacc rate (global): %.1f%%\n", acc_rate_global*100)
+      @printf("\t\tacc rate (global, overall): %.1f%%\n", acc_global/prop_global*100)
+    end
     acc_rate = 0.0
     acc_rate_global = 0.0
     tic()
