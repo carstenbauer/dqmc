@@ -438,8 +438,8 @@ end
 
 
 function test_gf_wrapping(p::Parameters, l::Lattice)
-  # slice = rand(1:p.slices)
-  slice = 10
+  slice = rand(3:p.slices-2)
+  # slice = 10
   gf = calculate_greens_udv(p,l,slice)
 
   # wrapping down
@@ -467,6 +467,74 @@ function test_gf_wrapping(p::Parameters, l::Lattice)
   println("")
   println("Comparing twice wrapped up vs num exact")
   compare_greens(gfwrapped2,gfexact2)
+
+  nothing
+end
+
+function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
+  slice = rand(3:p.slices-2)
+  # slice = 10
+  gf = calculate_greens_udv_chkr(p,l,slice)
+
+  # wrapping down
+  gfwrapped = wrap_greens_chkr(gf,slice,-1)
+  gfwrapped2 = wrap_greens_chkr(gfwrapped,slice-1,-1)
+  gfexact = calculate_greens_udv_chkr(p,l,slice - 1)
+  gfexact2 = calculate_greens_udv_chkr(p,l,slice - 2)
+
+  println("Comparing wrapped down vs num exact")
+  compare(gfwrapped,gfexact)
+  println("")
+  println("Comparing twice wrapped down vs num exact")
+  compare(gfwrapped2,gfexact2)
+
+  # wrapping up
+  gfwrapped = wrap_greens_chkr(gf,slice,1)
+  gfwrapped2 = wrap_greens_chkr(gfwrapped,slice+1,1)
+  gfexact = calculate_greens_udv_chkr(p,l,slice + 1)
+  gfexact2 = calculate_greens_udv_chkr(p,l,slice + 2)
+
+  println("")
+  println("")
+  println("Comparing wrapped up vs num exact")
+  compare(gfwrapped,gfexact)
+  println("")
+  println("Comparing twice wrapped up vs num exact")
+  compare(gfwrapped2,gfexact2)
+
+  nothing
+end
+
+function test_gf_wrapping_chkr_naive(p::Parameters, l::Lattice)
+  slice = rand(3:p.slices-2)
+  # slice = 10
+  gf = calculate_greens_udv_chkr(p,l,slice)
+
+  # wrapping down
+  gfwrapped = wrap_greens_chkr_naive(gf,slice,-1)
+  gfwrapped2 = wrap_greens_chkr_naive(gfwrapped,slice-1,-1)
+  gfexact = calculate_greens_udv_chkr(p,l,slice - 1)
+  gfexact2 = calculate_greens_udv_chkr(p,l,slice - 2)
+
+  println("Comparing wrapped down vs num exact")
+  compare(gfwrapped,gfexact)
+  println("")
+  println("Comparing twice wrapped down vs num exact")
+  compare(gfwrapped2,gfexact2)
+
+  # wrapping up
+  gfwrapped = wrap_greens_chkr_naive(gf,slice,1)
+  gfwrapped2 = wrap_greens_chkr_naive(gfwrapped,slice+1,1)
+  gfexact = calculate_greens_udv_chkr(p,l,slice + 1)
+  gfexact2 = calculate_greens_udv_chkr(p,l,slice + 2)
+
+  println("")
+  println("")
+  println("Comparing wrapped up vs num exact")
+  compare(gfwrapped,gfexact)
+  println("")
+  println("Comparing twice wrapped up vs num exact")
+  compare(gfwrapped2,gfexact2)
 
   nothing
 end

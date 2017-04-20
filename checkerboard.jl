@@ -189,9 +189,9 @@ function multiply_slice_matrix_inv_right!{T<:Number}(p::Parameters, l::Lattice, 
   M[:] = M * interaction_matrix_exp(p, l, slice, -1.)
   M[:] = M * l.chkr_mu_inv
 
-  M[:] = l.chkr_hop_half_inv[2] * M
-  M[:] = l.chkr_hop_inv[1] * M
-  M[:] = l.chkr_hop_half_inv[2] * M
+  M[:] = M * l.chkr_hop_half_inv[2]
+  M[:] = M * l.chkr_hop_inv[1]
+  M[:] = M * l.chkr_hop_half_inv[2]
 end
 
 function multiply_slice_matrix_left{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})

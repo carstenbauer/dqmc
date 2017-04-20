@@ -118,7 +118,7 @@ for i in 1:p.thermalization
     # println("Before local")
     # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
     acc_rate += local_updates(s, p, l)
-    # println("After local")
+    # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
     # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
     # println("")
   end

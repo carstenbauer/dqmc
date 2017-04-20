@@ -200,3 +200,49 @@ function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
   nothing
 end
 # worked
+
+
+
+"""
+multiply right left (inverse) check
+"""
+function test_multiply_slice_matrix(s,p,l)
+  id = s.eye_full
+  println("B^-1 * B * 1")
+  if !compare(multiply_slice_matrix_inv_left(p,l,1,multiply_slice_matrix_left(p,l,1,id)),id)
+    warn("B^-1 * B * 1 != 1")
+  end
+  println("B * B^-1 * 1")
+  if !compare(multiply_slice_matrix_left(p,l,1,multiply_slice_matrix_inv_left(p,l,1,id)),id)
+    warn("B * B^-1 * 1 != 1")
+  end
+  println("1 * B * B^-1")
+  if !compare(multiply_slice_matrix_inv_right(p,l,1,multiply_slice_matrix_right(p,l,1,id)),id)
+    warn("1 * B * B^-1 != 1")
+  end
+  println("1 * B^-1 * B")
+  if !compare(multiply_slice_matrix_right(p,l,1,multiply_slice_matrix_inv_right(p,l,1,id)),id)
+    warn("1 * B^-1 * B != 1")
+  end
+
+  println("")
+  println("Mixed")
+  println("")
+
+  println("(B * 1) * B^-1")
+  if !compare(multiply_slice_matrix_inv_right(p,l,1,multiply_slice_matrix_left(p,l,1,id)),id)
+    warn("(B * 1) * B^-1 != 1")
+  end
+  println("B^-1 * (1 * B)")
+  if !compare(multiply_slice_matrix_inv_left(p,l,1,multiply_slice_matrix_right(p,l,1,id)),id)
+  warn("B * (1 * B^-1) != 1")
+  end
+    println("(B^-1 * 1) * B")
+  if !compare(multiply_slice_matrix_right(p,l,1,multiply_slice_matrix_inv_left(p,l,1,id)),id)
+    warn("(B^-1 * 1) * B != 1")
+  end
+  println("B * (1 * B^-1)")
+  if !compare(multiply_slice_matrix_left(p,l,1,multiply_slice_matrix_inv_right(p,l,1,id)),id)
+    warn("B * (1 * B^-1) != 1")
+  end
+end
