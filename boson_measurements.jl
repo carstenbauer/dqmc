@@ -46,7 +46,7 @@ function measure_chi_static_direct(conf::Array{Float64, 3})
   return chi
 end
 
-# Binder factors m^2, m^4
+# Binder factors (m^2, m^4)
 function measure_binder_factors(conf::Array{Float64, 3})
   m = mean(conf,[2,3]) # average over sites and timeslices
   m2 = dot(m,m)

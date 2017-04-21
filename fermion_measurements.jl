@@ -1,21 +1,41 @@
+"""
+Measurements
+"""
 function measure_greens_and_det(p::Parameters, l::Lattice, safe_mult::Int=1)
   greens, greens_svs = calculate_greens_and_svs_chkr(p, l, 1, safe_mult)
-  return greens, prod(greens_svs)
+  return effective_greens2greens!(p, l, greens), prod(greens_svs)
 end
 
 function measure_greens_and_det_no_chkr(p::Parameters, l::Lattice, safe_mult::Int=1)
   greens, greens_svs = calculate_greens_and_svs(p, l, 1, safe_mult)
-  return greens, prod(greens_svs)
+  return effective_greens2greens_no_chkr!(p, l, greens), prod(greens_svs)
 end
 
-# log(det(G)) = S_F
-# log(det(G^-1)) = -S_F
-function det2fermion_action(greens_det::Float64)
-  return log(greens_det)
-end
 
 """
-Calculate Green's function (direct, i.e. without stack)
+Effective Green's function -> Green's function
+"""
+function effective_greens2greens!(p::Parameters, l::Lattice, greens::Array{Complex{Float64}, 2})
+  greens[:] = greens * l.chkr_hop_half[2]
+  greens[:] = greens * l.chkr_hop_half[1]
+  greens[:] = l.chkr_hop_half_inv[2] * greens
+  greens[:] = l.chkr_hop_half_inv[1] * greens
+end
+
+function effective_greens2greens(p::Parameters, l::Lattice, greens::Array{Complex{Float64}, 2})
+  g = copy(greens)
+  effective_greens2greens!(p, l, g)
+  return g
+end
+
+function effective_greens2greens_no_chkr!(p::Parameters, l::Lattice, greens::Array{Complex{Float64}, 2})
+  greens[:] = greens * l.hopping_matrix_exp
+  greens[:] = l.hopping_matrix_exp * greens
+end
+
+
+"""
+Calculate effective(!) Green's function (direct, i.e. without stack)
 """
 # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
 # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
@@ -157,4 +177,14 @@ function calculate_greens_and_svs_chkr(p::Parameters, l::Lattice, slice::Int, sa
   D = spdiagm(1./I[2])
   Vt = ctranspose(Ul * I[1])
   return (U*D*Vt, diag(D))
+end
+
+
+"""
+Helpers
+"""
+# log(det(G)) = S_F
+# log(det(G^-1)) = -S_F
+function det2fermion_action(greens_det::Float64)
+  return log(greens_det)
 end

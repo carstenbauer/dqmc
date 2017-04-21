@@ -39,10 +39,10 @@ try
   params = xml2parameters(prefix * ".task" * string(idx) * ".in.xml")
 
   # Check and store code version (git commit)
-  if haskey(params,"GIT_COMMIT") && Git.head(dir=dirname(@__FILE__)) != params["GIT_COMMIT"]
+  if haskey(params,"GIT_COMMIT_DQMC") && Git.head(dir=dirname(@__FILE__)) != params["GIT_COMMIT_DQMC"]
     warn("Git commit in input xml file does not match current commit of code.")
   end
-  params["GIT_COMMIT"] = Git.head(dir=dirname(@__FILE__))
+  params["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__))
 
   parameters2hdf5(params, output_file)
 catch e

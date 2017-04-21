@@ -11,10 +11,10 @@ type Observable{T<:Number}
 
   Observable(name::String, elsize::Tuple{Vararg{Int}}, alloc::Int) = new(name,0,zeros(T, elsize..., alloc), elsize, ndims(Array{Int}(elsize...)), typeof(elsize)==Tuple{}?1:*(elsize...), alloc)
   Observable(name::String, elsize::Int, alloc::Int) = new(name,0,zeros(T, elsize, alloc), (elsize,), 1, elsize, alloc)
-  Observable(name::String, elsize::Tuple{Vararg{Int}}) = Observable{T}(name, elsize, 128)
+  Observable(name::String, elsize::Tuple{Vararg{Int}}) = Observable{T}(name, elsize, 100)
 
   Observable(name::String, alloc::Int) = Observable{T}(name,(),alloc)
-  Observable(name::String) = Observable{T}(name,128)
+  Observable(name::String) = Observable{T}(name,100)
 end
 
 
@@ -44,6 +44,7 @@ end
 
 
 function obs2hdf5{T}(filename::String, obs::Observable{T})
+  if isempty(obs) return nothing end
 
   if obs.count != obs.alloc
     warn("Saving incomplete time series chunk of observable \"$obs.name\".")
@@ -58,9 +59,9 @@ function obs2hdf5{T}(filename::String, obs::Observable{T})
       if T<:Real
         d_create(f, "obs/" * obs.name * "/timeseries", T, ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
 
-        if obs.eldims == 0
-          write(f, "obs/" * obs.name * "/mean", mean(obs.timeseries))
-        end
+        # if obs.eldims == 0
+        write(f, "obs/" * obs.name * "/mean", mean(obs.timeseries, ndims(obs.timeseries)))
+        # end
       else
         d_create(f, "obs/" * obs.name * "/timeseries_real", T.types[1], ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
         d_create(f, "obs/" * obs.name * "/timeseries_imag", T.types[1], ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
@@ -81,11 +82,11 @@ function obs2hdf5{T}(filename::String, obs::Observable{T})
       set_dims!(g["timeseries"],(obs.elsize...,new_count))
       g["timeseries"][colons...,end-obs.count+1:end] = obs.timeseries[colons...,:]
 
-      if obs.eldims == 0
-        o_delete(g, "mean")
-        m = sum(read(g["timeseries"]))/new_count
-        write(g, "mean", m)
-      end
+      # if obs.eldims == 0
+      o_delete(g, "mean")
+      m = sum(read(g["timeseries"]), ndims(obs.timeseries))/new_count
+      write(g, "mean", m)
+      # end
     else
       set_dims!(g["timeseries_real"],(obs.elsize...,new_count))
       set_dims!(g["timeseries_imag"],(obs.elsize...,new_count))
@@ -153,20 +154,24 @@ function hdf52obs(filename::String, obsname::String)
 end
 
 
-function clear{T}(obs::Observable{T})
+function clear(obs::Observable)
   obs.count = 0
 end
 
+function isempty(obs::Observable)
+  return (obs.count == 0)
+end
 
-function delete{T}(filename::String, obs::Observable{T})
+function delete(filename::String, obsname::String)
   h5open(filename, "r+") do f
-    if !exists(f, "obs/" * obs.name)
+    if !exists(f, "obs/" * obsname)
       info("Nothing to be done.")
     else
-      o_delete(f, "obs/" * obs.name)
+      o_delete(f, "obs/" * obsname)
     end
   end
 end
+delete(filename::String, obs::Observable) = delete(filename, obs.name)
 
 
 function listobs(filename::String)
