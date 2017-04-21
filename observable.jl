@@ -1,4 +1,5 @@
 using HDF5
+import Base.isempty
 
 type Observable{T<:Number}
   name::String
@@ -164,9 +165,7 @@ end
 
 function delete(filename::String, obsname::String)
   h5open(filename, "r+") do f
-    if !exists(f, "obs/" * obsname)
-      info("Nothing to be done.")
-    else
+    if exists(f, "obs/" * obsname)
       o_delete(f, "obs/" * obsname)
     end
   end

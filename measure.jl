@@ -48,6 +48,8 @@ try
   if haskey(params, "GREENS_FUNCTION") && parse(Bool, lowercase(params["GREENS_FUNCTION"]))
     GREENS_FUNCTION = true
     delete(output_file, "greens")
+    delete(output_file, "fermion_action")
+    delete(output_file, "action")
   end
   if haskey(params, "GREENS_FUNCTION_SAFE_MULT")
     GREENS_FUNCTION_SAFE_MULT = parse(Int64, params["GREENS_FUNCTION_SAFE_MULT"])
@@ -127,7 +129,11 @@ m4 = Observable{Float64}("m4", cs)
 
 greens = Observable{Complex128}("greens", (p.flv*l.sites, p.flv*l.sites), cs)
 fermion_action = Observable{Float64}("fermion_action", cs)
+action = Observable{Float64}("action", cs)
 
+S_b = hdf52obs(output_file, "boson_action").timeseries
+
+elapsed_time = 0.0
 for c in 1:num_confs
   conf = confs[:,:,:,c]
 
@@ -144,13 +150,19 @@ for c in 1:num_confs
   if GREENS_FUNCTION
     p.hsfield = conf
     curr_greens, curr_det = measure_greens_and_det(p, l, GREENS_FUNCTION_SAFE_MULT)
+    S_f = log(curr_det)
     add_element(greens, curr_greens)
-    add_element(fermion_action, log(curr_det)) # log(det(G)) = S_F
+    add_element(fermion_action, S_f) # log(det(G)) = S_f
+    add_element(action, S_b[c]+S_f)
   end
 
   if mod(c, 100) == 0
     println("\t", c)
-    @printf("\t\telapsed: %.2fs\n", toq()/10)
+    tperconf = toq()/100
+    elapsed_time += tperconf*100
+    @printf("\t\ttime per conf: %.2fs\n", tperconf)
+    @printf("\t\ttime elapsed: %.2fs\n", elapsed_time)
+    @printf("\t\testimated time remaining: %.2fs\n", (num_confs - c) * tperconf)
     tic()
   end
 end
@@ -164,6 +176,7 @@ println("Dumping results...")
 
   obs2hdf5(output_file, greens)
   obs2hdf5(output_file, fermion_action)
+  obs2hdf5(output_file, action)
 
   println("Dumping block of $cs datapoints was a success")
 end
