@@ -125,6 +125,9 @@ chi = Observable{Float64}("boson_suscept", cs)
 m2 = Observable{Float64}("m2", cs)
 m4 = Observable{Float64}("m4", cs)
 
+greens = Observable{Complex128}("greens", (p.flv*l.sites, p.flv*l.sites), cs)
+fermion_action = Observable{Float64}("fermion_action", cs)
+
 for c in 1:num_confs
   conf = confs[:,:,:,c]
 
@@ -136,6 +139,13 @@ for c in 1:num_confs
 
   if BOSON_SUSCEPT
     add_element(chi, measure_chi_static_direct(conf))
+  end
+
+  if GREENS_FUNCTION
+    p.hsfield = conf
+    curr_greens, curr_det = measure_greens_and_det(p, l, GREENS_FUNCTION_SAFE_MULT)
+    add_element(greens, curr_greens)
+    add_element(fermion_action, log(curr_det)) # log(det(G)) = S_F
   end
 
   if mod(c, 100) == 0
@@ -151,6 +161,9 @@ println("Dumping results...")
   obs2hdf5(output_file, chi)
   obs2hdf5(output_file, m2)
   obs2hdf5(output_file, m4)
+
+  obs2hdf5(output_file, greens)
+  obs2hdf5(output_file, fermion_action)
 
   println("Dumping block of $cs datapoints was a success")
 end

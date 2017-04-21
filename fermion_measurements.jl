@@ -178,13 +178,3 @@ function calculate_greens_and_svs_chkr(p::Parameters, l::Lattice, slice::Int, sa
   Vt = ctranspose(Ul * I[1])
   return (U*D*Vt, diag(D))
 end
-
-
-"""
-Helpers
-"""
-# log(det(G)) = S_F
-# log(det(G^-1)) = -S_F
-function det2fermion_action(greens_det::Float64)
-  return log(greens_det)
-end
