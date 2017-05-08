@@ -1,14 +1,14 @@
 """
 Measurements
 """
-function measure_greens_and_det(p::Parameters, l::Lattice, safe_mult::Int=1)
-  greens, greens_svs = calculate_greens_and_svs_chkr(p, l, 1, safe_mult)
-  return effective_greens2greens!(p, l, greens), prod(greens_svs)
+function measure_greens_and_logdet(p::Parameters, l::Lattice, safe_mult::Int=1)
+  greens, greens_logsvs = calculate_greens_and_logsvs_chkr(p, l, 1, safe_mult)
+  return effective_greens2greens!(p, l, greens), sum(greens_logsvs)
 end
 
-function measure_greens_and_det_no_chkr(p::Parameters, l::Lattice, safe_mult::Int=1)
-  greens, greens_svs = calculate_greens_and_svs(p, l, 1, safe_mult)
-  return effective_greens2greens_no_chkr!(p, l, greens), prod(greens_svs)
+function measure_greens_and_logdet_no_chkr(p::Parameters, l::Lattice, safe_mult::Int=1)
+  greens, greens_svs = calculate_greens_and_logsvs(p, l, 1, safe_mult)
+  return effective_greens2greens_no_chkr!(p, l, greens), sum(greens_logsvs)
 end
 
 
@@ -133,7 +133,7 @@ function calculate_greens_chkr(p::Parameters, l::Lattice, slice::Int, safe_mult:
 end
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its singular values in a stable manner
-function calculate_greens_and_svs(p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
+function calculate_greens_and_logsvs(p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Ur, Dr, Vtr = calculate_slice_matrix_chain(p,l,slice,p.slices,safe_mult)
 
@@ -156,7 +156,7 @@ function calculate_greens_and_svs(p::Parameters, l::Lattice, slice::Int, safe_mu
   return (U*D*Vt, diag(D))
 end
 
-function calculate_greens_and_svs_chkr(p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
+function calculate_greens_and_logsvs_chkr(p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Ur, Dr, Vtr = calculate_slice_matrix_chain_chkr(p,l,slice,p.slices,safe_mult)
 
@@ -176,5 +176,5 @@ function calculate_greens_and_svs_chkr(p::Parameters, l::Lattice, slice::Int, sa
   U = ctranspose(I[3] * Vtr)
   D = spdiagm(1./I[2])
   Vt = ctranspose(Ul * I[1])
-  return (U*D*Vt, diag(D))
+  return (U*D*Vt, diag(log(D)))
 end

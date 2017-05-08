@@ -149,8 +149,7 @@ for c in 1:num_confs
 
   if GREENS_FUNCTION
     p.hsfield = conf
-    curr_greens, curr_det = measure_greens_and_det(p, l, GREENS_FUNCTION_SAFE_MULT)
-    S_f = log(curr_det)
+    curr_greens, S_f = measure_greens_and_logdet(p, l, GREENS_FUNCTION_SAFE_MULT)
     add_element(greens, curr_greens)
     add_element(fermion_action, S_f) # log(det(G)) = S_f
     add_element(action, S_b[c]+S_f)
