@@ -39,13 +39,14 @@ job_cheops = """
 #SBATCH --ntasks=1
 #SBATCH --mem=10gb
 #SBATCH --time=14-00:00:00
-#SBATCH --output=$(prefix).task\$\{SLURM_ARRAY_TASK_ID\}.out.log
-#SBATCH --job-name=$(prefix).task\$\{SLURM_ARRAY_TASK_ID\}
+#SBATCH --output=$(prefix).out.log
+#SBATCH --job-name=$(prefix)
 #SBATCH --cpus-per-task=4
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
-source /projects/ag-trebst/julia-0.5/julia_env
+export JULIA_PKGDIR=/projects/ag-trebst/bauer/.julia
+source /projects/ag-trebst/julia-0.5.1/julia_env
 cd $(output_root)/$(dir)/$(prefix)/
 julia $(julia_code_file) $(prefix) \$\{SLURM_ARRAY_TASK_ID\}
 """
