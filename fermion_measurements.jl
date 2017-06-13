@@ -30,7 +30,7 @@ end
 
 function effective_greens2greens_no_chkr!(p::Parameters, l::Lattice, greens::Array{Complex{Float64}, 2})
   greens[:] = greens * l.hopping_matrix_exp
-  greens[:] = l.hopping_matrix_exp * greens
+  greens[:] = l.hopping_matrix_exp_inv * greens
 end
 
 

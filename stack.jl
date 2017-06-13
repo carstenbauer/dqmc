@@ -136,12 +136,12 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
   s.u_stack[:, :, idx] = s.u_stack[:, :, idx + 1] * s.U
 end
 
-# Beff(slice) = exp(−∆τV(slice))exp(−1/2∆τT)exp(−1/2∆τT)
+# Beff(slice) = exp(−1/2∆τT)exp(−1/2∆τT)exp(−∆τV(slice))
 function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
   if power > 0
-    return interaction_matrix_exp(p, l, slice, power) * l.hopping_matrix_exp * l.hopping_matrix_exp
+    return l.hopping_matrix_exp * l.hopping_matrix_exp * interaction_matrix_exp(p, l, slice, power)
   else
-    return l.hopping_matrix_exp_inv * l.hopping_matrix_exp_inv * interaction_matrix_exp(p, l, slice, power)
+    return interaction_matrix_exp(p, l, slice, power) * l.hopping_matrix_exp_inv * l.hopping_matrix_exp_inv
   end
 end
 
