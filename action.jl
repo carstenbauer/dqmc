@@ -1,5 +1,4 @@
-function calculate_boson_action(p::Parameters, l::Lattice,
-                        hsfield::Array{Float64,3}=p.hsfield)
+function calculate_boson_action(p::Parameters, l::Lattice, hsfield::Array{Float64,3}=p.hsfield)
   S = 0.0
   for s in 1:p.slices
     for i in 1:l.sites
@@ -28,9 +27,8 @@ end
 """
 Calculate Delta_S_boson = S_boson' - S_boson
 """
-function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, new_op::Vector{Float64},
-                            hsfield::Array{Float64, 3}=p.hsfield, slice::Int=s.current_slice)
-  old_op = view(hsfield,:,site,slice)
+function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, slice::Int, new_op::Vector{Float64})
+  old_op = view(p.hsfield,:,site,slice)
   diff = new_op - old_op
 
   old_op_sq = dot(old_op, old_op)
@@ -41,13 +39,13 @@ function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, new_o
   new_op_pow4 = new_op_sq * new_op_sq
   pow4_diff = new_op_pow4 - old_op_pow4
 
-  op_earlier = hsfield[:,site,l.time_neighbors[2,slice]]
-  op_later = hsfield[:,site,l.time_neighbors[1,slice]]
+  op_earlier = p.hsfield[:,site,l.time_neighbors[2,slice]]
+  op_later = p.hsfield[:,site,l.time_neighbors[1,slice]]
   op_time_neighbors = op_later + op_earlier
 
   op_space_neighbors = zeros(3)
   for n in 1:4
-    op_space_neighbors += hsfield[:,l.neighbors[n,site],slice]
+    op_space_neighbors += p.hsfield[:,l.neighbors[n,site],slice]
   end
 
   dS = 0.0

@@ -146,7 +146,7 @@ function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Floa
 end
 
 
-function wrap_greens_chkr!(gf::Array{Complex{Float64},2},curr_slice::Int,direction::Int)
+function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2}, curr_slice::Int,direction::Int)
   if direction == -1
     multiply_slice_matrix_inv_left!(p, l, curr_slice - 1, gf)
     multiply_slice_matrix_right!(p, l, curr_slice - 1, gf)
@@ -156,9 +156,9 @@ function wrap_greens_chkr!(gf::Array{Complex{Float64},2},curr_slice::Int,directi
   end
 end
 
-function wrap_greens_chkr(gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
   temp = copy(gf)
-  wrap_greens_chkr!(temp, slice, direction)
+  wrap_greens_chkr!(p, l, temp, slice, direction)
   return temp
 end
 
@@ -199,7 +199,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         s.Ul[:,:], s.Dl[:], s.Vtl[:,:] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.vt_stack[:, :, idx+1]
 
         s.greens_temp = copy(s.greens)
-        wrap_greens_chkr!(s.greens_temp, s.current_slice - 1, 1)
+        wrap_greens_chkr!(p, l, s.greens_temp, s.current_slice - 1, 1)
 
         calculate_greens(s, p, l) # greens_{slice we are propagating to}
 
@@ -218,7 +218,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
     else
       # Wrapping
-      wrap_greens_chkr!(s.greens, s.current_slice, 1)
+      wrap_greens_chkr!(p, l, s.greens, s.current_slice, 1)
       s.current_slice += 1
     end
 
@@ -235,7 +235,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         calculate_greens(s, p, l) # greens_{p.slices+1} === greens_1
 
         # wrap to greens_{p.slices}
-        wrap_greens_chkr!(s.greens, s.current_slice + 1, -1)
+        wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)
 
       elseif 0 < s.current_slice < p.slices
         idx = Int(s.current_slice / p.safe_mult) + 1
@@ -252,7 +252,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
           @printf("->%d \t-1 Propagation stability\t %.4f\n", s.current_slice, diff)
         end
 
-        wrap_greens_chkr!(s.greens, s.current_slice + 1, -1)
+        wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)
 
       else # we are going to 0
         idx = 1
@@ -264,7 +264,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
     else
       # Wrapping
-      wrap_greens_chkr!(s.greens, s.current_slice, -1)
+      wrap_greens_chkr!(p, l, s.greens, s.current_slice, -1)
       s.current_slice -= 1
     end
   end

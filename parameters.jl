@@ -26,5 +26,7 @@ type Parameters
   global_updates::Bool
   global_rate::Int64
 
+  output_file::String
+
   Parameters() = new()
 end
