@@ -4,6 +4,7 @@ playground.jl
 **/*.bin
 **/*.png
 **/*.pdf
+*.txt
 tmp.cpp
 **/*.nb
 images/

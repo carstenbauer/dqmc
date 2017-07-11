@@ -25,7 +25,7 @@ prefix = "sdwO3_L_$(L)_B_$(beta)_dt_$(dt)_$(k)"
 mkdir(prefix)
 cd(prefix)
 
-p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "SLICES"=>[Int(beta / dt)], "DELTA_TAU"=>[dt], "SAFE_MULT"=>[10], "U"=>[1.0], "R"=>[8.0, 9.0, 10.0], "LAMBDA"=>[3., 4., 5.], "HOPPINGS"=>["1.0,0.5,0.5,1.0"], "MU"=>[0.5], "SEED"=>[55796], "BOX_HALF_LENGTH"=>[0.2])
+p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "SLICES"=>[Int(beta/dt)], "DELTA_TAU"=>[dt], "SAFE_MULT"=>[10], "U"=>[1.0], "R"=>[8.0, 9.0, 10.0], "LAMBDA"=>[3., 4., 5.], "HOPPINGS"=>["1.0,0.5,0.5,1.0"], "MU"=>[0.5], "SEED"=>[55796], "BOX_HALF_LENGTH"=>[0.2])
 p["THERMALIZATION"] = 50
 p["MEASUREMENTS"] = 50
 

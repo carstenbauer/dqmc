@@ -87,6 +87,7 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.gb_greens_inv_svs = similar(s.greens_inv_svs)
   s.gb_hsfield = similar(p.hsfield)
 
+  nothing
 end
 
 
@@ -101,6 +102,8 @@ function build_stack(s::Stack, p::Parameters, l::Lattice)
 
   s.current_slice = p.slices + 1
   s.direction = -1
+
+  nothing
 end
 
 
@@ -163,6 +166,23 @@ function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},
 end
 
 
+function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2}, curr_slice::Int,direction::Int)
+  if direction == -1
+    gf[:] = slice_matrix_no_chkr(p, l, curr_slice - 1, -1.) * gf
+    gf[:] = gf * slice_matrix_no_chkr(p, l, curr_slice - 1, 1.)
+  else
+    gf[:] = slice_matrix_no_chkr(p, l, curr_slice, 1.) * gf
+    gf[:] = gf * slice_matrix_no_chkr(p, l, curr_slice, -1.)
+  end
+end
+
+function wrap_greens_no_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+  temp = copy(gf)
+  wrap_greens_no_chkr!(p, l, temp, slice, direction)
+  return temp
+end
+
+
 """
 Calculates G(slice) using s.Ur,s.Dr,s.Vtr=B(M) ... B(slice) and s.Ul,s.Dl,s.Vtl=B(slice-1) ... B(1)
 """
@@ -203,9 +223,11 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
         calculate_greens(s, p, l) # greens_{slice we are propagating to}
 
-        diff = maximum(absdiff(s.greens_temp, s.greens))
-        if diff > 1e-4
-          @printf("->%d \t+1 Propagation stability\t %.4f\n", s.current_slice, diff)
+        errs = (effreldiff(s.greens_temp, s.greens) .> 1e-2) & (absdiff(s.greens_temp, s.greens) .> 1e-04)
+        if sum(errs)>0
+          maxrelerr = maximum(effreldiff(s.greens_temp, s.greens)[errs])*100
+          maxabsolute = maximum(absdiff(s.greens_temp, s.greens)[errs])
+          @printf("->%d \t+1 Propagation stability\t max absolute: %.4f \t max relative: %.1f%%\n", s.current_slice, maxabsolute, maxrelerr)
         end
 
       else # we are going to p.slices+1
@@ -247,9 +269,16 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
         calculate_greens(s, p , l)
 
-        diff = maximum(absdiff(s.greens_temp, s.greens))
-        if diff > 1e-4
-          @printf("->%d \t-1 Propagation stability\t %.4f\n", s.current_slice, diff)
+        # diff = maximum(absdiff(s.greens_temp, s.greens))
+        # if diff > 1e-4
+        #   @printf("->%d \t-1 Propagation stability\t %.4f\n", s.current_slice, diff)
+        # end
+
+        errs = (effreldiff(s.greens_temp, s.greens) .> 1e-2) & (absdiff(s.greens_temp, s.greens) .> 1e-04)
+        if sum(errs)>0
+          maxrelerr = maximum(effreldiff(s.greens_temp, s.greens)[errs])*100
+          maxabsolute = maximum(absdiff(s.greens_temp, s.greens)[errs])
+          @printf("->%d \t-1 Propagation stability\t max absolute: %.4f \t max relative: %.1f%%\n", s.current_slice, maxabsolute, maxrelerr)
         end
 
         wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)

@@ -7,7 +7,7 @@ function measure_greens_and_logdet(p::Parameters, l::Lattice, safe_mult::Int=1)
 end
 
 function measure_greens_and_logdet_no_chkr(p::Parameters, l::Lattice, safe_mult::Int=1)
-  greens, greens_svs = calculate_greens_and_logsvs(p, l, 1, safe_mult)
+  greens, greens_logsvs = calculate_greens_and_logsvs(p, l, 1, safe_mult)
   return effective_greens2greens_no_chkr!(p, l, greens), sum(greens_logsvs)
 end
 

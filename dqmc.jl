@@ -16,6 +16,7 @@ include("local_updates.jl")
 include("global_updates.jl")
 include("observable.jl")
 include("boson_measurements.jl")
+include("fermion_measurements.jl")
 # include("tests/tests_gf_functions.jl")
 
 type Analysis
@@ -201,7 +202,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     cs = min(p.measurements, 100)
 
     configurations = Observable{Float64}("configurations", size(p.hsfield), cs)
-    # greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
+    greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
 
     boson_action = Observable{Float64}("boson_action", cs)
     mean_abs_op = Observable{Float64}("mean_abs_op", cs)
@@ -223,13 +224,18 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
           add_element(mean_op, curr_mean_op)
 
           add_element(configurations, p.hsfield)
-          # add_element(greens, s.greens) # !! s.greens is only the effective Green's function !!
+          # add_element(greens, s.greens)
+          # effective_greens2greens!(p, l, greens.timeseries[:,:,greens.count])
+          #  
+          # compare(greens.timeseries[:,:,greens.count], measure_greens_and_logdet(p, l, p.safe_mult)[1])
+
+          add_element(greens, measure_greens_and_logdet(p, l, p.safe_mult)[1])
 
           if mod(i, cs) == 0
               println("Dumping...")
             @time begin
               confs2hdf5(p.output_file, configurations)
-              # obs2hdf5(p.output_file, greens)
+              obs2hdf5(p.output_file, greens)
 
               obs2hdf5(p.output_file, boson_action)
               obs2hdf5(p.output_file, mean_abs_op)
@@ -239,7 +245,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
               clear(mean_op)
 
               clear(configurations)
-              # clear(greens)
+              clear(greens)
               println("Dumping block of $cs datapoints was a success")
             end
           end
@@ -269,22 +275,22 @@ function MC_update(s::Stack, p::Parameters, l::Lattice, i::Int, a::Analysis)
 
     propagate(s, p, l)
 
-    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
-      # attempt global update after every fifth down-up sweep
-      # println("Attempting global update...")
-      a.prop_global += 1
-      b = global_update(s, p, l)
-      a.acc_rate_global += b
-      a.acc_global += b
-      # println("Accepted: ", b)
-    end
+    # if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
+    #   # attempt global update after every fifth down-up sweep
+    #   # println("Attempting global update...")
+    #   a.prop_global += 1
+    #   b = global_update(s, p, l)
+    #   a.acc_rate_global += b
+    #   a.acc_global += b
+    #   # println("Accepted: ", b)
+    # end
 
-    # println("Before local")
-    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
-    a.acc_rate += local_updates(s, p, l)
-    # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
-    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
-    # println("")
+    # # println("Before local")
+    # # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
+    # a.acc_rate += local_updates(s, p, l)
+    # # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
+    # # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
+    # # println("")
 
     nothing
 end

@@ -80,6 +80,60 @@ function calculate_slice_matrix_chain_udv_chkr(p::Parameters, l::Lattice, start:
   return (U,D,Vt,svs)
 end
 
+# Calculate Ul, Dl, Tl =B(stop) ... B(start)
+function calculate_slice_matrix_chain_qr(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+  assert(0 < start <= p.slices)
+  assert(0 < stop <= p.slices)
+  assert(start <= stop)
+
+  U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  D = ones(Float64, p.flv*l.sites)
+  T = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  Tnew = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
+  svs = zeros(p.flv*l.sites,length(start:stop))
+  svc = 1
+  for k in start:stop
+    if mod(k,safe_mult) == 0
+      U = slice_matrix_no_chkr(p,l,k) * U * spdiagm(D)
+      U, D, Tnew = decompose_udt(U)
+      T =  Tnew * T
+      svs[:,svc] = log(D)
+      svc += 1
+    else
+      U = slice_matrix_no_chkr(p,l,k) * U
+    end
+  end
+  return (U,D,T,svs)
+end
+
+# Calculate (Ur, Dr, Tr)' = B(stop) ... B(start)  => Ur,Dr, Tr = B(start)' ... B(stop)'
+function calculate_slice_matrix_chain_qr_dagger(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+  assert(0 < start <= p.slices)
+  assert(0 < stop <= p.slices)
+  assert(start <= stop)
+
+  U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  D = ones(Float64, p.flv*l.sites)
+  T = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  Tnew = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
+  svs = zeros(p.flv*l.sites,length(start:stop))
+  svc = 1
+  for k in reverse(start:stop)
+    if mod(k,safe_mult) == 0
+      U = ctranspose(slice_matrix_no_chkr(p,l,k)) * U * spdiagm(D)
+      U, D, Tnew = decompose_udt(U)
+      T =  Tnew * T
+      svs[:,svc] = log(D)
+      svc += 1
+    else
+      U = ctranspose(slice_matrix_no_chkr(p,l,k)) * U
+    end
+  end
+  return (U,D,T,svs)
+end
+
 
 """
 Calculate Green's function (direct, i.e. without stack)
@@ -190,6 +244,33 @@ function calculate_greens_naive_udvinv(p::Parameters, l::Lattice, slice::Int)
   inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
   I = decompose_udv!(inner)
   return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
+end
+
+function calculate_greens_qr(p::Parameters, l::Lattice, slice::Int)
+  # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
+  Ur, Dr, Tr = calculate_slice_matrix_chain_qr_dagger(p,l,slice,p.slices)
+
+  # Calculate Ul,Dl,Tl=B(slice-1) ... B(1)
+  if slice-1 >= 1
+    Ul, Dl, Tl = calculate_slice_matrix_chain_qr(p,l,1,slice-1)
+  else
+    Ul = eye(Complex128, p.flv * l.sites)
+    Dl = ones(Float64, p.flv * l.sites)
+    Tl = eye(Complex128, p.flv * l.sites)
+  end
+
+  tmp = Tl * ctranspose(Tr)
+  U, D, T = decompose_udt(spdiagm(Dl) * tmp * spdiagm(Dr))
+  U = Ul * U
+  T = T * ctranspose(Ur)
+
+  u, d, t = decompose_udt(/(ctranspose(U), T) + spdiagm(D))
+  Q = U * u
+  R = t*T
+  R = spdiagm(d) * R
+
+  return \(R, ctranspose(Q))
+
 end
 
 

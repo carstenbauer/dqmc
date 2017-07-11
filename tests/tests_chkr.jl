@@ -130,13 +130,13 @@ end
 """
 Time slice wrapping
 """
-function wrap_greens_chkr(gf::Array{Complex{Float64},2},slice::Int,direction::Int,n::Int)
+function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int,n::Int)
   current_slice = slice
   g = gf
   assert(abs(direction) == 1)
 
   for k in 1:n
-    g = wrap_greens_chkr(g, current_slice, direction)
+    g = wrap_greens_chkr(p,l,g, current_slice, direction)
     current_slice += direction
   end
 
@@ -150,10 +150,10 @@ function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
   # wrapping down
   println("")
   println("Downwards\n\n")
-  gfwrapped = wrap_greens_chkr(gf, slice, -1)
-  gfwrapped2 = wrap_greens_chkr(gf, slice, -1, 2)
-  gfwrapped3 = wrap_greens_chkr(gf, slice, -1, 3)
-  gfwrapped10 = wrap_greens_chkr(gf, slice, -1, 10)
+  gfwrapped = wrap_greens_chkr(p,l,gf, slice, -1)
+  gfwrapped2 = wrap_greens_chkr(p,l,gf, slice, -1, 2)
+  gfwrapped3 = wrap_greens_chkr(p,l,gf, slice, -1, 3)
+  gfwrapped10 = wrap_greens_chkr(p,l,gf, slice, -1, 10)
   gfexact = calculate_greens_udv_chkr(p,l,slice - 1)
   gfexact2 = calculate_greens_udv_chkr(p,l,slice - 2)
   gfexact3 = calculate_greens_udv_chkr(p,l,slice - 3)
@@ -175,10 +175,10 @@ function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
   println("")
   println("")
   println("Upwards\n\n")
-  gfwrapped = wrap_greens_chkr(gf, slice, 1)
-  gfwrapped2 = wrap_greens_chkr(gf,slice, 1, 2)
-  gfwrapped3 = wrap_greens_chkr(gf,slice, 1, 3)
-  gfwrapped10 = wrap_greens_chkr(gf,slice, 1, 10)
+  gfwrapped = wrap_greens_chkr(p,l,gf, slice, 1)
+  gfwrapped2 = wrap_greens_chkr(p,l,gf,slice, 1, 2)
+  gfwrapped3 = wrap_greens_chkr(p,l,gf,slice, 1, 3)
+  gfwrapped10 = wrap_greens_chkr(p,l,gf,slice, 1, 10)
   gfexact = calculate_greens_udv_chkr(p,l,slice + 1)
   gfexact2 = calculate_greens_udv_chkr(p,l,slice + 2)
   gfexact3 = calculate_greens_udv_chkr(p,l,slice + 3)
