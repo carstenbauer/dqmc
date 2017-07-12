@@ -1,4 +1,4 @@
-type Stack
+mutable struct Stack
   u_stack::Array{Complex{Float64}, 3}
   d_stack::Array{Float64, 2}
   vt_stack::Array{Complex{Float64}, 3}

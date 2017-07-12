@@ -65,10 +65,10 @@ function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lat
   left, bottom, width, height = [0.3, 0.3, 0.2, 0.2]
   ax2 = fig[:add_axes]([left, bottom, width, height])
 
-  ax1[:plot](collect(1:50),abs(svs[:]-svs[1]),"C0")
+  ax1[:plot](collect(1:50),abs.(svs[:]-svs[1]),"C0")
   ax1[:set_ylabel]("deviation of smallest log singular value")
   ax1[:set_xlabel]("safe_mult")
-  ax2[:plot](collect(1:20),abs(svs[1:20]-svs[1]),"C1")
+  ax2[:plot](collect(1:20),abs.(svs[1:20]-svs[1]),"C1")
 
   show()
   nothing
@@ -253,8 +253,8 @@ function plot_gf_maxmeanabs_slice_dependency(p::Parameters, l::Lattice)
     # slice = 3
     gf = calculate_greens_udv(p,l,slice)
 
-    push!(gmaxabs, maximum(abs(gf)))
-    push!(gmeanabs, mean(abs(gf)))
+    push!(gmaxabs, maximum(abs.(gf)))
+    push!(gmeanabs, mean(abs.(gf)))
     println("maxabs: ", gmaxabs[end])
     println("meanabs: ", gmeanabs[end])
     println("")

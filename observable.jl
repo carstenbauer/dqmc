@@ -1,7 +1,7 @@
 using HDF5
 import Base.isempty
 
-type Observable{T<:Number}
+mutable struct Observable{T<:Number}
   name::String
   count::Int
   timeseries::Array{T}
@@ -10,12 +10,12 @@ type Observable{T<:Number}
   ellength::Int
   alloc::Int
 
-  Observable(name::String, elsize::Tuple{Vararg{Int}}, alloc::Int) = new(name,0,zeros(T, elsize..., alloc), elsize, ndims(Array{Int}(elsize...)), typeof(elsize)==Tuple{}?1:*(elsize...), alloc)
-  Observable(name::String, elsize::Int, alloc::Int) = new(name,0,zeros(T, elsize, alloc), (elsize,), 1, elsize, alloc)
-  Observable(name::String, elsize::Tuple{Vararg{Int}}) = Observable{T}(name, elsize, 100)
+  Observable{T}(name::String, elsize::Tuple{Vararg{Int}}, alloc::Int) where T = new(name,0,zeros(T, elsize..., alloc), elsize, ndims(Array{Int}(elsize...)), typeof(elsize)==Tuple{}?1:*(elsize...), alloc)
+  Observable{T}(name::String, elsize::Int, alloc::Int) where T = new(name,0,zeros(T, elsize, alloc), (elsize,), 1, elsize, alloc)
+  Observable{T}(name::String, elsize::Tuple{Vararg{Int}}) where T = Observable{T}(name, elsize, 100)
 
-  Observable(name::String, alloc::Int) = Observable{T}(name,(),alloc)
-  Observable(name::String) = Observable{T}(name,100)
+  Observable{T}(name::String, alloc::Int) where T = Observable{T}(name,(),alloc)
+  Observable{T}(name::String) where T = Observable{T}(name,100)
 end
 
 

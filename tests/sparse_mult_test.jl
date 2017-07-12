@@ -42,9 +42,9 @@ function test_sparse_dense_vs_dense_dense(msize::Int=100, nzelements::Int=8, sam
   @printf("normal mean: %.1es\n", t_normal)
   @printf("sparse mean: %.1es\n", t_sparse)
   if t_sparse < t_normal
-    @printf("sparse speedup factor: %.1f\n", abs(t_normal/t_sparse))
+    @printf("sparse speedup factor: %.1f\n", abs.(t_normal/t_sparse))
   else
-    @printf("sparse slowdown(!) factor: %.1f\n", abs(t_sparse/t_normal))
+    @printf("sparse slowdown(!) factor: %.1f\n", abs.(t_sparse/t_normal))
   end
   # println("")
   # println("sparse alt mean: ", mean(times_sparse_alt))

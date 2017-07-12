@@ -1,6 +1,7 @@
+using FFTW # v.0.6 naming bug
 using Distributions
 
-type Parameters
+mutable struct Parameters
   lattice_file::String
   beta::Float64
   delta_tau::Float64

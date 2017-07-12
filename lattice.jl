@@ -2,7 +2,7 @@ using LightXML
 using Helpers
 
 # define lattice type
-type Lattice
+mutable struct Lattice
   dim::Int
   sites::Int
   L::Int

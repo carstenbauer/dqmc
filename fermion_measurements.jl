@@ -56,7 +56,7 @@ function calculate_slice_matrix_chain(p::Parameters, l::Lattice, start::Int, sto
       U = slice_matrix_no_chkr(p,l,k) * U * spdiagm(D)
       U, D, Vtnew = decompose_udv!(U)
       Vt =  Vtnew * Vt
-      svs[:,svc] = log(D)
+      svs[:,svc] = log.(D)
       svc += 1
     else
       U = slice_matrix_no_chkr(p,l,k) * U
@@ -82,7 +82,7 @@ function calculate_slice_matrix_chain_chkr(p::Parameters, l::Lattice, start::Int
       U = slice_matrix(p,l,k) * U * spdiagm(D)
       U, D, Vtnew = decompose_udv(U)
       Vt =  Vtnew * Vt
-      svs[:,svc] = log(D)
+      svs[:,svc] = log.(D)
       svc += 1
     else
       U = slice_matrix(p,l,k) * U
@@ -176,5 +176,5 @@ function calculate_greens_and_logsvs_chkr(p::Parameters, l::Lattice, slice::Int,
   U = ctranspose(I[3] * Vtr)
   D = spdiagm(1./I[2])
   Vt = ctranspose(Ul * I[1])
-  return (U*D*Vt, diag(log(D)))
+  return (U*D*Vt, diag(log.(D)))
 end

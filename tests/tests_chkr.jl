@@ -55,9 +55,9 @@ function test_slice_matrix_chkr_speed(p::Parameters, l::Lattice, samples::Int=10
   @printf("avg time with checkerboard: %.1e\n", t_chkr/samples)
   @printf("difference: %.1e\n", (t_chkr-t)/samples)
   if t_chkr < t
-    @printf("speedup factor: %.1f\n",  abs(t/t_chkr))
+    @printf("speedup factor: %.1f\n",  abs.(t/t_chkr))
   else
-    @printf("slowdown(!) factor: %.1f\n",  abs(t_chkr/t))
+    @printf("slowdown(!) factor: %.1f\n",  abs.(t_chkr/t))
   end
 
 end
@@ -119,9 +119,9 @@ function test_greens_chkr_speed(p::Parameters, l::Lattice, samples::Int=10)
   @printf("avg time with checkerboard: %.1e\n", t_chkr/samples)
   @printf("difference: %.1e\n", (t_chkr-t)/samples)
   if t_chkr < t
-    @printf("speedup factor: %.1f\n",  abs(t/t_chkr))
+    @printf("speedup factor: %.1f\n",  abs.(t/t_chkr))
   else
-    @printf("slowdown(!) factor: %.1f\n",  abs(t_chkr/t))
+    @printf("slowdown(!) factor: %.1f\n",  abs.(t_chkr/t))
   end
 
 end
@@ -133,7 +133,7 @@ Time slice wrapping
 function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int,n::Int)
   current_slice = slice
   g = gf
-  assert(abs(direction) == 1)
+  assert(abs.(direction) == 1)
 
   for k in 1:n
     g = wrap_greens_chkr(p,l,g, current_slice, direction)

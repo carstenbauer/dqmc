@@ -1,4 +1,4 @@
-type Stack
+mutable struct Stack
   u_stack::Array{Complex{Float64}, 3}
   d_stack::Array{Float64, 2}
   t_stack::Array{Complex{Float64}, 3}
@@ -185,7 +185,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
         @time calculate_greens(s, p, l);
         @time calculate_greens_svd(s, p, l);
-        diff = maximum(abs(s.greens_temp - s.greens))
+        diff = maximum(abs.(s.greens_temp - s.greens))
         # if diff > 1e-4
           # @printf("%d \t+1 Propagation stability\t %.4f\n", s.current_slice, diff)
         # end
@@ -226,7 +226,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         @time calculate_greens(s, p, l);
         @time calculate_greens_svd(s, p, l);
         # println(real(diag(s.greens)))
-        diff = maximum(abs(s.greens_temp - s.greens))
+        diff = maximum(abs.(s.greens_temp - s.greens))
         # if diff > 1e-4
           # @printf("%d \t-1 Propagation stability\t %.4f\n", s.current_slice, diff)
         # end

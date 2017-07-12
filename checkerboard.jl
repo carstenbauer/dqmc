@@ -85,8 +85,8 @@ function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::T
 end
 
 # helper to cutoff numerical zeros (very small elements)
-rem_eff_zeros!(X::Array{Float64}) = map!(e->abs(e)<1e-15?zero(e):e,X)
-rem_eff_zeros!(X::Array{Complex128}) = map!(e->abs(e)<1e-15?zero(e):e,X)
+rem_eff_zeros!(X::Array{Float64}) = map!(e->abs.(e)<1e-15?zero(e):e,X)
+rem_eff_zeros!(X::Array{Complex128}) = map!(e->abs.(e)<1e-15?zero(e):e,X)
 
 function init_checkerboard_matrices(p::Parameters, l::Lattice)
 
@@ -134,7 +134,7 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
   l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
   l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
 
-  hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt(l.chkr_mu)
+  hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
   r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
   println("Checkerboard - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))

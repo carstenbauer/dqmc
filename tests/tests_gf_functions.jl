@@ -18,7 +18,7 @@ function calculate_slice_matrix_chain_naive(p::Parameters, l::Lattice, start::In
   for k in start:stop
     R = slice_matrix_no_chkr(p,l,k) * R
     U, D, Vt = decompose_udv(R)
-    svs[:,svc] = log(D)
+    svs[:,svc] = log.(D)
     svc += 1
   end
   return (R, svs)
@@ -28,9 +28,9 @@ end
 # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
 # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
 function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
-  assert(0 < start <= p.slices)
-  assert(0 < stop <= p.slices)
-  assert(start <= stop)
+  # assert(0 < start <= p.slices)
+  # assert(0 < stop <= p.slices)
+  # assert(start <= stop)
 
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
@@ -44,7 +44,7 @@ function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int,
       U = slice_matrix_no_chkr(p,l,k) * U * spdiagm(D)
       U, D, Vtnew = decompose_udv!(U)
       Vt =  Vtnew * Vt
-      svs[:,svc] = log(D)
+      svs[:,svc] = log.(D)
       svc += 1
     else
       U = slice_matrix_no_chkr(p,l,k) * U
@@ -71,7 +71,7 @@ function calculate_slice_matrix_chain_udv_chkr(p::Parameters, l::Lattice, start:
       U = slice_matrix(p,l,k) * U * spdiagm(D)
       U, D, Vtnew = decompose_udv(U)
       Vt =  Vtnew * Vt
-      svs[:,svc] = log(D)
+      svs[:,svc] = log.(D)
       svc += 1
     else
       U = slice_matrix(p,l,k) * U
@@ -98,7 +98,7 @@ function calculate_slice_matrix_chain_qr(p::Parameters, l::Lattice, start::Int, 
       U = slice_matrix_no_chkr(p,l,k) * U * spdiagm(D)
       U, D, Tnew = decompose_udt(U)
       T =  Tnew * T
-      svs[:,svc] = log(D)
+      svs[:,svc] = log.(D)
       svc += 1
     else
       U = slice_matrix_no_chkr(p,l,k) * U
@@ -125,7 +125,7 @@ function calculate_slice_matrix_chain_qr_dagger(p::Parameters, l::Lattice, start
       U = ctranspose(slice_matrix_no_chkr(p,l,k)) * U * spdiagm(D)
       U, D, Tnew = decompose_udt(U)
       T =  Tnew * T
-      svs[:,svc] = log(D)
+      svs[:,svc] = log.(D)
       svc += 1
     else
       U = ctranspose(slice_matrix_no_chkr(p,l,k)) * U
@@ -262,14 +262,13 @@ function calculate_greens_qr(p::Parameters, l::Lattice, slice::Int)
   tmp = Tl * ctranspose(Tr)
   U, D, T = decompose_udt(spdiagm(Dl) * tmp * spdiagm(Dr))
   U = Ul * U
-  T = T * ctranspose(Ur)
+  T *= ctranspose(Ur)
 
   u, d, t = decompose_udt(/(ctranspose(U), T) + spdiagm(D))
-  Q = U * u
-  R = t*T
-  R = spdiagm(d) * R
 
-  return \(R, ctranspose(Q))
+  ldet = 1/(prod(d))
+
+  return \(t*T,spdiagm(1./d)*ctranspose(U * u))
 
 end
 

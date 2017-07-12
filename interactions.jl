@@ -5,7 +5,7 @@ function interaction_matrix_exp(p::Parameters, l::Lattice, slice::Int, power::Fl
   C = blockview(l, eV, 1, 1)
   S = blockview(l, eV, 1, 2)
   R = blockview(l, eV, 1, 4)
-  for i in 1:l.sites
+  @simd for i in 1:l.sites
     sh = sinh(p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))/norm(p.hsfield[:,i,slice])
     C[i,i] = cosh(p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))
     S[i,i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * power * sh
@@ -32,7 +32,7 @@ end
 
 blockview{T<:Number}(l::Lattice, A::Matrix{T}, row::Int, col::Int) = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
 function blockreplace!{T<:Number}(l::Lattice, A::Matrix{T}, row::Int, col::Int, B::Union{Matrix{T},SubArray{T,2}})
-  A[(row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites] = B
+  @inbounds A[(row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites] = B
   nothing
 end
 

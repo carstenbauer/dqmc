@@ -2,6 +2,7 @@
 # start_time = now()
 # println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 
+using BenchmarkTools
 using Helpers
 using Git
 include("linalg.jl")
@@ -19,7 +20,7 @@ include("boson_measurements.jl")
 include("fermion_measurements.jl")
 # include("tests/tests_gf_functions.jl")
 
-type Analysis
+mutable struct Analysis
     acc_rate::Float64
     acc_rate_global::Float64
     prop_global::Int

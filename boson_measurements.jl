@@ -1,5 +1,5 @@
 function measure_op(conf::Array{Float64, 3})
-  mean_abs_op = mean(abs(conf))
+  mean_abs_op = mean(abs.(conf))
   mean_op = vec(mean(conf,[2,3]))
   return (mean_abs_op, mean_op)
 end

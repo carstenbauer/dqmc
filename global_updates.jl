@@ -44,16 +44,16 @@ function global_update(s::Stack, p::Parameters, l::Lattice)
 
   # calculate detratio = fermion accept. prob.
   log_prob = 0.
-  for j in 1:p.flv*l.sites
-      log_prob += log(s.greens_inv_svs[j]) - log(s.gb_greens_inv_svs[j])
+  @simd for j in 1:p.flv*l.sites
+      @inbounds log_prob += log(s.greens_inv_svs[j]) - log(s.gb_greens_inv_svs[j])
   end
   p_fermion = exp(log_prob)
 
   p_acc = p_boson * real(p_fermion)
 
-  # @printf("p_boson %.2e\n",abs(p_boson))
-  # @printf("p_fermion %.2e\n",abs(p_fermion))
-  # @printf("p_acc %.2e\n",abs(p_acc))
+  # @printf("p_boson %.2e\n",abs.(p_boson))
+  # @printf("p_fermion %.2e\n",abs.(p_fermion))
+  # @printf("p_acc %.2e\n",abs.(p_acc))
   # println("")
 
   if p_acc > 1.0 || rand() < p_acc
