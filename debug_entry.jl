@@ -76,6 +76,7 @@ p.r = parse(Float64, params["R"])
 p.c = parse(Float64, params["C"])
 p.u = parse(Float64, params["U"])
 p.global_updates = haskey(params,"GLOBAL_UPDATES")?parse(Bool, lowercase(params["GLOBAL_UPDATES"])):true;
+p.chkr = haskey(params,"CHECKERBOARD")?parse(Bool, lowercase(params["CHECKERBOARD"])):true;
 p.beta = p.slices * p.delta_tau
 p.flv = 4
 if haskey(params,"BOX_HALF_LENGTH")

@@ -78,6 +78,7 @@ function main()
     p.c = parse(Float64, params["C"])
     p.u = parse(Float64, params["U"])
     p.global_updates = haskey(params,"GLOBAL_UPDATES")?parse(Bool, lowercase(params["GLOBAL_UPDATES"])):true;
+    p.chkr = haskey(params,"CHECKERBOARD")?parse(Bool, lowercase(params["CHECKERBOARD"])):true;
     p.beta = p.slices * p.delta_tau
     p.flv = 4
     if haskey(params,"BOX_HALF_LENGTH")
@@ -107,7 +108,9 @@ function main()
     init_time_neighbors_table(p,l)
     println("Initializing hopping exponentials")
     init_hopping_matrix_exp(p,l)
-    init_checkerboard_matrices(p,l)
+    if p.chkr
+      init_checkerboard_matrices(p,l)
+    end
 
     s = Stack()
     a = Analysis()
@@ -224,12 +227,12 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
           add_element(mean_op, curr_mean_op)
 
           add_element(configurations, p.hsfield)
-          # add_element(greens, s.greens)
-          # effective_greens2greens!(p, l, greens.timeseries[:,:,greens.count])
-          #  
+          add_element(greens, s.greens)
+          effective_greens2greens!(p, l, greens.timeseries[:,:,greens.count])
+
           # compare(greens.timeseries[:,:,greens.count], measure_greens_and_logdet(p, l, p.safe_mult)[1])
 
-          add_element(greens, measure_greens_and_logdet(p, l, p.safe_mult)[1])
+          # add_element(greens, measure_greens_and_logdet(p, l, p.safe_mult)[1])
 
           if mod(i, cs) == 0
               println("Dumping...")
@@ -275,22 +278,22 @@ function MC_update(s::Stack, p::Parameters, l::Lattice, i::Int, a::Analysis)
 
     propagate(s, p, l)
 
-    # if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
-    #   # attempt global update after every fifth down-up sweep
-    #   # println("Attempting global update...")
-    #   a.prop_global += 1
-    #   b = global_update(s, p, l)
-    #   a.acc_rate_global += b
-    #   a.acc_global += b
-    #   # println("Accepted: ", b)
-    # end
+    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
+      # attempt global update after every fifth down-up sweep
+      # println("Attempting global update...")
+      a.prop_global += 1
+      b = global_update(s, p, l)
+      a.acc_rate_global += b
+      a.acc_global += b
+      # println("Accepted: ", b)
+    end
 
-    # # println("Before local")
-    # # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
-    # a.acc_rate += local_updates(s, p, l)
-    # # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
-    # # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
-    # # println("")
+    # println("Before local")
+    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
+    a.acc_rate += local_updates(s, p, l)
+    # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
+    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
+    # println("")
 
     nothing
 end

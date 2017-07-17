@@ -1,26 +1,22 @@
 mutable struct Stack
   u_stack::Array{Complex{Float64}, 3}
   d_stack::Array{Float64, 2}
-  t_stack::Array{Complex{Float64}, 3}
+  vt_stack::Array{Complex{Float64}, 3}
 
   Ul::Array{Complex{Float64}, 2}
   Ur::Array{Complex{Float64}, 2}
   Dl::Array{Float64, 1}
   Dr::Array{Float64, 1}
-  Tl::Array{Complex{Float64}, 2}
-  Tr::Array{Complex{Float64}, 2}
+  Vtl::Array{Complex{Float64}, 2}
+  Vtr::Array{Complex{Float64}, 2}
 
   greens::Array{Complex{Float64}, 2}
+  greens_inv_svs::Vector{Float64} # only valid after fresh calculation of green's function (not after wrapping/update)
   greens_temp::Array{Complex{Float64}, 2}
-  log_det::Float64 # contains logdet of greens_{p.slices+1} === greens_1
-                            # after we calculated a fresh greens in propagate()
 
   U::Array{Complex{Float64}, 2}
   D::Array{Float64, 1}
-  T::Array{Complex{Float64}, 2}
-  u::Array{Complex{Float64}, 2}
-  d::Array{Float64, 1}
-  t::Array{Complex{Float64}, 2}
+  Vt::Array{Complex{Float64}, 2}
 
   delta_i::Array{Complex{Float64}, 2}
   M::Array{Complex{Float64}, 2}
@@ -36,10 +32,10 @@ mutable struct Stack
   # -------- Global update backup
   gb_u_stack::Array{Complex{Float64}, 3}
   gb_d_stack::Array{Float64, 2}
-  gb_t_stack::Array{Complex{Float64}, 3}
+  gb_vt_stack::Array{Complex{Float64}, 3}
 
   gb_greens::Array{Complex{Float64}, 2}
-  gb_log_det::Float64
+  gb_greens_inv_svs::Vector{Float64}
 
   gb_hsfield::Array{Float64, 3}
   # --------
@@ -51,26 +47,31 @@ end
 function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.n_elements = convert(Int, p.slices / p.safe_mult) + 1
 
+  s.ranges = UnitRange[]
+
+  for i in 1:s.n_elements - 1
+    push!(s.ranges, 1 + (i - 1) * p.safe_mult:i * p.safe_mult)
+  end
+
   s.u_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
   s.d_stack = zeros(Float64, p.flv*l.sites, s.n_elements)
-  s.t_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
+  s.vt_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
 
   s.greens = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.greens_inv_svs = zeros(p.flv*l.sites)
   s.greens_temp = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
 
   s.Ul = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.Ur = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.Tl = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.Tr = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.Vtl = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.Vtr = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.Dl = ones(Float64, p.flv*l.sites)
   s.Dr = ones(Float64, p.flv*l.sites)
 
   s.U = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.D = zeros(Float64, p.flv*l.sites)
-  s.T = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.u = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.d = zeros(Float64, p.flv*l.sites)
-  s.t = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.Vt = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
 
   s.delta_i = zeros(Complex{Float64}, p.flv, p.flv)
   s.M = zeros(Complex{Float64}, p.flv, p.flv)
@@ -79,26 +80,21 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.eye_full = eye(p.flv*l.sites,p.flv*l.sites)
 
   # Global update backup
-  s.gb_u_stack = zero(s.u_stack)
-  s.gb_d_stack = zero(s.d_stack)
-  s.gb_t_stack = zero(s.t_stack)
-  s.gb_greens = zero(s.greens)
-  s.gb_log_det = 0. 
-  s.gb_hsfield = zero(p.hsfield)
+  s.gb_u_stack = similar(s.u_stack)
+  s.gb_d_stack = similar(s.d_stack)
+  s.gb_vt_stack = similar(s.vt_stack)
+  s.gb_greens = similar(s.greens)
+  s.gb_greens_inv_svs = similar(s.greens_inv_svs)
+  s.gb_hsfield = similar(p.hsfield)
 
-  s.ranges = UnitRange[]
-
-  for i in 1:s.n_elements - 1
-    push!(s.ranges, 1 + (i - 1) * p.safe_mult:i * p.safe_mult)
-  end
-
+  nothing
 end
 
 
 function build_stack(s::Stack, p::Parameters, l::Lattice)
   s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.d_stack[:, 1] = ones(p.flv*l.sites)
-  s.t_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.vt_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
 
   @inbounds for i in 1:length(s.ranges)
     add_slice_sequence_left(s, p, l, i)
@@ -118,16 +114,13 @@ function add_slice_sequence_left(s::Stack, p::Parameters, l::Lattice, idx::Int)
   curr_U = copy(s.u_stack[:, :, idx])
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
-    if p.chkr
-      multiply_slice_matrix_left!(p, l, slice, curr_U)
-    else
-      curr_U = slice_matrix_no_chkr(p, l, slice) * curr_U
-    end
+    # curr_U = slice_matrix_no_chkr(p, l, slice) * curr_U
+    multiply_slice_matrix_left!(p, l, slice, curr_U)
   end
 
   curr_U =  curr_U * spdiagm(s.d_stack[:, idx])
-  s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], T = decompose_udt(curr_U)
-  s.t_stack[:, :, idx + 1] =  T * s.t_stack[:, :, idx]
+  s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], s.Vt = decompose_udv!(curr_U)
+  s.vt_stack[:, :, idx + 1] =  s.Vt * s.vt_stack[:, :, idx]
 end
 
 
@@ -135,20 +128,16 @@ end
 Updates stack[idx] based on stack[idx+1]
 """
 function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
-  curr_U = copy(s.u_stack[:, :, idx + 1])
+  curr_Vt = copy(s.vt_stack[:, :, idx + 1])
 
   for slice in reverse(s.ranges[idx])
-    if p.chkr
-      curr_U = ctranspose(slice_matrix(p, l, slice)) * curr_U
-    else
-      curr_U = ctranspose(slice_matrix_no_chkr(p, l, slice)) * curr_U
-    end
+    # curr_Vt = curr_Vt * slice_matrix_no_chkr(p, l, slice)
+    multiply_slice_matrix_right!(p, l, slice, curr_Vt)
   end
-  curr_U =  curr_U * spdiagm(s.d_stack[:, idx + 1])
-  s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(curr_U)
-  s.t_stack[:, :, idx] = T * s.t_stack[:, :, idx + 1]
+  curr_Vt =  spdiagm(s.d_stack[:, idx + 1]) * curr_Vt
+  s.U, s.d_stack[:, idx], s.vt_stack[:, :, idx] = decompose_udv!(curr_Vt)
+  s.u_stack[:, :, idx] = s.u_stack[:, :, idx + 1] * s.U
 end
-
 
 # Beff(slice) = exp(−1/2∆τT)exp(−1/2∆τT)exp(−∆τV(slice))
 function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
@@ -195,30 +184,14 @@ end
 
 
 """
-Calculates G(slice) using s.Ur,s.Dr,s.Tr=B(slice)' ... B(M)' and s.Ul,s.Dl,s.Tl=B(slice-1) ... B(1)
+Calculates G(slice) using s.Ur,s.Dr,s.Vtr=B(M) ... B(slice) and s.Ul,s.Dl,s.Vtl=B(slice-1) ... B(1)
 """
 function calculate_greens(s::Stack, p::Parameters, l::Lattice)
-
-  tmp = s.Tl * ctranspose(s.Tr)
-  s.U, s.D, s.T = decompose_udt(spdiagm(s.Dl) * tmp * spdiagm(s.Dr))
-  s.U = s.Ul * s.U
-  s.T *= ctranspose(s.Ur)
-
-  s.u, s.d, s.t = decompose_udt(/(ctranspose(s.U), s.T) + spdiagm(s.D))
-
-  s.T = inv(s.t * s.T)
-  s.U *= s.u
-  s.U = ctranspose(s.U)
-  s.d = 1./s.d
-
-  s.greens = s.T * spdiagm(s.d) * s.U
-end
-
-"""
-Only reasonable immediately after calculate_greens()!
-"""
-function calculate_logdet(s::Stack, p::Parameters, l::Lattice)
-  s.log_det = real(logdet(s.U) + sum(log.(s.d)) + logdet(s.T))
+  tmp = s.Vtl * s.Ur
+  inner = ctranspose(s.Vtr * s.Ul) + spdiagm(s.Dl) * tmp * spdiagm(s.Dr)
+  s.U, s.D, s.Vt = decompose_udv!(inner)
+  s.greens_inv_svs = s.D
+  s.greens = ctranspose(s.Vt * s.Vtr) * spdiagm(1./s.D) * ctranspose(s.Ul * s.U)
 end
 
 
@@ -230,42 +203,32 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
     if mod(s.current_slice, p.safe_mult) == 0
       s.current_slice +=1 # slice we are going to
       if s.current_slice == 1
-        s.Ur[:, :], s.Dr[:], s.Tr[:, :] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
+        s.Ur[:, :], s.Dr[:], s.Vtr[:, :] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.vt_stack[:, :, 1]
         s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
         s.d_stack[:, 1] = ones(p.flv*l.sites)
-        s.t_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-        s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
+        s.vt_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+        s.Ul[:,:], s.Dl[:], s.Vtl[:,:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.vt_stack[:, :, 1]
 
         calculate_greens(s, p, l) # greens_1 ( === greens_{m+1} )
-        calculate_logdet(s, p, l)
 
       elseif 1 < s.current_slice <= p.slices
         idx = Int((s.current_slice - 1)/p.safe_mult)
 
-        s.Ur[:, :], s.Dr[:], s.Tr[:, :] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.t_stack[:, :, idx+1]
+        s.Ur[:, :], s.Dr[:], s.Vtr[:, :] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.vt_stack[:, :, idx+1]
         add_slice_sequence_left(s, p, l, idx)
-        s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.t_stack[:, :, idx+1]
+        s.Ul[:,:], s.Dl[:], s.Vtl[:,:] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.vt_stack[:, :, idx+1]
 
         s.greens_temp = copy(s.greens)
-        if p.chkr
-          wrap_greens_chkr!(p, l, s.greens_temp, s.current_slice - 1, 1)
-        else
-          wrap_greens_no_chkr!(p, l, s.greens_temp, s.current_slice - 1, 1)
-        end
+        wrap_greens_chkr!(p, l, s.greens_temp, s.current_slice - 1, 1)
 
         calculate_greens(s, p, l) # greens_{slice we are propagating to}
 
-        diff = maximum(absdiff(s.greens_temp, s.greens))
-        if diff > 1e-7
-          @printf("->%d \t+1 Propagation instability\t %.4f\n", s.current_slice, diff)
+        errs = (effreldiff(s.greens_temp, s.greens) .> 1e-2) & (absdiff(s.greens_temp, s.greens) .> 1e-04)
+        if sum(errs)>0
+          maxrelerr = maximum(effreldiff(s.greens_temp, s.greens)[errs])*100
+          maxabsolute = maximum(absdiff(s.greens_temp, s.greens)[errs])
+          @printf("->%d \t+1 Propagation stability\t max absolute: %.4f \t max relative: %.1f%%\n", s.current_slice, maxabsolute, maxrelerr)
         end
-
-        # errs = (effreldiff(s.greens_temp, s.greens) .> 1e-2) .& (absdiff(s.greens_temp, s.greens) .> 1e-04)
-        # if sum(errs)>0
-        #   maxrelerr = maximum(effreldiff(s.greens_temp, s.greens)[errs])*100
-        #   maxabsolute = maximum(absdiff(s.greens_temp, s.greens)[errs])
-        #   @printf("->%d \t+1 Propagation stability\t max absolute: %.4f \t max relative: %.1f%%\n", s.current_slice, maxabsolute, maxrelerr)
-        # end
 
       else # we are going to p.slices+1
         idx = s.n_elements - 1
@@ -277,11 +240,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
     else
       # Wrapping
-      if p.chkr
-        wrap_greens_chkr!(p, l, s.greens, s.current_slice, 1)
-      else
-        wrap_greens_no_chkr!(p, l, s.greens, s.current_slice, 1)
-      end
+      wrap_greens_chkr!(p, l, s.greens, s.current_slice, 1)
       s.current_slice += 1
     end
 
@@ -289,49 +248,40 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
     if mod(s.current_slice-1, p.safe_mult) == 0
       s.current_slice -= 1 # slice we are going to
       if s.current_slice == p.slices
-        s.Ul[:, :], s.Dl[:], s.Tl[:, :] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
+        s.Ul[:, :], s.Dl[:], s.Vtl[:, :] = s.u_stack[:, :, end], s.d_stack[:, end], s.vt_stack[:, :, end]
         s.u_stack[:, :, end] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
         s.d_stack[:, end] = ones(p.flv*l.sites)
-        s.t_stack[:, :, end] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-        s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
+        s.vt_stack[:, :, end] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+        s.Ur[:,:], s.Dr[:], s.Vtr[:,:] = s.u_stack[:, :, end], s.d_stack[:, end], s.vt_stack[:, :, end]
 
         calculate_greens(s, p, l) # greens_{p.slices+1} === greens_1
-        calculate_logdet(s, p, l) # calculate logdet for potential global update
 
         # wrap to greens_{p.slices}
-        if p.chkr
-          wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)
-        else
-          wrap_greens_no_chkr!(p, l, s.greens, s.current_slice + 1, -1)
-        end
+        wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)
 
       elseif 0 < s.current_slice < p.slices
         idx = Int(s.current_slice / p.safe_mult) + 1
-        s.Ul[:, :], s.Dl[:], s.Tl[:, :] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.t_stack[:, :, idx]
+        s.Ul[:, :], s.Dl[:], s.Vtl[:, :] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.vt_stack[:, :, idx]
         add_slice_sequence_right(s, p, l, idx)
-        s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.t_stack[:, :, idx]
+        s.Ur[:,:], s.Dr[:], s.Vtr[:,:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.vt_stack[:, :, idx]
 
         s.greens_temp = copy(s.greens)
 
         calculate_greens(s, p , l)
 
-        diff = maximum(absdiff(s.greens_temp, s.greens))
-        if diff > 1e-7
-          @printf("->%d \t-1 Propagation instability\t %.4f\n", s.current_slice, diff)
-        end
-
-        # errs = (effreldiff(s.greens_temp, s.greens) .> 1e-2) .& (absdiff(s.greens_temp, s.greens) .> 1e-04)
-        # if sum(errs)>0
-        #   maxrelerr = maximum(effreldiff(s.greens_temp, s.greens)[errs])*100
-        #   maxabsolute = maximum(absdiff(s.greens_temp, s.greens)[errs])
-        #   @printf("->%d \t-1 Propagation stability\t max absolute: %.4f \t max relative: %.1f%%\n", s.current_slice, maxabsolute, maxrelerr)
+        # diff = maximum(absdiff(s.greens_temp, s.greens))
+        # if diff > 1e-4
+        #   @printf("->%d \t-1 Propagation stability\t %.4f\n", s.current_slice, diff)
         # end
 
-        if p.chkr
-          wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)
-        else
-          wrap_greens_no_chkr!(p, l, s.greens, s.current_slice + 1, -1)
+        errs = (effreldiff(s.greens_temp, s.greens) .> 1e-2) & (absdiff(s.greens_temp, s.greens) .> 1e-04)
+        if sum(errs)>0
+          maxrelerr = maximum(effreldiff(s.greens_temp, s.greens)[errs])*100
+          maxabsolute = maximum(absdiff(s.greens_temp, s.greens)[errs])
+          @printf("->%d \t-1 Propagation stability\t max absolute: %.4f \t max relative: %.1f%%\n", s.current_slice, maxabsolute, maxrelerr)
         end
+
+        wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)
 
       else # we are going to 0
         idx = 1
@@ -343,11 +293,7 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
     else
       # Wrapping
-      if p.chkr
-        wrap_greens_chkr!(p, l, s.greens, s.current_slice, -1)
-      else
-        wrap_greens_no_chkr!(p, l, s.greens, s.current_slice, -1)
-      end
+      wrap_greens_chkr!(p, l, s.greens, s.current_slice, -1)
       s.current_slice -= 1
     end
   end

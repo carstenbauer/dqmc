@@ -39,7 +39,7 @@ function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice)
     println("")
     println("current slice: ", s.current_slice, "(", n,")")
 
-    g = calculate_greens_udv(p,l,s.current_slice)
+    g = calculate_greens_and_logdet_chkr(p,l,s.current_slice)[1]
     mean_absdiff[n] = mean(absdiff(g,s.greens))
     println("mean absdiff: ", mean_absdiff[n])
     mean_reldiff[n] = mean(effreldiff(g,s.greens))
@@ -110,13 +110,18 @@ function calculate_greens_and_det_and_svs_udv(p::Parameters, l::Lattice, slice::
 end
 
 
-function test_greens_det_naive(s::Stack, p::Parameters, l::Lattice)
-  greens, det_udv, svs_udv = calculate_greens_and_det_and_svs_udv(p,l,s.current_slice)
-  det_naive = det(greens)
-  F = decompose_udv(greens)
-  svs_naive = F[2][end:-1:1]
-  println("svs_udv, svs_naive, abs diff, rel diff")
-  display(cat(2,svs_udv,svs_naive,absdiff(svs_naive, svs_udv), reldiff(svs_naive, svs_udv)))
+function test_greens_det(s::Stack, p::Parameters, l::Lattice)
+  greens, ldet = calculate_greens_and_logdet_chkr(p,l,s.current_slice)
+  # greens, ldet = measure_greens_and_logdet(p,l)
+  greens_udv, ldet_udv = calculate_greens_and_logdet_chkr_udv(p,l,s.current_slice)
+  ldet_naive = logdet(greens)
+  println("logdet (QR): ", ldet)
+  println("logdet SVD: ", ldet_udv)
+  println("logdet naive: ", ldet_naive)
+  println("")
+  println("det (QR): ", exp(ldet))
+  println("det SVD: ", exp(ldet_udv))
+  println("det naive: ", exp(ldet_naive))
 end
 
 

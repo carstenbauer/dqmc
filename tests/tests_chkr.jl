@@ -78,8 +78,8 @@ function plot_greens_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
     init_hopping_matrix_exp(p,l)
     init_checkerboard_matrices(p,l)
 
-    greens = calculate_greens_udv(p,l,1)
-    greens_chkr = calculate_greens_udv_chkr(p,l,1)
+    greens = calculate_greens_and_logdet(p,l,1)[1]
+    greens_chkr = calculate_greens_and_logdet_chkr(p,l,1)[1]
 
     maxabsdiffs[k] = maximum(absdiff(greens,greens_chkr))
     maxreldiffs[k] = maximum(reldiff(greens,greens_chkr))

@@ -18,7 +18,7 @@ function plot_svs_of_slice_matrix_chain(p::Parameters, l::Lattice)
   b[:set_ylabel]("log singular values of \$B(\\beta,0)\$")
   b[:set_title]("Naive")
 
-  T = calculate_slice_matrix_chain_udv(p,l,1,p.slices,1)
+  T = calculate_slice_matrix_chain_qr(p,l,1,p.slices,1)
   svs = T[4]
   a = fig[:add_subplot](132, sharey=b, sharex=b)
   a[:plot](svs[:,:]')
@@ -26,7 +26,7 @@ function plot_svs_of_slice_matrix_chain(p::Parameters, l::Lattice)
   a[:set_xlabel]("Inverse temperature \$\\beta\$")
   a[:set_title]("Stabilize, no chkr")
 
-  T = calculate_slice_matrix_chain_udv_chkr(p,l,1,p.slices,1)
+  T = calculate_slice_matrix_chain_chkr_qr(p,l,1,p.slices,1)
   svs = T[4]
   c = fig[:add_subplot](133, sharey=b, sharex=b)
   c[:plot](svs[:,:]')
@@ -154,13 +154,13 @@ function test_gf_wrapping(p::Parameters, l::Lattice)
   slice = rand(3:p.slices-2)
   println("Slice: ", slice)
   # slice = 3
-  gf = calculate_greens_udv(p,l,slice)
+  gf = calculate_greens_qr(p,l,slice)
 
   # wrapping down
   gfwrapped = wrap_greens(p,l,gf,slice,-1)
   gfwrapped2 = wrap_greens(p,l,gfwrapped,slice-1,-1)
-  gfexact = calculate_greens_udv(p,l,slice - 1)
-  gfexact2 = calculate_greens_udv(p,l,slice - 2)
+  gfexact = calculate_greens_qr(p,l,slice - 1)
+  gfexact2 = calculate_greens_qr(p,l,slice - 2)
 
   println("Comparing wrapped down vs num exact")
   compare_greens(gfwrapped,gfexact)
@@ -171,8 +171,8 @@ function test_gf_wrapping(p::Parameters, l::Lattice)
   # wrapping up
   gfwrapped = wrap_greens(p,l,gf,slice,1)
   gfwrapped2 = wrap_greens(p,l,gfwrapped,slice+1,1)
-  gfexact = calculate_greens_udv(p,l,slice + 1)
-  gfexact2 = calculate_greens_udv(p,l,slice + 2)
+  gfexact = calculate_greens_qr(p,l,slice + 1)
+  gfexact2 = calculate_greens_qr(p,l,slice + 2)
 
   println("")
   println("")
@@ -186,14 +186,14 @@ function test_gf_wrapping(p::Parameters, l::Lattice)
 end
 
 function test_gf_wrapping_slice_dependency(p::Parameters, l::Lattice)
-  for slice in [1; 2; 3; convert(Array{Int},floor(linspace(4, p.slices-4, 10))); p.slices-3; p.slices-2; p.slices-1 ]
+  for slice in [1; 2; 3; convert(Array{Int},floor.(linspace(4, p.slices-4, 10))); p.slices-3; p.slices-2; p.slices-1 ]
     println("Slice: ", slice)
     # slice = 3
-    gf = calculate_greens_udv(p,l,slice)
+    gf = calculate_greens_qr(p,l,slice)
 
     # wrapping up
     gfwrapped = wrap_greens(p,l,gf,slice,1)
-    gfexact = calculate_greens_udv(p,l,slice + 1)
+    gfexact = calculate_greens_qr(p,l,slice + 1)
 
     println("Comparing wrapped up vs num exact")
     compare_greens(gfwrapped,gfexact)
@@ -209,16 +209,16 @@ using PyPlot
 function plot_gf_wrapping_slice_dependency(p::Parameters, l::Lattice)
   gmaxabs = Float64[]
   gmaxrel = Float64[]
-  slices = [1; 2; 3; convert(Array{Int},floor(linspace(4, p.slices-4, 5))); p.slices-3; p.slices-2; p.slices-1 ]
+  slices = [1; 2; 3; convert(Array{Int},floor.(linspace(4, p.slices-4, 5))); p.slices-3; p.slices-2; p.slices-1 ]
   # slices = [1, 2, 3]
   for slice in slices
     println("Slice: ", slice)
     # slice = 3
-    gf = calculate_greens_udv(p,l,slice)
+    gf = calculate_greens_qr(p,l,slice)
 
     # wrapping up
     gfwrapped = wrap_greens(p,l,gf,slice,1)
-    gfexact = calculate_greens_udv(p,l,slice + 1)
+    gfexact = calculate_greens_qr(p,l,slice + 1)
 
     push!(gmaxabs, maximum(absdiff(gfwrapped,gfexact)))
     push!(gmaxrel, maximum(effreldiff(gfwrapped,gfexact)))
@@ -246,12 +246,12 @@ end
 function plot_gf_maxmeanabs_slice_dependency(p::Parameters, l::Lattice)
   gmaxabs = Float64[]
   gmeanabs = Float64[]
-  slices = [1; 2; 3; convert(Array{Int},floor(linspace(4, p.slices-4, 10))); p.slices-3; p.slices-2; p.slices-1 ]
+  slices = [1; 2; 3; convert(Array{Int},floor.(linspace(4, p.slices-4, 10))); p.slices-3; p.slices-2; p.slices-1 ]
   # slices = [1, 2, 3]
   for slice in slices
     println("Slice: ", slice)
     # slice = 3
-    gf = calculate_greens_udv(p,l,slice)
+    gf = calculate_greens_qr(p,l,slice)
 
     push!(gmaxabs, maximum(abs.(gf)))
     push!(gmeanabs, mean(abs.(gf)))
@@ -279,13 +279,13 @@ end
 function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
   slice = rand(3:p.slices-2)
   # slice = 10
-  gf = calculate_greens_udv_chkr(p,l,slice)
+  gf = calculate_greens_qr_chkr(p,l,slice)
 
   # wrapping down
-  gfwrapped = wrap_greens_chkr(gf,slice,-1)
-  gfwrapped2 = wrap_greens_chkr(gfwrapped,slice-1,-1)
-  gfexact = calculate_greens_udv_chkr(p,l,slice - 1)
-  gfexact2 = calculate_greens_udv_chkr(p,l,slice - 2)
+  gfwrapped = wrap_greens_chkr(p,l,gf,slice,-1)
+  gfwrapped2 = wrap_greens_chkr(p,l,gfwrapped,slice-1,-1)
+  gfexact = calculate_greens_qr_chkr(p,l,slice - 1)
+  gfexact2 = calculate_greens_qr_chkr(p,l,slice - 2)
 
   println("Comparing wrapped down vs num exact")
   compare(gfwrapped,gfexact)
@@ -294,10 +294,10 @@ function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
   compare(gfwrapped2,gfexact2)
 
   # wrapping up
-  gfwrapped = wrap_greens_chkr(gf,slice,1)
-  gfwrapped2 = wrap_greens_chkr(gfwrapped,slice+1,1)
-  gfexact = calculate_greens_udv_chkr(p,l,slice + 1)
-  gfexact2 = calculate_greens_udv_chkr(p,l,slice + 2)
+  gfwrapped = wrap_greens_chkr(p,l,gf,slice,1)
+  gfwrapped2 = wrap_greens_chkr(p,l,gfwrapped,slice+1,1)
+  gfexact = calculate_greens_qr_chkr(p,l,slice + 1)
+  gfexact2 = calculate_greens_qr_chkr(p,l,slice + 2)
 
   println("")
   println("")
@@ -313,13 +313,13 @@ end
 function test_gf_wrapping_chkr_naive(p::Parameters, l::Lattice)
   slice = rand(3:p.slices-2)
   # slice = 10
-  gf = calculate_greens_udv_chkr(p,l,slice)
+  gf = calculate_greens_qr_chkr(p,l,slice)
 
   # wrapping down
-  gfwrapped = wrap_greens_chkr_naive(gf,slice,-1)
-  gfwrapped2 = wrap_greens_chkr_naive(gfwrapped,slice-1,-1)
-  gfexact = calculate_greens_udv_chkr(p,l,slice - 1)
-  gfexact2 = calculate_greens_udv_chkr(p,l,slice - 2)
+  gfwrapped = wrap_greens_chkr_naive(p,l,gf,slice,-1)
+  gfwrapped2 = wrap_greens_chkr_naive(p,l,gfwrapped,slice-1,-1)
+  gfexact = calculate_greens_qr_chkr(p,l,slice - 1)
+  gfexact2 = calculate_greens_qr_chkr(p,l,slice - 2)
 
   println("Comparing wrapped down vs num exact")
   compare(gfwrapped,gfexact)
@@ -328,10 +328,10 @@ function test_gf_wrapping_chkr_naive(p::Parameters, l::Lattice)
   compare(gfwrapped2,gfexact2)
 
   # wrapping up
-  gfwrapped = wrap_greens_chkr_naive(gf,slice,1)
-  gfwrapped2 = wrap_greens_chkr_naive(gfwrapped,slice+1,1)
-  gfexact = calculate_greens_udv_chkr(p,l,slice + 1)
-  gfexact2 = calculate_greens_udv_chkr(p,l,slice + 2)
+  gfwrapped = wrap_greens_chkr_naive(p,l,gf,slice,1)
+  gfwrapped2 = wrap_greens_chkr_naive(p,l,gfwrapped,slice+1,1)
+  gfexact = calculate_greens_qr_chkr(p,l,slice + 1)
+  gfexact2 = calculate_greens_qr_chkr(p,l,slice + 2)
 
   println("")
   println("")

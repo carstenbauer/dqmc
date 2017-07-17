@@ -27,6 +27,8 @@ mutable struct Parameters
   global_updates::Bool
   global_rate::Int64
 
+  chkr::Bool # checkerboard
+
   output_file::String
 
   Parameters() = new()
