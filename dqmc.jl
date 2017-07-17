@@ -228,7 +228,12 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 
           add_element(configurations, p.hsfield)
           add_element(greens, s.greens)
-          effective_greens2greens!(p, l, greens.timeseries[:,:,greens.count])
+          
+          if p.chkr
+            effective_greens2greens!(p, l, greens.timeseries[:,:,greens.count])
+          else
+            effective_greens2greens_no_chkr!(p, l, greens.timeseries[:,:,greens.count])
+          end
 
           # compare(greens.timeseries[:,:,greens.count], measure_greens_and_logdet(p, l, p.safe_mult)[1])
 
