@@ -1,6 +1,10 @@
 using LightXML
 using Helpers
 
+if !isdefined(:HoppingType)
+  global const HoppingType = Float64;
+end
+
 # define lattice type
 mutable struct Lattice
   dim::Int
@@ -16,26 +20,21 @@ mutable struct Lattice
   bond_vecs::Array{Float64, 2}
   site_bonds::Array{Int, 2}
 
-  hopping_matrix_exp::Array{Float64, 2} # mu included
-  hopping_matrix_exp_inv::Array{Float64, 2}
+  hopping_matrix_exp::Array{HoppingType, 2} # mu included
+  hopping_matrix_exp_inv::Array{HoppingType, 2}
 
-  chkr_hop_half::Array{SparseMatrixCSC, 1}
-  chkr_hop_half_inv::Array{SparseMatrixCSC, 1}
-  chkr_hop::Array{SparseMatrixCSC, 1} # without prefactor 0.5 in matrix exponentials
-  chkr_hop_inv::Array{SparseMatrixCSC, 1}
-  chkr_mu_half::SparseMatrixCSC{Float64, Int64}
-  chkr_mu_half_inv::SparseMatrixCSC{Float64, Int64}
-  chkr_mu::SparseMatrixCSC{Float64, Int64}
-  chkr_mu_inv::SparseMatrixCSC{Float64, Int64}
+  chkr_hop_half::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
+  chkr_hop_half_inv::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
+  chkr_hop::Array{SparseMatrixCSC{HoppingType, Int64}, 1} # without prefactor 0.5 in matrix exponentials
+  chkr_hop_inv::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
+  chkr_mu_half::SparseMatrixCSC{HoppingType, Int64}
+  chkr_mu_half_inv::SparseMatrixCSC{HoppingType, Int64}
+  chkr_mu::SparseMatrixCSC{HoppingType, Int64}
+  chkr_mu_inv::SparseMatrixCSC{HoppingType, Int64}
 
   # peter remnants
   checkerboard::Array{Int, 2}
   groups::Array{UnitRange, 1}
-  free_fermion_wavefunction::Array{Float64, 2}
-  temp_thin::Array{Complex{Float64}, 2}
-  temp_square::Array{Complex{Float64}, 2}
-  temp_diag::Array{Float64, 1}
-  temp_small::Array{Complex{Float64}, 2}
 
   Lattice() = new()
 end
@@ -146,8 +145,7 @@ function init_lattice_from_filename(filename::String, l::Lattice)
   end
 end
 
-
-function init_hopping_matrix_exp(p::Parameters,l::Lattice)
+function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
   Tx = diagm(fill(-p.mu,l.sites))
   Ty = diagm(fill(-p.mu,l.sites))
   for b in 1:l.n_bonds
@@ -168,6 +166,75 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)
   eTy_plus = expm(0.5 * p.delta_tau * Ty)
   l.hopping_matrix_exp = cat([1,2],eTx_minus,eTy_minus,eTx_minus,eTy_minus)
   l.hopping_matrix_exp_inv = cat([1,2],eTx_plus,eTy_plus,eTx_plus,eTy_plus)
+  return nothing
+end
+
+
+function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int})::Complex128
+    # peirls_phase_factors e^{im*Aij}
+    i1, i2 = ind2sub(sql, i)
+    j1, j2 = ind2sub(sql, j)
+    L = size(sql, 1)
+
+    if (i1 in 1:L-1 && j1 == i1+1) || (i1 == L && j1 == 1)
+        return exp(im*(- 2*pi * B * i2))
+        
+    elseif (i1 in 2:L && j1 == i1-1) || (i1 == 1 && j1 == L)
+        return exp(im*(2*pi * B * i2))
+        
+    elseif i2 == L && j2 == 1
+        return exp(im*(2*pi * B * L * i1))
+        
+    elseif i2 == 1 && j2 == L
+        return exp(im*(- 2*pi * B * L * i1))
+        
+    else
+        return exp(im*0.)
+    end
+end
+
+function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void
+  B = zeros(2,2) # colidx = flavor, rowidx = spin up,down
+  if p.Bfield
+    B[1,1] = B[2,2] = 1./l.sites
+    B[1,2] = B[2,1] = - 1./l.sites
+  end
+
+  T = Matrix{Matrix{HoppingType}}(2,2) # colidx = flavor, rowidx = spin up,down
+  for i in 1:4
+    T[i] = convert(Matrix{HoppingType}, diagm(fill(-p.mu,l.sites)))
+  end
+
+  # for linidx to cartesianidx   
+  sql = reshape(collect(1:l.sites), (l.L,l.L))
+
+  for b in 1:l.n_bonds
+    src = l.bonds[b,1]
+    trg = l.bonds[b,2]
+    if l.bond_vecs[b,1] == 1 #hopping direction
+      for f in 1:2 #flv
+        for s in 1:2 #spin
+          T[s,f][trg,src] = - peirls(trg, src, B[s,f], sql) * l.t[1,f]
+          T[s,f][src,trg] = - peirls(src, trg, B[s,f], sql) * l.t[1,f]
+        end
+      end
+    else
+      for f in 1:2
+        for s in 1:2
+          T[s,f][trg,src] = - peirls(trg, src, B[s,f], sql) * l.t[2,f]
+          T[s,f][src,trg] = - peirls(src, trg, B[s,f], sql) * l.t[2,f]
+        end
+      end
+    end
+  end
+
+  eT_minus = map(Ti -> expm(-0.5 * p.delta_tau * Ti), T)
+  eT_plus = map(Ti -> expm(0.5 * p.delta_tau * Ti), T)
+
+  l.hopping_matrix_exp = cat([1,2], eT_minus[1,1], eT_minus[2,2], eT_minus[2,1], eT_minus[1,2])
+  l.hopping_matrix_exp_inv = cat([1,2], eT_plus[1,1], eT_plus[2,2], eT_plus[2,1], eT_plus[1,2])
+
+  return nothing
 end
 
 

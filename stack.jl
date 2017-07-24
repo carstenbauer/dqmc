@@ -1,32 +1,37 @@
-mutable struct Stack
-  u_stack::Array{Complex{Float64}, 3}
-  d_stack::Array{Float64, 2}
-  t_stack::Array{Complex{Float64}, 3}
+if !isdefined(:GreensType)
+  global const GreensType = Complex128; # always complex for O(3)
+  println("GreensType = ", GreensType)
+end
 
-  Ul::Array{Complex{Float64}, 2}
-  Ur::Array{Complex{Float64}, 2}
+mutable struct Stack
+  u_stack::Array{GreensType, 3}
+  d_stack::Array{Float64, 2}
+  t_stack::Array{GreensType, 3}
+
+  Ul::Array{GreensType, 2}
+  Ur::Array{GreensType, 2}
   Dl::Array{Float64, 1}
   Dr::Array{Float64, 1}
-  Tl::Array{Complex{Float64}, 2}
-  Tr::Array{Complex{Float64}, 2}
+  Tl::Array{GreensType, 2}
+  Tr::Array{GreensType, 2}
 
-  greens::Array{Complex{Float64}, 2}
-  greens_temp::Array{Complex{Float64}, 2}
+  greens::Array{GreensType, 2}
+  greens_temp::Array{GreensType, 2}
   log_det::Float64 # contains logdet of greens_{p.slices+1} === greens_1
                             # after we calculated a fresh greens in propagate()
 
-  U::Array{Complex{Float64}, 2}
+  U::Array{GreensType, 2}
   D::Array{Float64, 1}
-  T::Array{Complex{Float64}, 2}
-  u::Array{Complex{Float64}, 2}
+  T::Array{GreensType, 2}
+  u::Array{GreensType, 2}
   d::Array{Float64, 1}
-  t::Array{Complex{Float64}, 2}
+  t::Array{GreensType, 2}
 
-  delta_i::Array{Complex{Float64}, 2}
-  M::Array{Complex{Float64}, 2}
+  delta_i::Array{GreensType, 2}
+  M::Array{GreensType, 2}
 
-  eye_flv::Array{Complex{Float64},2}
-  eye_full::Array{Complex{Float64},2}
+  eye_flv::Array{GreensType,2}
+  eye_full::Array{GreensType,2}
 
   ranges::Array{UnitRange, 1}
   n_elements::Int
@@ -34,11 +39,11 @@ mutable struct Stack
   direction::Int
 
   # -------- Global update backup
-  gb_u_stack::Array{Complex{Float64}, 3}
+  gb_u_stack::Array{GreensType, 3}
   gb_d_stack::Array{Float64, 2}
-  gb_t_stack::Array{Complex{Float64}, 3}
+  gb_t_stack::Array{GreensType, 3}
 
-  gb_greens::Array{Complex{Float64}, 2}
+  gb_greens::Array{GreensType, 2}
   gb_log_det::Float64
 
   gb_hsfield::Array{Float64, 3}
@@ -160,7 +165,7 @@ function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Floa
 end
 
 
-function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2}, curr_slice::Int,direction::Int)
+function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Array{GreensType,2}, curr_slice::Int,direction::Int)
   if direction == -1
     multiply_slice_matrix_inv_left!(p, l, curr_slice - 1, gf)
     multiply_slice_matrix_right!(p, l, curr_slice - 1, gf)
@@ -170,14 +175,14 @@ function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float64}
   end
 end
 
-function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{GreensType,2},slice::Int,direction::Int)
   temp = copy(gf)
   wrap_greens_chkr!(p, l, temp, slice, direction)
   return temp
 end
 
 
-function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2}, curr_slice::Int,direction::Int)
+function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Array{GreensType,2}, curr_slice::Int,direction::Int)
   if direction == -1
     gf[:] = slice_matrix_no_chkr(p, l, curr_slice - 1, -1.) * gf
     gf[:] = gf * slice_matrix_no_chkr(p, l, curr_slice - 1, 1.)
@@ -187,7 +192,7 @@ function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float
   end
 end
 
-function wrap_greens_no_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+function wrap_greens_no_chkr(p::Parameters, l::Lattice, gf::Array{GreensType,2},slice::Int,direction::Int)
   temp = copy(gf)
   wrap_greens_no_chkr!(p, l, temp, slice, direction)
   return temp

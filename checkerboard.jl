@@ -17,17 +17,6 @@ function find_four_site_hopping_corners(l::Lattice)
   return A_corners, B_corners
 end
 
-function build_four_site_hopping_matrix(p::Parameters,l::Lattice,corner::Int,tflv::Int=1)
-  sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
-  shift_sites_clockwise = circshift(sites_clockwise,-1)
-  h = l.t[1,tflv]
-  v = l.t[2,tflv]
-
-  hop = -1 * repeat([v, h, v, h], outer=2)
-
-  return sparse([sites_clockwise; shift_sites_clockwise],[shift_sites_clockwise; sites_clockwise],hop,l.sites,l.sites)
-end
-
 function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
 
   pc = Int(floor(l.sites/4))
@@ -68,25 +57,8 @@ function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::T
     end
   end
 
-  # build numerically
-  # for c in 1:pc
-  #   chkr_hop_4site[c,1,1] = sparse(rem_eff_zeros!(expm_diag!(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, corners[1][c], 1))))) # eTx_As
-  #   chkr_hop_4site[c,1,2] = sparse(rem_eff_zeros!(expm_diag!(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, corners[1][c], 2))))) # eTy_As
-  #   chkr_hop_4site[c,2,1] = sparse(rem_eff_zeros!(expm_diag!(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, corners[2][c], 1))))) # eTx_Bs
-  #   chkr_hop_4site[c,2,2] = sparse(rem_eff_zeros!(expm_diag!(-0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, corners[2][c], 2))))) # eTy_Bs
-  #
-  #   chkr_hop_4site_inv[c,1,1] = sparse(rem_eff_zeros!(expm_diag!(0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, corners[1][c], 1))))) # eTx_As
-  #   chkr_hop_4site_inv[c,1,2] = sparse(rem_eff_zeros!(expm_diag!(0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, corners[1][c], 2))))) # eTy_As
-  #   chkr_hop_4site_inv[c,2,1] = sparse(rem_eff_zeros!(expm_diag!(0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, corners[2][c], 1))))) # eTx_Bs
-  #   chkr_hop_4site_inv[c,2,2] = sparse(rem_eff_zeros!(expm_diag!(0.5 * p.delta_tau * full(build_four_site_hopping_matrix(p, l, corners[2][c], 2))))) # eTy_Bs
-  # end
-
   return chkr_hop_4site, chkr_hop_4site_inv
 end
-
-# helper to cutoff numerical zeros (very small elements)
-rem_eff_zeros!(X::Array{Float64}) = map!(e->abs.(e)<1e-15?zero(e):e,X)
-rem_eff_zeros!(X::Array{Complex128}) = map!(e->abs.(e)<1e-15?zero(e):e,X)
 
 function init_checkerboard_matrices(p::Parameters, l::Lattice)
 
@@ -140,6 +112,126 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
   println("Checkerboard - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
   println("Checkerboard - exact (eff rel):\t\t", maximum(r))
 end
+
+
+#### WITH ARTIFICIAL B-FIELD
+
+function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
+
+  pc = Int(floor(l.sites/4))
+
+  corners = find_four_site_hopping_corners(l)
+
+  chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp_Bfield(p,l, corners, 0.5)
+  chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp_Bfield(p,l, corners, 1.)
+
+  eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2) # group (A, B), spin (up, down), flavor (x, y)
+  eT_half_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
+  eT = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
+  eT_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
+
+  for g in 1:2
+    for f in 1:2
+      for s in 1:2
+        eT_half[g,s,f] = foldl(*,chkr_hop_4site_half[:,g,s,f])
+        eT_half_inv[g,s,f] = foldl(*,chkr_hop_4site_half_inv[:,g,s,f])
+        eT[g,s,f] = foldl(*,chkr_hop_4site[:,g,s,f])
+        eT_inv[g,s,f] = foldl(*,chkr_hop_4site_inv[:,g,s,f])
+      end
+    end
+  end
+
+  eT_A_half = cat([1,2], eT_half[1,1,1], eT_half[1,2,2], eT_half[1,2,1], eT_half[1,1,2])
+  eT_B_half = cat([1,2], eT_half[2,1,1], eT_half[2,2,2], eT_half[2,2,1], eT_half[2,1,2])
+  eT_A_half_inv = cat([1,2], eT_half_inv[1,1,1], eT_half_inv[1,2,2], eT_half_inv[1,2,1], eT_half_inv[1,1,2])
+  eT_B_half_inv = cat([1,2], eT_half_inv[2,1,1], eT_half_inv[2,2,2], eT_half_inv[2,2,1], eT_half_inv[2,1,2])
+  eT_A = cat([1,2], eT[1,1,1], eT[1,2,2], eT[1,2,1], eT[1,1,2])
+  eT_B = cat([1,2], eT[2,1,1], eT[2,2,2], eT[2,2,1], eT[2,1,2])
+  eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2], eT_inv[1,2,1], eT_inv[1,1,2])
+  eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2])
+
+
+  l.chkr_hop_half = [eT_A_half, eT_B_half]
+  l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
+  l.chkr_hop = [eT_A, eT_B]
+  l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
+
+  l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
+  l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
+  l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
+  l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
+
+  hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt.(l.chkr_mu)
+  r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
+  r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
+  println("Checkerboard (Bfield) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
+  println("Checkerboard (Bfield) - exact (eff rel):\t\t", maximum(r))
+end
+
+
+
+function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner::Int,f::Int, B::Float64, sql::Matrix{Int})
+  sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
+  shift_sites_clockwise = circshift(sites_clockwise,-1)
+
+  h = l.t[1,f]
+  v = l.t[2,f]
+
+  hop = -1 * repeat(HoppingType[v, h, v, h], outer=2)
+
+  @inbounds for k in 1:4
+    i = sites_clockwise[k]
+    j = shift_sites_clockwise[k]
+
+    hop[k] *= peirls(i,j,B,sql)
+    hop[k+4] *= peirls(j,i,B,sql)
+  end
+
+  return sparse([sites_clockwise; shift_sites_clockwise],[shift_sites_clockwise; sites_clockwise],hop,l.sites,l.sites)
+end
+
+# helper to cutoff numerical zeros
+rem_eff_zeros!(X::Array{Float64}) = map!(e->abs.(e)<1e-15?zero(e):e,X)
+rem_eff_zeros!(X::Array{Complex128}) = map!(e->abs.(e)<1e-15?zero(e):e,X)
+
+function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
+
+  B = zeros(2,2) # rowidx = spin up,down, colidx = flavor
+  if p.Bfield
+    B[1,1] = B[2,2] = 1./l.sites
+    B[1,2] = B[2,1] = - 1./l.sites
+  end
+
+  # for linidx to cartesianidx   
+  sql = reshape(collect(1:l.sites), (l.L,l.L))
+
+  pc = Int(floor(l.sites/4))
+
+  chkr_hop_4site = Array{SparseMatrixCSC{HoppingType, Int}, 4}(pc,2,2,2) # i, group (A, B), spin (up, down), flavor (x, y)
+  chkr_hop_4site_inv = Array{SparseMatrixCSC{HoppingType, Int}, 4}(pc,2,2,2)
+
+  # build numerically (due to mag field)
+  for f in 1:2
+    for s in 1:2
+      for g in 1:2
+        for c in 1:pc
+
+          fac = -prefac * p.delta_tau
+          
+          chkr_hop_4site[c,g,s,f] = sparse(rem_eff_zeros!(expm(fac * full(build_four_site_hopping_matrix_Bfield(p,l,corners[g][c],f,B[s,f],sql)))))
+          chkr_hop_4site_inv[c,g,s,f] = sparse(rem_eff_zeros!(expm(-fac * full(build_four_site_hopping_matrix_Bfield(p,l,corners[g][c],f,B[s,f],sql)))))
+
+        end
+      end
+    end
+  end
+
+  return chkr_hop_4site, chkr_hop_4site_inv
+end
+
+
+
+
 
 """
 Slice matrix

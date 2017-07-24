@@ -28,6 +28,7 @@ mutable struct Parameters
   global_rate::Int64
 
   chkr::Bool # checkerboard
+  Bfield::Bool # artificial magnetic field to reduce finite size effects
 
   output_file::String
 
