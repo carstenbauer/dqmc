@@ -172,21 +172,21 @@ end
 
 function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int})::Complex128
     # peirls_phase_factors e^{im*Aij}
-    i1, i2 = ind2sub(sql, i)
-    j1, j2 = ind2sub(sql, j)
+    i2, i1 = ind2sub(sql, i)
+    j2, j1 = ind2sub(sql, j)
     L = size(sql, 1)
 
     if (i1 in 1:L-1 && j1 == i1+1) || (i1 == L && j1 == 1)
-        return exp(im*(- 2*pi * B * i2))
+        return exp(im*(- 2*pi * B * (i2 - 1)))
         
     elseif (i1 in 2:L && j1 == i1-1) || (i1 == 1 && j1 == L)
-        return exp(im*(2*pi * B * i2))
+        return exp(im*(2*pi * B * (i2 - 1)))
         
     elseif i2 == L && j2 == 1
-        return exp(im*(2*pi * B * L * i1))
+        return exp(im*(2*pi * B * L * (i1 - 1)))
         
     elseif i2 == 1 && j2 == L
-        return exp(im*(- 2*pi * B * L * i1))
+        return exp(im*(- 2*pi * B * L * (i1 - 1)))
         
     else
         return exp(im*0.)
