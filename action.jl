@@ -1,7 +1,7 @@
 function calculate_boson_action(p::Parameters, l::Lattice, hsfield::Array{Float64,3}=p.hsfield)
   S = 0.0
-  for s in 1:p.slices
-    for i in 1:l.sites
+  @simd for s in 1:p.slices
+    @simd for i in 1:l.sites
 
       # # temporal gradient
       # diff = hsfield[:,i,s] - hsfield[:,i,l.time_neighbors[2,s]]

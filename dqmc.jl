@@ -9,7 +9,7 @@ include("parameters.jl")
 include("xml_parameters.jl")
 
 # @inbounds begin
-# ARGS = ["sdwO3_L_4_B_2_dt_0.1_1", 1]
+# ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]
 prefix = convert(String, ARGS[1])
 idx = 1
 try
@@ -105,7 +105,7 @@ mutable struct Analysis
 end
 
 
-function main()
+function main(p::Parameters)
     
     ### LATTICE
     l = Lattice()
@@ -324,7 +324,7 @@ function MC_update(s::Stack, p::Parameters, l::Lattice, i::Int, a::Analysis)
 end
 
 
-main()
+main(p)
 
 end_time = now()
 println("Ended: ", Dates.format(end_time, "d.u yyyy HH:MM"))
