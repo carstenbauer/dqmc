@@ -41,13 +41,13 @@ Green's function postprocessing
 function permute_greens(greens::Array{Complex{Float64}, 2})
   const perm = [1,4,3,2] # flv*spin: xup, ydown, xdown, yup -> xup, yup, xdown, ydown
   const N = Int(sqrt(length(greens))/4)
-  return reshape(reshape(greens, (N,4,N,4))[:,perm,:,perm], (4*N,4*N)); # r1, fs1, r2, fs2
+  return reshape(reshape(greens, (N,4,N,4))[:,perm,:,perm], (4*N,4*N)); # rfs1, rfs2
 end
 
 # Assuming translational invariance go to momentum space Greens function (k, fs1, fs2)
 using PyCall
 @pyimport numpy as np
-function fft_greens(greens::Array{Complex{Float64}, 2})
+function fft_greens(greens::Array{Complex{Float64}})
   const L = Int(sqrt(sqrt(length(greens))/4))
   g = reshape(greens, (L,L,4,L,L,4)); # y1, x1, fs1, y2, x2, fs2
   g = fft(g, (1,2))*1/L; # ky1, kx1, fs1, y2, x2, fs2
@@ -55,18 +55,17 @@ function fft_greens(greens::Array{Complex{Float64}, 2})
   g = reshape(g, (L*L,4,L*L,4))
 
   # check translational invariance
-  # println("translational invariance / momentum off diagonal terms")
-  # for jk1 in 1:4
-  #     for jk2 in 1:4
-  #         if jk1 !=jk2
-  #             error1 = maximum(abs.(gk[jk1,:,jk2,:]))
-  #             error2 = maximum(abs.(gk[jk2,:,jk1,:]))
-  #             @printf("%d %d %.5e %.5e\n", jk1, jk2, error1, error2)
-  # #             assert(error1 < thresh)
-  # #             assert(error2 < thresh)
-  #         end
-  #     end
-  # end
+  println("translational invariance / momentum off diagonal terms")
+  for jk1 in 1:4
+      for jk2 in 1:4
+          if jk1 !=jk2
+              error1 = maximum(abs.(g[jk1,:,jk2,:]))
+              error2 = maximum(abs.(g[jk2,:,jk1,:]))
+
+              @printf("%d %d %.5e %.5e\n", jk1, jk2, error1, error2)
+          end
+      end
+  end
 
   return np.einsum("kmkn->kmn", g); #k, fs1, fs2
 end

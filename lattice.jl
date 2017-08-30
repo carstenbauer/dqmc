@@ -152,11 +152,11 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
     src = l.bonds[b,1]
     trg = l.bonds[b,2]
     if l.bond_vecs[b,1] == 1
-      Tx[trg,src] = Tx[src,trg] = -l.t[1,1]
-      Ty[trg,src] = Ty[src,trg] = -l.t[1,2]
+      Tx[trg,src] = Tx[src,trg] += -l.t[1,1]
+      Ty[trg,src] = Ty[src,trg] += -l.t[1,2]
     else
-      Tx[trg,src] = Tx[src,trg] = -l.t[2,1]
-      Ty[trg,src] = Ty[src,trg] = -l.t[2,2]
+      Tx[trg,src] = Tx[src,trg] += -l.t[2,1]
+      Ty[trg,src] = Ty[src,trg] += -l.t[2,2]
     end
   end
 
