@@ -214,15 +214,15 @@ function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void
     if l.bond_vecs[b,1] == 1 #hopping direction
       for f in 1:2 #flv
         for s in 1:2 #spin
-          T[s,f][trg,src] = - peirls(trg, src, B[s,f], sql) * l.t[1,f]
-          T[s,f][src,trg] = - peirls(src, trg, B[s,f], sql) * l.t[1,f]
+          T[s,f][trg,src] += - peirls(trg, src, B[s,f], sql) * l.t[1,f]
+          T[s,f][src,trg] += - peirls(src, trg, B[s,f], sql) * l.t[1,f]
         end
       end
     else
       for f in 1:2
         for s in 1:2
-          T[s,f][trg,src] = - peirls(trg, src, B[s,f], sql) * l.t[2,f]
-          T[s,f][src,trg] = - peirls(src, trg, B[s,f], sql) * l.t[2,f]
+          T[s,f][trg,src] += - peirls(trg, src, B[s,f], sql) * l.t[2,f]
+          T[s,f][src,trg] += - peirls(src, trg, B[s,f], sql) * l.t[2,f]
         end
       end
     end

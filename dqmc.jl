@@ -117,7 +117,7 @@ function main(p::Parameters)
     init_neighbors_table(p,l)
     init_time_neighbors_table(p,l)
     println("Initializing hopping exponentials")
-    if !p.Bfield
+    if p.Bfield
       init_hopping_matrix_exp_Bfield(p,l)
     else
       init_hopping_matrix_exp(p,l)
