@@ -31,6 +31,7 @@ mutable struct Parameters
   Bfield::Bool # artificial magnetic field to reduce finite size effects
 
   output_file::String
+  write_every_nth::Int
 
   Parameters() = new()
 end

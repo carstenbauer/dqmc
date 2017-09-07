@@ -170,26 +170,40 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
 end
 
 
-function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int})::Complex128
+function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int}, pbc::Bool)::Complex128
     # peirls_phase_factors e^{im*Aij}
+    # argument pbc: is this hopping via PBC (true) or within the finite lattice (false)
     i2, i1 = ind2sub(sql, i)
     j2, j1 = ind2sub(sql, j)
     L = size(sql, 1)
 
-    if (i1 in 1:L-1 && j1 == i1+1) || (i1 == L && j1 == 1)
-        return exp(im*(- 2*pi * B * (i2 - 1)))
-        
-    elseif (i1 in 2:L && j1 == i1-1) || (i1 == 1 && j1 == L)
-        return exp(im*(2*pi * B * (i2 - 1)))
-        
-    elseif i2 == L && j2 == 1
-        return exp(im*(2*pi * B * L * (i1 - 1)))
-        
-    elseif i2 == 1 && j2 == L
-        return exp(im*(- 2*pi * B * L * (i1 - 1)))
-        
+    if !pbc
+      if i1 in 1:L-1 && j1 == i1+1
+          return exp(im*(- 2*pi * B * (i2 - 1)))
+          
+      elseif i1 in 2:L && j1 == i1-1
+          return exp(im*(2*pi * B * (i2 - 1)))
+          
+      else
+          return exp(im*0.)
+      end
+      
     else
-        return exp(im*0.)
+      if i1 == L && j1 == 1
+          return exp(im*(- 2*pi * B * (i2 - 1)))
+          
+      elseif i1 == 1 && j1 == L
+          return exp(im*(2*pi * B * (i2 - 1)))
+          
+      elseif i2 == L && j2 == 1
+          return exp(im*(2*pi * B * L * (i1 - 1)))
+          
+      elseif i2 == 1 && j2 == L
+          return exp(im*(- 2*pi * B * L * (i1 - 1)))
+          
+      else
+          return exp(im*0.)
+      end
     end
 end
 
@@ -211,18 +225,19 @@ function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void
   for b in 1:l.n_bonds
     src = l.bonds[b,1]
     trg = l.bonds[b,2]
+    pbc = trg < src
     if l.bond_vecs[b,1] == 1 #hopping direction
       for f in 1:2 #flv
         for s in 1:2 #spin
-          T[s,f][trg,src] += - peirls(trg, src, B[s,f], sql) * l.t[1,f]
-          T[s,f][src,trg] += - peirls(src, trg, B[s,f], sql) * l.t[1,f]
+          T[s,f][trg,src] += - peirls(trg, src, B[s,f], sql, pbc) * l.t[1,f]
+          T[s,f][src,trg] += - peirls(src, trg, B[s,f], sql, pbc) * l.t[1,f]
         end
       end
     else
       for f in 1:2
         for s in 1:2
-          T[s,f][trg,src] += - peirls(trg, src, B[s,f], sql) * l.t[2,f]
-          T[s,f][src,trg] += - peirls(src, trg, B[s,f], sql) * l.t[2,f]
+          T[s,f][trg,src] += - peirls(trg, src, B[s,f], sql, pbc) * l.t[2,f]
+          T[s,f][src,trg] += - peirls(src, trg, B[s,f], sql, pbc) * l.t[2,f]
         end
       end
     end

@@ -75,6 +75,11 @@ if haskey(params,"GLOBAL_RATE")
 else
   p.global_rate = 5
 end
+if haskey(params,"WRITE_EVERY_NTH")
+  p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"])
+else
+  p.write_every_nth = 1
+end
 
 ## Set datatypes
 global const HoppingType = p.Bfield ? Complex128 : Float64;
@@ -230,6 +235,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     mean_abs_op = Observable{Float64}("mean_abs_op", cs)
     mean_op = Observable{Float64}("mean_op", (3), cs)
 
+
     acc_rate = 0.0
     acc_rate_global = 0.0
     tic()
@@ -237,7 +243,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
       for u in 1:2 * p.slices
         MC_update(s, p, l, i, a)
 
-        if s.current_slice == p.slices && s.direction == 1 # measure criterium
+        if s.current_slice == p.slices && s.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
           # println("\t\tMeasuring")
           add_element(boson_action, p.boson_action)
 
@@ -279,7 +285,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
           end
         end
       end
-      if mod(i, 10) == 0
+      if mod(i, 100) == 0
         a.acc_rate = a.acc_rate / (10 * 2 * p.slices)
         a.acc_rate_global = a.acc_rate_global / (10 / p.global_rate)
         println("\t", i)
