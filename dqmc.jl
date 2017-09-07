@@ -264,7 +264,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 
           # add_element(greens, measure_greens_and_logdet(p, l, p.safe_mult)[1])
 
-          if mod(i, cs) == 0
+          if boson_action.count == cs
               println("Dumping...")
             @time begin
               confs2hdf5(p.output_file, configurations)
