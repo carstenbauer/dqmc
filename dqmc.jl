@@ -297,6 +297,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
         end
         a.acc_rate = 0.0
         a.acc_rate_global = 0.0
+        flush(STDOUT)
         tic()
       end
     end
