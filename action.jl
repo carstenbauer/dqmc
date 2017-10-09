@@ -3,21 +3,21 @@ function calculate_boson_action(p::Parameters, l::Lattice, hsfield::Array{Float6
   @simd for s in 1:p.slices
     @simd for i in 1:l.sites
 
-      # # temporal gradient
-      # diff = hsfield[:,i,s] - hsfield[:,i,l.time_neighbors[2,s]]
-      # S += 0.5/p.delta_tau * 1./p.c^2 * dot(diff,diff);
+      # temporal gradient
+      diff = hsfield[:,i,s] - hsfield[:,i,l.time_neighbors[2,s]]
+      S += 0.5/p.delta_tau * 1./p.c^2 * dot(diff,diff);
 
-      # # spatial gradient
-      # # Count only top and right neighbor (avoid overcounting)
-      # for n in 1:2
-      #   diff = hsfield[:,i,s] - hsfield[:,l.neighbors[n,i],s]
-      #   S += p.delta_tau * 0.5 * dot(diff,diff);
-      # end
+      # spatial gradient
+      # Count only top and right neighbor (avoid overcounting)
+      for n in 1:2
+        diff = hsfield[:,i,s] - hsfield[:,l.neighbors[n,i],s]
+        S += p.delta_tau * 0.5 * dot(diff,diff);
+      end
 
       # mass term & quartic interaction
       squared = dot(hsfield[:,i,s],hsfield[:,i,s])
       S += p.delta_tau * p.r/2.0 * squared;
-      # S += p.delta_tau * p.u/4.0 * squared * squared;
+      S += p.delta_tau * p.u/4.0 * squared * squared;
 
     end
   end
@@ -50,12 +50,12 @@ function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, slice
 
   dS = 0.0
 
-  # dS += 1.0/(p.delta_tau * p.c^2)  * (sq_diff - dot(op_time_neighbors, diff));
+  dS += 1.0/(p.delta_tau * p.c^2)  * (sq_diff - dot(op_time_neighbors, diff));
 
-  # dS += 0.5 * p.delta_tau * (4 * sq_diff - 2.0 * dot(op_space_neighbors, diff));
+  dS += 0.5 * p.delta_tau * (4 * sq_diff - 2.0 * dot(op_space_neighbors, diff));
 
-  # dS += p.delta_tau * (0.5 * p.r * sq_diff + 0.25 * p.u * pow4_diff);
-  dS += p.delta_tau * (0.5 * p.r * sq_diff);
+  dS += p.delta_tau * (0.5 * p.r * sq_diff + 0.25 * p.u * pow4_diff);
+  # dS += p.delta_tau * (0.5 * p.r * sq_diff);
 
   return dS
 end
