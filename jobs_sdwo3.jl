@@ -5,7 +5,7 @@ lattice_dir = "/projects/ag-trebst/bauer/lattices"
 include("$(dirname(julia_code_file))/xml_parameters.jl")
 using Git
 cd(dirname(julia_code_file))
-if Git.unstaged() || Git.staged() error("GIT: Code has staged or unstaged changes. Commit before running simulations.") end
+# if Git.unstaged() || Git.staged() error("GIT: Code has staged or unstaged changes. Commit before running simulations.") end
 commit = Git.head()
 
 if !isdir(output_root) mkdir(output_root) end
@@ -25,28 +25,29 @@ prefix = "sdwO3_L_$(L)_B_$(beta)_dt_$(dt)_$(k)"
 mkdir(prefix)
 cd(prefix)
 
-p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "SLICES"=>[Int(beta / dt)], "DELTA_TAU"=>[dt], "SAFE_MULT"=>[10], "C"=>[2.0], "GLOBAL_UPDATES"=>["TRUE"], "GLOBAL_RATE"=>[10], "U"=>[1.0], "R"=>[-5.0,-4.7,-4.4,-4.1,-3.8,-3.5,-3.2,-2.9,-2.6,-2.3,-2.0], "LAMBDA"=>[3.], "HOPPINGS"=>["-1.0,-0.5,0.5,1.0"], "MU"=>[0.5], "SEED"=>[55796], "BOX_HALF_LENGTH"=>[0.1])
+p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "SLICES"=>[Int(beta / dt)], "DELTA_TAU"=>[dt], "SAFE_MULT"=>[10], "C"=>[3.0], "GLOBAL_UPDATES"=>["TRUE"], "GLOBAL_RATE"=>[10], "U"=>[1.0], "R"=>[0.0,0.6,1.2,1.8,2.4,3.0,3.6,4.2,4.8,5.4,6.0], "LAMBDA"=>[2.0], "HOPPINGS"=>["1.0,0.5,-0.5,-1.0"], "MU"=>[-0.5], "SEED"=>[55796], "BOX_HALF_LENGTH"=>[0.1])
 p["THERMALIZATION"] = 1000
-p["MEASUREMENTS"] = 2000
+p["MEASUREMENTS"] = 20000
+p["WRITE_EVERY_NTH"] = 10
+p["B_FIELD"] = false
 
 p["GIT_COMMIT"] = [commit]
 parameterset2xml(p, prefix)
 
-
+#SBATCH --cpus-per-task=4
 job_cheops = """
 #!/bin/bash -l
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=10gb
-#SBATCH --time=14-00:00:00
-#SBATCH --output=$(prefix).out.log
+#SBATCH --mem=4gb
+#SBATCH --time=7-00:00:00
+#SBATCH --output=$(prefix).task%a.out.log
 #SBATCH --job-name=$(prefix)
-#SBATCH --cpus-per-task=4
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export JULIA_PKGDIR=/projects/ag-trebst/bauer/.julia
-source /projects/ag-trebst/julia-0.5.1/julia_env
+source /projects/ag-trebst/bauer/julia-curr-env
 cd $(output_root)/$(dir)/$(prefix)/
 julia $(julia_code_file) $(prefix) \$\{SLURM_ARRAY_TASK_ID\}
 """
