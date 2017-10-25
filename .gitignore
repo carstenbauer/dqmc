@@ -9,6 +9,7 @@ playground.jl
 **/*.mem
 **/*.bin
 **/*.out
+**/*.svg
 tmp.cpp
 **/*.nb
 images/
