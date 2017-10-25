@@ -6,6 +6,9 @@ playground.jl
 **/*.pdf
 *.txt
 *.sublime*
+**/*.mem
+**/*.bin
+**/*.out
 tmp.cpp
 **/*.nb
 images/
