@@ -121,7 +121,7 @@ function init_compilation(p::Parameters, l::Lattice)
     lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/square_L_4_W_4.xml"
   end
   @static if is_linux()
-    lattice_file = "/projects/ag-trebst/bauer/lattices/square_L_4_W_4.xml"
+    lattice_file = "/home/bauer/lattices/square_L_4_W_4.xml"
   end
 
   init_lattice_from_filename(lattice_file, l)
@@ -153,7 +153,7 @@ function init_profiling(p::Parameters, l::Lattice)
     lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/square_L_8_W_8.xml"
   end
   @static if is_linux()
-    lattice_file = "/projects/ag-trebst/bauer/lattices/square_L_8_W_8.xml"
+    lattice_file = "/home/bauer/lattices/square_L_8_W_8.xml"
   end
 
   init_lattice_from_filename(lattice_file, l)
@@ -217,7 +217,7 @@ function main(p::Parameters)
     init_profiling(p,l)
     s = Stack()
     a = Analysis()
-    Profile.init() # delay=0.01
+    Profile.init(n=10^7, delay=0.01) # delay=0.01
     Profile.clear()
     Profile.clear_malloc_data()
     @profile @time MC_thermalize(s, p, l, a)

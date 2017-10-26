@@ -35,10 +35,9 @@ function calculate_detratio(s::Stack, p::Parameters, l::Lattice, i::Int, new_op:
   return det(s.M)
 end
 
-
 function update_greens!(s::Stack, p::Parameters, l::Lattice, i::Int)
   # first_term = (s.greens - s.eye_full)[:,i:l.sites:end] * inv(s.M)
-  @inbounds first_term = /((s.greens - s.eye_full)[:,i:l.sites:end], s.M)
-  @inbounds second_term = s.delta_i * s.greens[i:l.sites:end,:]
-  s.greens = s.greens + first_term * second_term
+  # first_term = /((s.greens - s.eye_full)[:,i:l.sites:end], s.M)
+  # second_term = s.delta_i * s.greens[i:l.sites:end,:]
+  s.greens .+= /((s.greens - s.eye_full)[:,i:l.sites:end], s.M) * (s.delta_i * s.greens[i:l.sites:end,:])
 end

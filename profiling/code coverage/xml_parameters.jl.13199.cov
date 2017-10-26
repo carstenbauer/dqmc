@@ -1,0 +1,58 @@
+        - # conversion between parameters::Dict (NOT ::Parameters !!), xml file and hdf5 file
+        - using LightXML
+        - using Iterators
+        - import HDF5
+        - 
+        - function xml2parameters(fname::String)
+        1   params = Dict{Any, Any}()
+        1   xdoc = parse_file(fname)
+        1   xroot = LightXML.root(xdoc)
+        1   for c in child_nodes(xroot)
+        3     if is_elementnode(c)
+        1       for p in child_nodes(c)
+       41         if is_elementnode(p)
+       20           e = XMLElement(p)
+       20           if LightXML.name(e) == "PARAMETER"
+       20             println(attribute(e, "name"), " = ", content(e))
+       20             params[attribute(e, "name")] = content(e)
+        -           end
+        -         end
+        -       end
+        -     end
+        -   end
+        1   return params
+        - end
+        - 
+        - function parameters2hdf5(params::Dict, filename::String)
+        1   f = HDF5.h5open(filename, "r+")
+        1   for (k, v) in params
+       21     try
+       21       if HDF5.exists(f, "params/" * k)
+        0         if read(f["params/"*k]) != v
+        0           error(k, " exists but differs from current ")
+        -         end
+        -       else
+       21         f["params/" * k] = v
+        -       end
+        -     catch e
+        1     end
+        - 
+        -   end
+        - 
+        1   close(f)
+        - end
+        - 
+        - function parameterset2xml(params::Dict, prefix::String)
+        -   for (i, param_set) in enumerate(product(values(params)...))
+        -     xdoc = XMLDocument()
+        -     xroot = create_root(xdoc, "SIMULATION")
+        -     pn = new_child(xroot, "PARAMETERS")
+        -     for (k, p) in zip(keys(params), param_set)
+        -       pc = new_child(pn, "PARAMETER")
+        -       add_text(pc, string(p))
+        -       set_attribute(pc, "name", string(k))
+        -     end
+        -     save_file(xdoc, prefix * ".task" * string(i) * ".in.xml")
+        -   end
+        - end
+        - 
