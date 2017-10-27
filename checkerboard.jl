@@ -191,8 +191,7 @@ function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner:
 end
 
 # helper to cutoff numerical zeros
-rem_eff_zeros!(X::Array{Float64}) = map!(e->abs.(e)<1e-15?zero(e):e,X)
-rem_eff_zeros!(X::Array{Complex128}) = map!(e->abs.(e)<1e-15?zero(e):e,X)
+rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X)
 
 function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
 
@@ -246,9 +245,10 @@ function slice_matrix(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
   return res
 end
 
-function multiply_slice_matrix_left!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+function multiply_slice_matrix_left!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
 
-  M[:] = interaction_matrix_exp(p, l, slice) * M
+  interaction_matrix_exp!(p,l,slice,1.,p.eV)
+  M[:] = p.eV * M
   M[:] = l.chkr_mu * M
 
   M[:] = l.chkr_hop_half[2] * M
@@ -256,29 +256,32 @@ function multiply_slice_matrix_left!{T<:Number}(p::Parameters, l::Lattice, slice
   M[:] = l.chkr_hop_half[2] * M
 end
 
-function multiply_slice_matrix_right!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+function multiply_slice_matrix_right!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
 
+  interaction_matrix_exp!(p,l,slice,1.,p.eV)
   M[:] = M * l.chkr_hop_half[2]
   M[:] = M * l.chkr_hop[1]
   M[:] = M * l.chkr_hop_half[2]
 
   M[:] = M * l.chkr_mu
-  M[:] = M * interaction_matrix_exp(p, l, slice)
+  M[:] = M * p.eV
 end
 
-function multiply_slice_matrix_inv_left!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+function multiply_slice_matrix_inv_left!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
 
+  interaction_matrix_exp!(p, l, slice, -1., p.eV)
   M[:] = l.chkr_hop_half_inv[2] * M
   M[:] = l.chkr_hop_inv[1] * M
   M[:] = l.chkr_hop_half_inv[2] * M
 
   M[:] = l.chkr_mu_inv * M
-  M[:] = interaction_matrix_exp(p, l, slice, -1.) * M
+  M[:] = p.eV * M
 end
 
-function multiply_slice_matrix_inv_right!{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+function multiply_slice_matrix_inv_right!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
 
-  M[:] = M * interaction_matrix_exp(p, l, slice, -1.)
+  interaction_matrix_exp!(p, l, slice, -1., p.eV)
+  M[:] = M * p.eV
   M[:] = M * l.chkr_mu_inv
 
   M[:] = M * l.chkr_hop_half_inv[2]
@@ -286,25 +289,25 @@ function multiply_slice_matrix_inv_right!{T<:Number}(p::Parameters, l::Lattice, 
   M[:] = M * l.chkr_hop_half_inv[2]
 end
 
-function multiply_slice_matrix_left{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+function multiply_slice_matrix_left(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
   X = copy(M)
   multiply_slice_matrix_left!(p, l, slice, X)
   return X
 end
 
-function multiply_slice_matrix_right{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+function multiply_slice_matrix_right(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
   X = copy(M)
   multiply_slice_matrix_right!(p, l, slice, X)
   return X
 end
 
-function multiply_slice_matrix_inv_left{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+function multiply_slice_matrix_inv_left(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
   X = copy(M)
   multiply_slice_matrix_inv_left!(p, l, slice, X)
   return X
 end
 
-function multiply_slice_matrix_inv_right{T<:Number}(p::Parameters, l::Lattice, slice::Int, M::Matrix{T})
+function multiply_slice_matrix_inv_right(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
   X = copy(M)
   multiply_slice_matrix_inv_right!(p, l, slice, X)
   return X

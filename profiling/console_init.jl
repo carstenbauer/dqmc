@@ -150,12 +150,12 @@ function init_profiling(p::Parameters, l::Lattice)
   p.thermalization = 10
   p.measurements = 10
 
-  l.L = 8
+  l.L = 10
   @static if is_windows()
-    lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/square_L_8_W_8.xml"
+    lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/square_L_$(l.L)_W_$(l.L).xml"
   end
   @static if is_linux()
-    lattice_file = "/home/bauer/lattices/square_L_8_W_8.xml"
+    lattice_file = "/home/bauer/lattices/square_L_$(l.L)_W_$(l.L).xml"
   end
 
   init_lattice_from_filename(lattice_file, l)

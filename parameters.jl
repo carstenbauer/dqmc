@@ -34,16 +34,19 @@ mutable struct Parameters
   write_every_nth::Int
 
   #### Array allocations
-  eV::Matrix{Complex{Float64}}
-  eVop1::Matrix{Complex{Float64}}
-  eVop2::Matrix{Complex{Float64}}
+  eV::Matrix{Complex128}
+  eVop1::Matrix{Complex128}
+  eVop2::Matrix{Complex128}
 
   Parameters() = new()
 end
 
 
 function preallocate_arrays(p::Parameters, l_sites::Int)
-  p.eV = zeros(Complex{Float64}, p.flv * l_sites, p.flv * l_sites)
-  p.eVop1 = zeros(Complex{Float64}, p.flv, p.flv)
-  p.eVop2 = zeros(Complex{Float64}, p.flv, p.flv)
+  p.eV = zeros(Complex128, p.flv * l_sites, p.flv * l_sites)
+  p.eVop1 = zeros(Complex128, p.flv, p.flv)
+  p.eVop2 = zeros(Complex128, p.flv, p.flv)
+
+  p.Mtmp = eye(Complex128, p.flv * l_sites)
+  nothing
 end
