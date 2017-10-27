@@ -68,19 +68,3 @@ function interaction_matrix_exp_op(p::Parameters, l::Lattice, op::Vector{Float64
 
   return r
 end
-
-
-function interaction_matrix_slow(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
-  C = zeros(l.sites,l.sites)
-  S = zeros(Complex{Float64}, l.sites,l.sites)
-  R = zeros(l.sites,l.sites)
-  for i in 1:l.sites
-    sh = power * sinh(p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))/norm(p.hsfield[:,i,slice])
-    C[i,i] = cosh(p.lambda * p.delta_tau * norm(p.hsfield[:,i,slice]))
-    S[i,i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * sh
-    R[i,i] = (-p.hsfield[3,i,slice]) * sh
-  end
-  Z = zeros(l.sites,l.sites)
-
-  return [C S Z R; conj(S) C -R Z; Z -R C conj(S); R Z S C]
-end
