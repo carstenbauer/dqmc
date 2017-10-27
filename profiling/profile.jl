@@ -202,6 +202,7 @@ function main(p::Parameters)
 
     s = Stack()
     a = Analysis()
+    preallocate_arrays(p,l.sites)
 
     # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Run once, to force compilation.
     println("======================= First run:")
@@ -209,6 +210,7 @@ function main(p::Parameters)
     init_compilation(p,l)
     s = Stack()
     a = Analysis()
+    preallocate_arrays(p,l.sites)
     @time MC_thermalize(s, p, l, a)
 
     # Run a second time, with profiling.
@@ -217,6 +219,7 @@ function main(p::Parameters)
     init_profiling(p,l)
     s = Stack()
     a = Analysis()
+    preallocate_arrays(p,l.sites)
     Profile.init(n=10^7, delay=0.01) # delay=0.01
     Profile.clear()
     Profile.clear_malloc_data()

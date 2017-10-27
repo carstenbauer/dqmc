@@ -1,6 +1,12 @@
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
 function interaction_matrix_exp(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
   eV = zeros(Complex{Float64}, p.flv * l.sites, p.flv * l.sites)
+  interaction_matrix_exp!(p, l, slice, power, eV)
+  return eV
+end
+
+# interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
+function interaction_matrix_exp!(p::Parameters, l::Lattice, slice::Int, power::Float64=1., eV::Matrix{Complex128}=p.eV)
 
   C = blockview(l, eV, 1, 1)
   S = blockview(l, eV, 1, 2)
@@ -26,8 +32,6 @@ function interaction_matrix_exp(p::Parameters, l::Lattice, slice::Int, power::Fl
   blockreplace!(l,eV,4,1,R)
   blockreplace!(l,eV,4,3,S)
   blockreplace!(l,eV,4,4,C)
-
-  return eV
 end
 
 blockview{T<:Number}(l::Lattice, A::Matrix{T}, row::Int, col::Int) = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
@@ -38,33 +42,37 @@ end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
 function interaction_matrix_exp_op(p::Parameters, l::Lattice, op::Vector{Float64}, power::Float64=1.)
+
+  eVop = Matrix{Complex128}(4,4)
+  interaction_matrix_exp_op!(p,l,op,power,eVop)
+  return eVop
+end
+
+# calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
+function interaction_matrix_exp_op!(p::Parameters, l::Lattice, op::Vector{Float64}, power::Float64=1., eVop::Matrix{Complex128}=p.eVop1)
   n = norm(op)
   sh = power * sinh(p.lambda * p.delta_tau*n)/n
   Cii = cosh(p.lambda * p.delta_tau*n)
   Sii = (im * op[2] - op[1]) * sh
   Rii = (-op[3]) * sh
-
-  r = Matrix{Complex128}(4,4)
   
-  r[1,1] = Cii
-  r[1,2] = Sii
-  r[1,3] = zero(Complex128)
-  r[1,4] = Rii
+  eVop[1,1] = Cii
+  eVop[1,2] = Sii
+  eVop[1,3] = zero(Complex128)
+  eVop[1,4] = Rii
   
-  r[2,1] = conj(Sii)
-  r[2,2] = Cii
-  r[2,3] = -Rii
-  r[2,4] = zero(Complex128)
+  eVop[2,1] = conj(Sii)
+  eVop[2,2] = Cii
+  eVop[2,3] = -Rii
+  eVop[2,4] = zero(Complex128)
   
-  r[3,1] = zero(Complex128)
-  r[3,2] = -Rii
-  r[3,3] = Cii
-  r[3,4] = conj(Sii)
+  eVop[3,1] = zero(Complex128)
+  eVop[3,2] = -Rii
+  eVop[3,3] = Cii
+  eVop[3,4] = conj(Sii)
   
-  r[4,1] = Rii
-  r[4,2] = zero(Complex128)
-  r[4,3] = Sii
-  r[4,4] = Cii
-
-  return r
+  eVop[4,1] = Rii
+  eVop[4,2] = zero(Complex128)
+  eVop[4,3] = Sii
+  eVop[4,4] = Cii
 end

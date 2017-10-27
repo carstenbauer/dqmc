@@ -19,7 +19,7 @@ mutable struct Parameters
   r::Float64
   c::Float64
   u::Float64
-  flv::Int # flavors: GF matrix has size flv*l.sites x flv*l.sites
+  flv::Int # flavors: GF matl_sites size flv*l.sites x flv*l.sites
 
   box::Distributions.Uniform{Float64}
   box_global::Distributions.Uniform{Float64}
@@ -33,5 +33,17 @@ mutable struct Parameters
   output_file::String
   write_every_nth::Int
 
+  #### Array allocations
+  eV::Matrix{Complex{Float64}}
+  eVop1::Matrix{Complex{Float64}}
+  eVop2::Matrix{Complex{Float64}}
+
   Parameters() = new()
+end
+
+
+function preallocate_arrays(p::Parameters, l_sites::Int)
+  p.eV = zeros(Complex{Float64}, p.flv * l_sites, p.flv * l_sites)
+  p.eVop1 = zeros(Complex{Float64}, p.flv, p.flv)
+  p.eVop2 = zeros(Complex{Float64}, p.flv, p.flv)
 end

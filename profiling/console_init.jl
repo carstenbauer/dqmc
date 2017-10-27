@@ -201,6 +201,7 @@ end
 
 s = Stack()
 a = Analysis()
+preallocate_arrays(p,l.sites)
 
 init_profiling(p,l)
 

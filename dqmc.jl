@@ -137,6 +137,7 @@ function main(p::Parameters)
 
     s = Stack()
     a = Analysis()
+    preallocate_arrays(p,l.sites)
 
 
     ### MONTE CARLO
