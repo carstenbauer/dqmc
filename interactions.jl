@@ -48,6 +48,38 @@ function interaction_matrix_exp_op(p::Parameters, l::Lattice, op::Vector{Float64
 end
 # Small optimization left to do here.
 
+# calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
+function interaction_matrix_exp_op2(p::Parameters, l::Lattice, op::Vector{Float64}, power::Float64=1.)
+  sh = power * sinh(p.lambda * p.delta_tau*norm(op))/norm(op)
+  Cii = cosh(p.lambda * p.delta_tau*norm(op))
+  Sii = (im * op[2] - op[1]) * sh
+  Rii = (-op[3]) * sh
+
+  r = Matrix{Complex128}(4,4)
+  
+  r[1,1] = Cii
+  r[1,2] = Sii
+  r[1,3] = zero(Complex128)
+  r[1,4] = Rii
+  
+  r[2,1] = conj(Sii)
+  r[2,2] = Cii
+  r[2,3] = -Rii
+  r[2,4] = zero(Complex128)
+  
+  r[3,1] = zero(Complex128)
+  r[3,2] = -Rii
+  r[3,3] = Cii
+  r[3,4] = conj(Sii)
+  
+  r[4,1] = Rii
+  r[4,2] = zero(Complex128)
+  r[4,3] = Sii
+  r[4,4] = Cii
+
+  return r
+end
+
 
 function interaction_matrix_slow(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
   C = zeros(l.sites,l.sites)
