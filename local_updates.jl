@@ -1,7 +1,7 @@
 function local_updates(s::Stack, p::Parameters, l::Lattice)
   acc_rat = 0.0
   @inbounds for i in 1:l.sites
-    @inbounds new_op = p.hsfield[:,i,s.current_slice] + rand(p.box, 3)
+    new_op = p.hsfield[:,i,s.current_slice] + rand(p.box, 3)
     exp_delta_S_boson = exp(- calculate_boson_action_diff(p, l, i, s.current_slice, new_op) )
     detratio = calculate_detratio(s,p,l,i,new_op)
 
@@ -18,7 +18,7 @@ function local_updates(s::Stack, p::Parameters, l::Lattice)
 
     if p_acc > 1.0 || rand() < p_acc
       acc_rat += 1
-      p.hsfield[:,i,s.current_slice] = new_op[:]
+      p.hsfield[:,i,s.current_slice] = new_op
       p.boson_action += -log(exp_delta_S_boson)
       update_greens!(s,p,l,i)
     end
@@ -27,17 +27,20 @@ function local_updates(s::Stack, p::Parameters, l::Lattice)
 end
 
 
-function calculate_detratio(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
-  @inbounds V1i = interaction_matrix_exp_op(p,l,p.hsfield[:,i,s.current_slice],-1.)
+@inline function calculate_detratio(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
+  V1i = interaction_matrix_exp_op(p,l,p.hsfield[:,i,s.current_slice],-1.)
   V2i = interaction_matrix_exp_op(p,l,new_op)
   s.delta_i = V1i * V2i  - s.eye_flv
   @inbounds s.M = s.eye_flv + s.delta_i * (s.eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
   return det(s.M)
 end
 
-function update_greens!(s::Stack, p::Parameters, l::Lattice, i::Int)
-  # first_term = (s.greens - s.eye_full)[:,i:l.sites:end] * inv(s.M)
-  # first_term = /((s.greens - s.eye_full)[:,i:l.sites:end], s.M)
-  # second_term = s.delta_i * s.greens[i:l.sites:end,:]
-  s.greens .+= /((s.greens - s.eye_full)[:,i:l.sites:end], s.M) * (s.delta_i * s.greens[i:l.sites:end,:])
+@inline function update_greens!(s::Stack, p::Parameters, l::Lattice, i::Int)
+  A = s.greens[:,i:l.sites:end]
+  @simd for k in 0:3
+      A[i+k*l.sites,k+1] -= 1.
+  end
+  A *= inv(s.M)
+  B = s.delta_i * s.greens[i:l.sites:end,:]
+  s.greens .+= A * B
 end

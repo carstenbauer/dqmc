@@ -1,4 +1,6 @@
 using ProfileView
+using BenchmarkTools
+using Helpers
 
 # dqmc.jl called with arguments: sdwO3_L_4_B_2_dt_0.1_1 ${SLURM_ARRAY_TASK_ID}
 start_time = now()
