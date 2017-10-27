@@ -34,9 +34,9 @@ function interaction_matrix_exp!(p::Parameters, l::Lattice, slice::Int, power::F
   blockreplace!(l,eV,4,4,C)
 end
 
-blockview{T<:Number}(l::Lattice, A::Matrix{T}, row::Int, col::Int) = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
-function blockreplace!{T<:Number}(l::Lattice, A::Matrix{T}, row::Int, col::Int, B::Union{Matrix{T},SubArray{T,2}})
-  @inbounds A[(row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites] = B
+blockview(l::Lattice, A::AbstractMatrix, row::Int, col::Int) = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
+function blockreplace!(l::Lattice, A::AbstractMatrix, row::Int, col::Int, B::AbstractMatrix)
+  A[(row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites] = B
   nothing
 end
 
