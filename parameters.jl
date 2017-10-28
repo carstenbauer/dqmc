@@ -46,7 +46,5 @@ function preallocate_arrays(p::Parameters, l_sites::Int)
   p.eV = zeros(Complex128, p.flv * l_sites, p.flv * l_sites)
   p.eVop1 = zeros(Complex128, p.flv, p.flv)
   p.eVop2 = zeros(Complex128, p.flv, p.flv)
-
-  p.Mtmp = eye(Complex128, p.flv * l_sites)
   nothing
 end
