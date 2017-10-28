@@ -27,11 +27,11 @@ end
 """
 Calculate Delta_S_boson = S_boson' - S_boson
 """
-function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, slice::Int, new_op::Vector{Float64})
+function calculate_boson_action_diff4(p::Parameters, l::Lattice, site::Int, slice::Int, new_op::Vector{Float64})
   
   dS = 0.0
 
-  @views begin
+  @inbounds @views begin
     old_op = p.hsfield[:,site,slice]
     diff = new_op - old_op
 
