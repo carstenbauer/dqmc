@@ -28,34 +28,37 @@ end
 Calculate Delta_S_boson = S_boson' - S_boson
 """
 function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, slice::Int, new_op::Vector{Float64})
-  old_op = view(p.hsfield,:,site,slice)
-  diff = new_op - old_op
-
-  old_op_sq = dot(old_op, old_op)
-  new_op_sq = dot(new_op, new_op)
-  sq_diff = new_op_sq - old_op_sq
-
-  old_op_pow4 = old_op_sq * old_op_sq
-  new_op_pow4 = new_op_sq * new_op_sq
-  pow4_diff = new_op_pow4 - old_op_pow4
-
-  op_earlier = p.hsfield[:,site,l.time_neighbors[2,slice]]
-  op_later = p.hsfield[:,site,l.time_neighbors[1,slice]]
-  op_time_neighbors = op_later + op_earlier
-
-  op_space_neighbors = zeros(3)
-  for n in 1:4
-    op_space_neighbors += p.hsfield[:,l.neighbors[n,site],slice]
-  end
-
+  
   dS = 0.0
 
-  dS += 1.0/(p.delta_tau * p.c^2)  * (sq_diff - dot(op_time_neighbors, diff));
+  @views begin
+    old_op = p.hsfield[:,site,slice]
+    diff = new_op - old_op
 
-  dS += 0.5 * p.delta_tau * (4 * sq_diff - 2.0 * dot(op_space_neighbors, diff));
+    old_op_sq = dot(old_op, old_op)
+    new_op_sq = dot(new_op, new_op)
+    sq_diff = new_op_sq - old_op_sq
 
-  dS += p.delta_tau * (0.5 * p.r * sq_diff + 0.25 * p.u * pow4_diff);
-  # dS += p.delta_tau * (0.5 * p.r * sq_diff);
+    old_op_pow4 = old_op_sq * old_op_sq
+    new_op_pow4 = new_op_sq * new_op_sq
+    pow4_diff = new_op_pow4 - old_op_pow4
+
+    op_earlier = p.hsfield[:,site,l.time_neighbors[2,slice]]
+    op_later = p.hsfield[:,site,l.time_neighbors[1,slice]]
+    op_time_neighbors = op_later + op_earlier
+
+    op_space_neighbors = zeros(3)
+    @simd for n in 1:4
+      op_space_neighbors += p.hsfield[:,l.neighbors[n,site],slice]
+    end
+
+    dS += 1.0/(p.delta_tau * p.c^2)  * (sq_diff - dot(op_time_neighbors, diff));
+
+    dS += 0.5 * p.delta_tau * (4 * sq_diff - 2.0 * dot(op_space_neighbors, diff));
+
+    dS += p.delta_tau * (0.5 * p.r * sq_diff + 0.25 * p.u * pow4_diff);
+    # dS += p.delta_tau * (0.5 * p.r * sq_diff);
+  end
 
   return dS
 end
