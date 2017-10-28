@@ -19,14 +19,8 @@ function interaction_matrix_exp!(p::Parameters, l::Lattice, slice::Int, power::F
     R[i,i] = (-p.hsfield[3,i,slice]) * power * sh
   end
 
-  println("typeofC ", typeof(C))
-  println("typeofS ", typeof(S))
-  println("typeofR ", typeof(R))
-
   cS = conj(S)
   mR = -R
-  println("typeofcS ", typeof(cS))
-  println("typeofmR ", typeof(mR))
   blockreplace!(l,eV,2,1,cS)
   blockreplace!(l,eV,2,2,C)
   blockreplace!(l,eV,2,3,mR)
@@ -40,9 +34,8 @@ function interaction_matrix_exp!(p::Parameters, l::Lattice, slice::Int, power::F
   blockreplace!(l,eV,4,4,C)
 end
 
-blockview(l::Lattice, A::AbstractMatrix, row::Int, col::Int) = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
-function blockreplace!(l::Lattice, A::AbstractMatrix, row::Int, col::Int, B::AbstractMatrix)
-  println(typeof(B))
+@inline blockview(l::Lattice, A::AbstractMatrix, row::Int, col::Int) = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
+@inline function blockreplace!(l::Lattice, A::AbstractMatrix, row::Int, col::Int, B::AbstractMatrix)
   @views A[(row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites] = B
   nothing
 end
