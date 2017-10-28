@@ -1,4 +1,5 @@
 using ProfileView
+using Compat # BenchmarkTools bug for 0.6.1
 using BenchmarkTools
 using Helpers
 
