@@ -7,18 +7,13 @@ function global_update_backup_swap!(s::Stack, p::Parameters, l::Lattice)
   s.gb_log_det, s.log_det = s.log_det, s.gb_log_det # this is logdet of greens at time slice == p.slices + 1
 end
 
-
-function global_update_perform_shift!(s::Stack, p::Parameters, l::Lattice)
-  # glob_dist = Uniform{Float64}(p.box.a/2., p.box.b/2.)
-  # global_op_shift = rand(glob_dist, 3)
-  global_op_shift = rand(p.box_global, 3)
-  for i in 1:l.sites
-    for n in 1:p.slices
-      p.hsfield[:,i,n] += global_op_shift
+@inline function global_update_perform_shift!(s::Stack, p::Parameters, l::Lattice)
+    @inbounds @views begin
+      p.hsfield[1,:,:] .+= rand(p.box_global)
+      p.hsfield[2,:,:] .+= rand(p.box_global)
+      p.hsfield[3,:,:] .+= rand(p.box_global)
     end
-  end
 end
-
 
 function global_update(s::Stack, p::Parameters, l::Lattice)
 
