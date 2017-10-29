@@ -260,17 +260,12 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
         calculate_greens(s, p, l) # greens_{slice we are propagating to}
 
-        diff = maximum(absdiff(s.greens_temp, s.greens))
-        if diff > 1e-7
-          @printf("->%d \t+1 Propagation instability\t %.4f\n", s.current_slice, diff)
+        if p.all_checks
+          diff = maximum(absdiff(s.greens_temp, s.greens))
+          if diff > 1e-7
+            @printf("->%d \t+1 Propagation instability\t %.4f\n", s.current_slice, diff)
+          end
         end
-
-        # errs = (effreldiff(s.greens_temp, s.greens) .> 1e-2) .& (absdiff(s.greens_temp, s.greens) .> 1e-04)
-        # if sum(errs)>0
-        #   maxrelerr = maximum(effreldiff(s.greens_temp, s.greens)[errs])*100
-        #   maxabsolute = maximum(absdiff(s.greens_temp, s.greens)[errs])
-        #   @printf("->%d \t+1 Propagation stability\t max absolute: %.4f \t max relative: %.1f%%\n", s.current_slice, maxabsolute, maxrelerr)
-        # end
 
       else # we are going to p.slices+1
         idx = s.n_elements - 1
@@ -320,17 +315,12 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
         calculate_greens(s, p , l)
 
-        diff = maximum(absdiff(s.greens_temp, s.greens))
-        if diff > 1e-7
-          @printf("->%d \t-1 Propagation instability\t %.4f\n", s.current_slice, diff)
+        if p.all_checks
+          diff = maximum(absdiff(s.greens_temp, s.greens))
+          if diff > 1e-7
+            @printf("->%d \t-1 Propagation instability\t %.4f\n", s.current_slice, diff)
+          end
         end
-
-        # errs = (effreldiff(s.greens_temp, s.greens) .> 1e-2) .& (absdiff(s.greens_temp, s.greens) .> 1e-04)
-        # if sum(errs)>0
-        #   maxrelerr = maximum(effreldiff(s.greens_temp, s.greens)[errs])*100
-        #   maxabsolute = maximum(absdiff(s.greens_temp, s.greens)[errs])
-        #   @printf("->%d \t-1 Propagation stability\t max absolute: %.4f \t max relative: %.1f%%\n", s.current_slice, maxabsolute, maxrelerr)
-        # end
 
         if p.chkr
           wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)

@@ -20,7 +20,7 @@ function global_update(s::Stack, p::Parameters, l::Lattice)
   @assert (s.current_slice == p.slices) && (s.direction == -1)
 
   S_old = p.boson_action
-  if !isapprox(S_old,calculate_boson_action(p, l)) warn("Incorrect boson action found during attempt to do global update.") end
+  # if p.all_checks && !isapprox(S_old,calculate_boson_action(p, l)) warn("Incorrect boson action found during attempt to do global update.") end
 
   global_update_backup_swap!(s,p,l) # save current stack etc.
   s.gb_hsfield = copy(p.hsfield)

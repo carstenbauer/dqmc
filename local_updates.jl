@@ -1,24 +1,23 @@
 function local_updates(s::Stack, p::Parameters, l::Lattice)
   acc_rat = 0.0
   @inbounds for i in 1:l.sites
-    new_op = p.hsfield[:,i,s.current_slice] + rand(p.box, 3)
+    @views new_op = p.hsfield[:,i,s.current_slice] + rand(p.box, 3)
     exp_delta_S_boson = exp(- calculate_boson_action_diff(p, l, i, s.current_slice, new_op) )
     detratio = calculate_detratio(s,p,l,i,new_op)
 
-
-    if abs.(imag(detratio))/abs.(real(detratio)) > 1e-4
+    if abs(imag(detratio)/real(detratio)) > 1e-4
       @printf("%d, %d \t Determinant ratio isn't real. \t abs imag: %.3e \t relative: %.1f%%\n", s.current_slice, i, abs.(imag(detratio)), abs.(imag(detratio))/abs.(real(detratio))*100)
-    elseif real(detratio) < 0
-      println("Negative fermion weight.")
-    elseif detratio == 0
-      println("Encountered non-invertible M with det = 0.")
+    # elseif real(detratio) < 0
+    #   println("Negative fermion weight.")
+    # elseif detratio == 0
+    #   println("Encountered non-invertible M with det = 0.")
     end
 
     p_acc = exp_delta_S_boson * real(detratio)
 
     if p_acc > 1.0 || rand() < p_acc
       acc_rat += 1
-      p.hsfield[:,i,s.current_slice] = new_op
+      @views p.hsfield[:,i,s.current_slice] = new_op
       p.boson_action += -log(exp_delta_S_boson)
       update_greens!(s,p,l,i)
     end
