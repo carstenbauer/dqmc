@@ -62,6 +62,7 @@ end
 
 function init_checkerboard_matrices(p::Parameters, l::Lattice)
 
+  println("Initializing hopping exponentials (Checkerboard)")
   pc = Int(floor(l.sites/4))
 
   corners = find_four_site_hopping_corners(l)
@@ -120,6 +121,7 @@ end
 
 function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
 
+  println("Initializing hopping exponentials (Bfield, Checkerboard")
   pc = Int(floor(l.sites/4))
 
   corners = find_four_site_hopping_corners(l)

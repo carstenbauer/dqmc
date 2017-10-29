@@ -148,6 +148,7 @@ function init_lattice_from_filename(filename::String, l::Lattice)
 end
 
 function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
+  println("Initializing hopping exponentials")
   Tx = diagm(fill(-p.mu,l.sites))
   Ty = diagm(fill(-p.mu,l.sites))
   for b in 1:l.n_bonds
@@ -210,6 +211,7 @@ function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int}, pbc::Bool)::Compl
 end
 
 function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void
+  println("Initializing hopping exponentials (Bfield)")
   B = zeros(2,2) # colidx = flavor, rowidx = spin up,down
   if p.Bfield
     B[1,1] = B[2,2] = 1./l.sites
@@ -256,6 +258,7 @@ end
 
 
 function init_neighbors_table(p::Parameters,l::Lattice)
+  println("Initializing neighbor-tables")
   # OPT: neighbor table: sort down and left neighbors
   l.neighbors = zeros(Int64, 4, l.sites) # unsorted order of neighbors
   for i in 1:l.sites
