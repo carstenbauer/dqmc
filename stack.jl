@@ -144,7 +144,7 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
 
   for slice in reverse(s.ranges[idx])
     if p.chkr
-      curr_U = ctranspose(slice_matrix(p, l, slice)) * curr_U
+      multiply_daggered_slice_matrix_left!(p, l, slice, curr_U)
     else
       curr_U = ctranspose(slice_matrix_no_chkr(p, l, slice)) * curr_U
     end

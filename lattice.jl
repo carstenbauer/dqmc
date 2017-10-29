@@ -25,8 +25,10 @@ mutable struct Lattice
 
   chkr_hop_half::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
   chkr_hop_half_inv::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
+  chkr_hop_half_dagger::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
   chkr_hop::Array{SparseMatrixCSC{HoppingType, Int64}, 1} # without prefactor 0.5 in matrix exponentials
   chkr_hop_inv::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
+  chkr_hop_dagger::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
   chkr_mu_half::SparseMatrixCSC{HoppingType, Int64}
   chkr_mu_half_inv::SparseMatrixCSC{HoppingType, Int64}
   chkr_mu::SparseMatrixCSC{HoppingType, Int64}

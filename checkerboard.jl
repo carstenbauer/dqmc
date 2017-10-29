@@ -98,8 +98,10 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
 
   l.chkr_hop_half = [eT_A_half, eT_B_half]
   l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
+  l.chkr_hop_half_dagger = [ctranspose(eT_A_half), ctranspose(eT_B_half)]
   l.chkr_hop = [eT_A, eT_B]
   l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
+  l.chkr_hop_dagger = [ctranspose(eT_A), ctranspose(eT_B)]
 
   l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
   l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
@@ -245,6 +247,7 @@ function slice_matrix(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
   return res
 end
 
+
 function multiply_slice_matrix_left!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
 
   interaction_matrix_exp!(p,l,slice,1.,p.eV)
@@ -288,6 +291,22 @@ function multiply_slice_matrix_inv_right!(p::Parameters, l::Lattice, slice::Int,
   M[:] = M * l.chkr_hop_inv[1]
   M[:] = M * l.chkr_hop_half_inv[2]
 end
+
+function multiply_daggered_slice_matrix_left!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+
+  interaction_matrix_exp!(p, l, slice, 1., p.eV)
+  M[:] = l.chkr_hop_half_dagger[2] * M
+  M[:] = l.chkr_hop_dagger[1] * M
+  M[:] = l.chkr_hop_half_dagger[2] * M
+
+  # p.eV == ctranspose(p.eV) and l.chkr_mu == ctranspose(l.chkr_mu)
+  M[:] = l.chkr_mu * M
+  M[:] = p.eV * M
+
+end
+
+
+
 
 function multiply_slice_matrix_left(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
   X = copy(M)
