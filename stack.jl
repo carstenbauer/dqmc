@@ -81,10 +81,6 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.delta_i = zeros(Complex{Float64}, p.flv, p.flv)
   s.M = zeros(Complex{Float64}, p.flv, p.flv)
 
-  global const eye_flv = eye(p.flv,p.flv)
-  global const eye_full = eye(p.flv*l.sites,p.flv*l.sites)
-  global const ones_vec = ones(p.flv*l.sites)
-
   # Global update backup
   s.gb_u_stack = zero(s.u_stack)
   s.gb_d_stack = zero(s.d_stack)

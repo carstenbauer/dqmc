@@ -85,6 +85,10 @@ function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     println("Initializing boson action\n")
     p.boson_action = calculate_boson_action(p,l)
 
+    global const eye_flv = eye(p.flv,p.flv)
+    global const eye_full = eye(p.flv*l.sites,p.flv*l.sites)
+    global const ones_vec = ones(p.flv*l.sites)
+
     # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Run once, to force compilation.
     println("======================= First run:")
     srand(666)
