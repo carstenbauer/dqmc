@@ -1,7 +1,7 @@
 function measure_op(conf::Array{Float64, 3})
   mean_abs_op = mean(abs.(conf))
   mean_op = vec(mean(conf,[2,3]))
-  return (mean_abs_op, mean_op)
+  return mean_abs_op, mean_op
 end
 
 FFTW.set_num_threads(Sys.CPU_CORES)
@@ -13,7 +13,7 @@ function measure_phi_correlations(conf::Array{Float64, 3})
   phiFT .*= conj(phiFT)
   n = Int(L/2+1)
   nt = Int(slices/2+1)
-  return real(squeeze(sum(phiFT,1),1))[1:n,1:n,1:nt] # sum over op components
+  return real(sum(phiFT,1))[1,1:n,1:n,1:nt] # sum over op components
 end
 
 # This is the bosonic susceptibility X(qy-pi,qx-pi,iw)
@@ -28,22 +28,6 @@ end
 # X(Q,0) = X(pi,pi,0) = C(0,0)
 function measure_chi_static(conf::Array{Float64, 3})
   measure_phi_correlations(conf)[1,1,1] # 0 component = idx 1 element in Julia
-end
-
-# This is slightly FASTER than fft variant above
-function measure_chi_static_direct(conf::Array{Float64, 3})
-  chi = 0.0
-  count, sites, slices = size(conf)
-  for i in 1:sites
-    for j in 1:sites
-      for t1 in 1:slices
-        for t2 in 1:slices
-          chi += dot(conf[:,i,t1], conf[:,j,t2])
-        end
-      end
-    end
-  end
-  return chi
 end
 
 # Binder factors (m^2, m^4)
