@@ -156,7 +156,7 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
       curr_U = ctranspose(slice_matrix_no_chkr(p, l, slice)) * curr_U
     end
   end
-  
+
   curr_U *=  spdiagm(s.d_stack[:, idx + 1])
   s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(curr_U)
   s.t_stack[:, :, idx] = T * s.t_stack[:, :, idx + 1]
@@ -173,7 +173,7 @@ function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Floa
 end
 
 
-function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
+@inline function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
   if direction == -1
     multiply_slice_matrix_inv_left!(p, l, curr_slice - 1, gf)
     multiply_slice_matrix_right!(p, l, curr_slice - 1, gf)
@@ -217,7 +217,7 @@ function calculate_greens(s::Stack, p::Parameters, l::Lattice)
   s.U = s.Ul * s.U
   s.T *= ctranspose(s.Ur)
 
-  s.u, s.d, s.t = decompose_udt(/(ctranspose(s.U), s.T) + spdiagm(s.D))
+  s.u, s.d, s.t = decompose_udt(ctranspose(s.U) * inv(s.T) + spdiagm(s.D))
 
   s.T = inv(s.t * s.T)
   s.U *= s.u
@@ -226,6 +226,7 @@ function calculate_greens(s::Stack, p::Parameters, l::Lattice)
 
   s.greens = s.T * spdiagm(s.d) * s.U
 end
+
 
 """
 Only reasonable immediately after calculate_greens()!
