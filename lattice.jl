@@ -12,31 +12,31 @@ mutable struct Lattice
   L::Int
   n_neighbors::Int
   n_bonds::Int
-  t::Array{Float64, 2} # colidx = flavor, rowidx = hor,ver
-  time_neighbors::Array{Int, 2} # colidx = slice, rowidx = up, down
-  neighbors::Array{Int, 2} # colidx = site
+  t::Matrix{Float64} # colidx = flavor, rowidx = hor,ver
+  time_neighbors::Matrix{Int} # colidx = slice, rowidx = up, down
+  neighbors::Matrix{Int} # colidx = site
                            # first = up, second = right, third and fourth not ordered
-  bonds::Array{Int, 2}
-  bond_vecs::Array{Float64, 2}
-  site_bonds::Array{Int, 2}
+  bonds::Matrix{Int}
+  bond_vecs::Matrix{Float64}
+  site_bonds::Matrix{Int}
 
-  hopping_matrix_exp::Array{HoppingType, 2} # mu included
-  hopping_matrix_exp_inv::Array{HoppingType, 2}
+  hopping_matrix_exp::Matrix{HoppingType} # mu included
+  hopping_matrix_exp_inv::Matrix{HoppingType}
 
-  chkr_hop_half::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
-  chkr_hop_half_inv::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
-  chkr_hop_half_dagger::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
-  chkr_hop::Array{SparseMatrixCSC{HoppingType, Int64}, 1} # without prefactor 0.5 in matrix exponentials
-  chkr_hop_inv::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
-  chkr_hop_dagger::Array{SparseMatrixCSC{HoppingType, Int64}, 1}
+  chkr_hop_half::Vector{SparseMatrixCSC{HoppingType, Int64}}
+  chkr_hop_half_inv::Vector{SparseMatrixCSC{HoppingType, Int64}}
+  chkr_hop_half_dagger::Vector{SparseMatrixCSC{HoppingType, Int64}}
+  chkr_hop::Vector{SparseMatrixCSC{HoppingType, Int64}} # without prefactor 0.5 in matrix exponentials
+  chkr_hop_inv::Vector{SparseMatrixCSC{HoppingType, Int64}}
+  chkr_hop_dagger::Vector{SparseMatrixCSC{HoppingType, Int64}}
   chkr_mu_half::SparseMatrixCSC{HoppingType, Int64}
   chkr_mu_half_inv::SparseMatrixCSC{HoppingType, Int64}
   chkr_mu::SparseMatrixCSC{HoppingType, Int64}
   chkr_mu_inv::SparseMatrixCSC{HoppingType, Int64}
 
   # peter remnants
-  checkerboard::Array{Int, 2}
-  groups::Array{UnitRange, 1}
+  checkerboard::Matrix{Int}
+  groups::Vector{UnitRange}
 
   Lattice() = new()
 end

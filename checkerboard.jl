@@ -121,8 +121,8 @@ end
 
 function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
 
-  println("Initializing hopping exponentials (Bfield, Checkerboard")
-  pc = Int(floor(l.sites/4))
+  println("Initializing hopping exponentials (Bfield, Checkerboard)")
+  # pc = Int(floor(l.sites/4))
 
   corners = find_four_site_hopping_corners(l)
 
@@ -178,6 +178,10 @@ function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner:
   sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
   shift_sites_clockwise = circshift(sites_clockwise,-1)
 
+  pbc_v = (corner%l.L) == 0 # corner is on top edge of lattice?
+  pbc_h = corner>(l.sites-l.L) # corner is on right edge of lattice?
+  pbc = Bool[pbc_v, pbc_h, pbc_v, pbc_h]
+
   h = l.t[1,f]
   v = l.t[2,f]
 
@@ -187,15 +191,15 @@ function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner:
     i = sites_clockwise[k]
     j = shift_sites_clockwise[k]
 
-    hop[k] *= peirls(i,j,B,sql)
-    hop[k+4] *= peirls(j,i,B,sql)
+    hop[k] *= peirls(i,j,B,sql, pbc[k])
+    hop[k+4] *= peirls(j,i,B,sql, pbc[k])
   end
 
   return sparse([sites_clockwise; shift_sites_clockwise],[shift_sites_clockwise; sites_clockwise],hop,l.sites,l.sites)
 end
 
 # helper to cutoff numerical zeros
-rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X)
+rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X,X)
 
 function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
 
