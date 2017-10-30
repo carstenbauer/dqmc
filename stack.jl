@@ -245,9 +245,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
       s.current_slice +=1 # slice we are going to
       if s.current_slice == 1
         s.Ur[:, :], s.Dr[:], s.Tr[:, :] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
-        s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-        s.d_stack[:, 1] = ones(p.flv*l.sites)
-        s.t_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+        s.u_stack[:, :, 1] = eye_full
+        s.d_stack[:, 1] = ones_vec
+        s.t_stack[:, :, 1] = eye_full
         s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
 
         calculate_greens(s, p, l) # greens_1 ( === greens_{m+1} )
@@ -260,7 +260,10 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         add_slice_sequence_left(s, p, l, idx)
         s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.t_stack[:, :, idx+1]
 
-        s.greens_temp = copy(s.greens)
+        if p.all_checks
+          s.greens_temp = copy(s.greens)
+        end
+
         if p.chkr
           wrap_greens_chkr!(p, l, s.greens_temp, s.current_slice - 1, 1)
         else
@@ -299,9 +302,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
       s.current_slice -= 1 # slice we are going to
       if s.current_slice == p.slices
         s.Ul[:, :], s.Dl[:], s.Tl[:, :] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
-        s.u_stack[:, :, end] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-        s.d_stack[:, end] = ones(p.flv*l.sites)
-        s.t_stack[:, :, end] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+        s.u_stack[:, :, end] = eye_full
+        s.d_stack[:, end] = ones_vec
+        s.t_stack[:, :, end] = eye_full
         s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
 
         calculate_greens(s, p, l) # greens_{p.slices+1} === greens_1
@@ -320,7 +323,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         add_slice_sequence_right(s, p, l, idx)
         s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.t_stack[:, :, idx]
 
-        s.greens_temp = copy(s.greens)
+        if p.all_checks
+          s.greens_temp = copy(s.greens)
+        end
 
         calculate_greens(s, p , l)
 
