@@ -105,7 +105,7 @@ end
 
 
 function build_stack(s::Stack, p::Parameters, l::Lattice)
-  s.u_stack[:, :, 1] = eye_full # TODO CHECK! Is this safe?
+  s.u_stack[:, :, 1] = eye_full
   s.d_stack[:, 1] = ones_vec
   s.t_stack[:, :, 1] = eye_full
 

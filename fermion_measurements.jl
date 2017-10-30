@@ -16,10 +16,10 @@ end
 Effective Green's function -> Green's function
 """
 function effective_greens2greens!(p::Parameters, l::Lattice, greens::Array{Complex{Float64}, 2})
-  greens[:] = greens * l.chkr_hop_half[2]
-  greens[:] = greens * l.chkr_hop_half[1]
-  greens[:] = l.chkr_hop_half_inv[2] * greens
-  greens[:] = l.chkr_hop_half_inv[1] * greens
+  greens = greens * l.chkr_hop_half[2]
+  greens = greens * l.chkr_hop_half[1]
+  greens = l.chkr_hop_half_inv[2] * greens
+  greens = l.chkr_hop_half_inv[1] * greens
 end
 
 function effective_greens2greens(p::Parameters, l::Lattice, greens::Array{Complex{Float64}, 2})
@@ -29,8 +29,8 @@ function effective_greens2greens(p::Parameters, l::Lattice, greens::Array{Comple
 end
 
 function effective_greens2greens_no_chkr!(p::Parameters, l::Lattice, greens::Array{Complex{Float64}, 2})
-  greens[:] = greens * l.hopping_matrix_exp
-  greens[:] = l.hopping_matrix_exp_inv * greens
+  greens = greens * l.hopping_matrix_exp
+  greens = l.hopping_matrix_exp_inv * greens
 end
 
 
@@ -77,9 +77,9 @@ Calculate effective(!) Green's function (direct, i.e. without stack) using SVD D
 # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
 # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
 function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
-  assert(0 < start <= p.slices)
-  assert(0 < stop <= p.slices)
-  assert(start <= stop)
+  @assert 0 < start <= p.slices
+  @assert 0 < stop <= p.slices
+  @assert start <= stop
 
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
@@ -103,9 +103,9 @@ function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int,
 end
 
 function calculate_slice_matrix_chain_chkr_udv(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
-  assert(0 < start <= p.slices)
-  assert(0 < stop <= p.slices)
-  assert(start <= stop)
+  @assert 0 < start <= p.slices
+  @assert 0 < stop <= p.slices
+  @assert start <= stop
 
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
@@ -116,13 +116,14 @@ function calculate_slice_matrix_chain_chkr_udv(p::Parameters, l::Lattice, start:
   svc = 1
   for k in start:stop
     if mod(k,safe_mult) == 0
-      U = slice_matrix(p,l,k) * U * spdiagm(D)
+      multiply_slice_matrix_left!(p,l,k,U)
+      U *= spdiagm(D)
       U, D, Vtnew = decompose_udv(U)
       Vt =  Vtnew * Vt
       svs[:,svc] = log.(D)
       svc += 1
     else
-      U = slice_matrix(p,l,k) * U
+      multiply_slice_matrix_left!(p,l,k,U)
     end
   end
   return (U,D,Vt,svs)
@@ -191,9 +192,9 @@ Calculate effective(!) Green's function (direct, i.e. without stack) using QR DE
 """
 # Calculate Ul, Dl, Tl =B(stop) ... B(start)
 function calculate_slice_matrix_chain_qr(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
-  assert(0 < start <= p.slices)
-  assert(0 < stop <= p.slices)
-  assert(start <= stop)
+  @assert 0 < start <= p.slices
+  @assert 0 < stop <= p.slices
+  @assert start <= stop
 
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
@@ -218,9 +219,9 @@ end
 
 # Calculate (Ur, Dr, Tr)' = B(stop) ... B(start)  => Ur,Dr, Tr = B(start)' ... B(stop)'
 function calculate_slice_matrix_chain_qr_dagger(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
-  assert(0 < start <= p.slices)
-  assert(0 < stop <= p.slices)
-  assert(start <= stop)
+  @assert 0 < start <= p.slices
+  @assert 0 < stop <= p.slices
+  @assert start <= stop
 
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
@@ -245,9 +246,9 @@ end
 
 # Calculate Ul, Dl, Tl =B(stop) ... B(start)
 function calculate_slice_matrix_chain_chkr_qr(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
-  assert(0 < start <= p.slices)
-  assert(0 < stop <= p.slices)
-  assert(start <= stop)
+  @assert 0 < start <= p.slices
+  @assert 0 < stop <= p.slices
+  @assert start <= stop
 
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
@@ -258,13 +259,14 @@ function calculate_slice_matrix_chain_chkr_qr(p::Parameters, l::Lattice, start::
   svc = 1
   for k in start:stop
     if mod(k,safe_mult) == 0
-      U = slice_matrix(p,l,k) * U * spdiagm(D)
+      multiply_slice_matrix_left!(p,l,k,U)
+      U *= spdiagm(D)
       U, D, Tnew = decompose_udt(U)
       T =  Tnew * T
       svs[:,svc] = log.(D)
       svc += 1
     else
-      U = slice_matrix(p,l,k) * U
+      multiply_slice_matrix_left!(p,l,k,U)
     end
   end
   return (U,D,T,svs)
@@ -272,9 +274,9 @@ end
 
 # Calculate (Ur, Dr, Tr)' = B(stop) ... B(start)  => Ur,Dr, Tr = B(start)' ... B(stop)'
 function calculate_slice_matrix_chain_chkr_qr_dagger(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
-  assert(0 < start <= p.slices)
-  assert(0 < stop <= p.slices)
-  assert(start <= stop)
+  @assert 0 < start <= p.slices
+  @assert 0 < stop <= p.slices
+  @assert start <= stop
 
   U = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   D = ones(Float64, p.flv*l.sites)
@@ -285,13 +287,14 @@ function calculate_slice_matrix_chain_chkr_qr_dagger(p::Parameters, l::Lattice, 
   svc = 1
   for k in reverse(start:stop)
     if mod(k,safe_mult) == 0
-      U = ctranspose(slice_matrix(p,l,k)) * U * spdiagm(D)
+      multiply_daggered_slice_matrix_left!(p,l,k,U)
+      U *= spdiagm(D)
       U, D, Tnew = decompose_udt(U)
       T =  Tnew * T
       svs[:,svc] = log.(D)
       svc += 1
     else
-      U = ctranspose(slice_matrix(p,l,k)) * U
+      multiply_daggered_slice_matrix_left!(p,l,k,U)
     end
   end
   return (U,D,T,svs)
@@ -316,7 +319,7 @@ function calculate_greens_and_logdet(p::Parameters, l::Lattice, slice::Int, safe
   U = Ul * U
   T *= ctranspose(Ur)
 
-  u, d, t = decompose_udt(/(ctranspose(U), T) + spdiagm(D))
+  u, d, t = decompose_udt(ctranspose(U) * inv(T) + spdiagm(D))
 
   T = inv(t * T)
   U *= u
@@ -347,7 +350,7 @@ function calculate_greens_and_logdet_chkr(p::Parameters, l::Lattice, slice::Int,
   U = Ul * U
   T *= ctranspose(Ur)
 
-  u, d, t = decompose_udt(/(ctranspose(U), T) + spdiagm(D))
+  u, d, t = decompose_udt(ctranspose(U) * inv(T) + spdiagm(D))
 
   T = inv(t * T)
   U *= u
