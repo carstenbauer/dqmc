@@ -1,3 +1,4 @@
+#### SVD, i.e. UDV decomposition
 function decompose_udv!(A::Matrix{T}) where T<:Number
 
   Base.LinAlg.LAPACK.gesvd!('A','A',A)
@@ -8,24 +9,23 @@ end
 
 function decompose_udv(A::Matrix{T}) where T<:Number
   X = copy(A)
-  return decompose_udv!(X)
+  decompose_udv!(X)
+  return X
 end
 
-function decompose_udt!(M::Matrix{N}, U::Matrix{N}, D::Vector{Float64}, T::Matrix{N}, R::Matrix{N}) where N<:Number
-  U[:], R[:], p = qr(M, Val{true}; thin=true)
-  p_T = copy(p); p_T[p] = collect(1:length(p))
-  D[:] = abs.(real(diag(triu(R))))[:]
-  T[:] = (spdiagm(1./D) * R)[:, p_T]
-end
 
-function decompose_udt(A::Matrix{X}) where X<:Number
+#### QR, i.e. UDT decomposition
+function decompose_udt(A::AbstractMatrix{C}) where C<:Number
   Q, R, p = qr(A, Val{true}; thin=false)
-  p_T = copy(p); p_T[p] = collect(1:length(p))
-  D = abs.(real(diag(triu(R))))
-  T = (spdiagm(1./D) * R)[:, p_T]
+  @views p[p] = collect(1:length(p))
+  # D = abs.(real(diag(triu(R))))
+  D = abs.(real(diag(R)))
+  T = (spdiagm(1./D) * R)[:, p]
   return Q, D, T
 end
 
+
+#### Other
 function expm_diag!(A::Matrix{T}) where T<:Number
   F = eigfact!(A)
   return F[:vectors] * spdiagm(exp(F[:values])) * ctranspose(F[:vectors])

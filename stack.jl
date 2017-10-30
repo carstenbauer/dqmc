@@ -46,6 +46,10 @@ mutable struct Stack
   gb_hsfield::Array{Float64, 3}
   # --------
 
+
+  #### Array allocations
+  curr_U::Matrix{GreensType}
+
   Stack() = new()
 end
 
@@ -95,6 +99,8 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
     push!(s.ranges, 1 + (i - 1) * p.safe_mult:i * p.safe_mult)
   end
 
+  s.curr_U = zero(s.U)
+
 end
 
 
@@ -103,12 +109,9 @@ function build_stack(s::Stack, p::Parameters, l::Lattice)
   s.d_stack[:, 1] = ones_vec
   s.t_stack[:, :, 1] = eye_full
 
-  # s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  # s.t_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-
-  # @inbounds for i in 1:length(s.ranges)
-  #   add_slice_sequence_left(s, p, l, i)
-  # end
+  @inbounds for i in 1:length(s.ranges)
+    add_slice_sequence_left(s, p, l, i)
+  end
 
   s.current_slice = p.slices + 1
   s.direction = -1
@@ -121,18 +124,20 @@ end
 Updates stack[idx+1] based on stack[idx]
 """
 function add_slice_sequence_left(s::Stack, p::Parameters, l::Lattice, idx::Int)
-  curr_U = copy(s.u_stack[:, :, idx])
+  
+  copy!(s.curr_U, s.u_stack[:, :, idx])
+
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
     if p.chkr
-      multiply_slice_matrix_left!(p, l, slice, curr_U)
+      multiply_slice_matrix_left!(p, l, slice, s.curr_U)
     else
-      curr_U = slice_matrix_no_chkr(p, l, slice) * curr_U
+      s.curr_U = slice_matrix_no_chkr(p, l, slice) * s.curr_U
     end
   end
 
-  curr_U =  curr_U * spdiagm(s.d_stack[:, idx])
-  s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], T = decompose_udt(curr_U)
+  s.curr_U *= spdiagm(s.d_stack[:, idx])
+  s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], T = decompose_udt(s.curr_U)
   s.t_stack[:, :, idx + 1] =  T * s.t_stack[:, :, idx]
 end
 
@@ -141,7 +146,8 @@ end
 Updates stack[idx] based on stack[idx+1]
 """
 function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
-  curr_U = copy(s.u_stack[:, :, idx + 1])
+  
+  copy!(s.curr_U, s.u_stack[:, :, idx + 1])
 
   for slice in reverse(s.ranges[idx])
     if p.chkr
@@ -150,7 +156,8 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
       curr_U = ctranspose(slice_matrix_no_chkr(p, l, slice)) * curr_U
     end
   end
-  curr_U =  curr_U * spdiagm(s.d_stack[:, idx + 1])
+  
+  curr_U *=  spdiagm(s.d_stack[:, idx + 1])
   s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(curr_U)
   s.t_stack[:, :, idx] = T * s.t_stack[:, :, idx + 1]
 end
