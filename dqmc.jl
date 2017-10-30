@@ -57,7 +57,7 @@ end
 
 ### LATTICE
 l = Lattice()
-l.L = parse(Int, p.lattice_file[end-4])
+l.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
 l.t = reshape([parse(Float64, f) for f in split(params["HOPPINGS"], ',')],(2,2))
 init_lattice_from_filename(params["LATTICE_FILE"], l)
 init_neighbors_table(p,l)

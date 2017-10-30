@@ -10,7 +10,7 @@ using Helpers
 include("../parameters.jl")
 
 ### PROGRAM ARGUMENTS
-# ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]
+ARGS = ["sdwO3_L_8_B_5_dt_0.1_1", 1]
 prefix = convert(String, ARGS[1])
 idx = 1
 try idx = parse(Int, ARGS[2]); end # SLURM_ARRAY_TASK_ID 
@@ -61,7 +61,7 @@ end
 
 ### LATTICE
 l = Lattice()
-l.L = parse(Int, p.lattice_file[end-4])
+l.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
 l.t = reshape([parse(Float64, f) for f in split(params["HOPPINGS"], ',')],(2,2))
 init_lattice_from_filename(params["LATTICE_FILE"], l)
 init_neighbors_table(p,l)
