@@ -35,7 +35,7 @@ mutable struct Parameters
   output_file::String
   write_every_nth::Int
 
-  all_checks::Bool
+  all_checks::Bool # true: check for propagation instblts. and S_b consistency
 
   #### Array allocations
   eV::Matrix{Complex128}

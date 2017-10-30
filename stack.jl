@@ -5,33 +5,34 @@ end
 
 mutable struct Stack
   u_stack::Array{GreensType, 3}
-  d_stack::Array{Float64, 2}
+  d_stack::Matrix{Float64}
   t_stack::Array{GreensType, 3}
 
-  Ul::Array{GreensType, 2}
-  Ur::Array{GreensType, 2}
-  Dl::Array{Float64, 1}
-  Dr::Array{Float64, 1}
-  Tl::Array{GreensType, 2}
-  Tr::Array{GreensType, 2}
+  Ul::Matrix{GreensType}
+  Ur::Matrix{GreensType}
+  Dl::Vector{Float64}
+  Dr::Vector{Float64}
+  Tl::Matrix{GreensType}
+  Tr::Matrix{GreensType}
 
-  greens::Array{GreensType, 2}
-  greens_temp::Array{GreensType, 2}
+  greens::Matrix{GreensType}
+  greens_temp::Matrix{GreensType}
   log_det::Float64 # contains logdet of greens_{p.slices+1} === greens_1
                             # after we calculated a fresh greens in propagate()
 
-  U::Array{GreensType, 2}
-  D::Array{Float64, 1}
-  T::Array{GreensType, 2}
-  u::Array{GreensType, 2}
-  d::Array{Float64, 1}
-  t::Array{GreensType, 2}
+  U::Matrix{GreensType}
+  D::Vector{Float64}
+  T::Matrix{GreensType}
+  u::Matrix{GreensType}
+  d::Vector{Float64}
+  t::Matrix{GreensType}
 
-  delta_i::Array{GreensType, 2}
-  M::Array{GreensType, 2}
+  delta_i::Matrix{GreensType}
+  M::Matrix{GreensType}
 
-  eye_flv::Array{GreensType,2}
-  eye_full::Array{GreensType,2}
+  eye_flv::Matrix{GreensType}
+  eye_full::Matrix{GreensType}
+  ones_vec::Vector{Float64}
 
   ranges::Array{UnitRange, 1}
   n_elements::Int
@@ -40,10 +41,10 @@ mutable struct Stack
 
   # -------- Global update backup
   gb_u_stack::Array{GreensType, 3}
-  gb_d_stack::Array{Float64, 2}
+  gb_d_stack::Matrix{Float64}
   gb_t_stack::Array{GreensType, 3}
 
-  gb_greens::Array{GreensType, 2}
+  gb_greens::Matrix{GreensType}
   gb_log_det::Float64
 
   gb_hsfield::Array{Float64, 3}
@@ -101,13 +102,16 @@ end
 
 
 function build_stack(s::Stack, p::Parameters, l::Lattice)
-  s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.u_stack[:, :, 1] = s.eye_full # TODO CHECK! Is this safe?
   s.d_stack[:, 1] = ones(p.flv*l.sites)
-  s.t_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.t_stack[:, :, 1] = s.eye_full
 
-  @inbounds for i in 1:length(s.ranges)
-    add_slice_sequence_left(s, p, l, i)
-  end
+  # s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  # s.t_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+
+  # @inbounds for i in 1:length(s.ranges)
+  #   add_slice_sequence_left(s, p, l, i)
+  # end
 
   s.current_slice = p.slices + 1
   s.direction = -1
@@ -165,7 +169,7 @@ function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Floa
 end
 
 
-function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Array{GreensType,2}, curr_slice::Int,direction::Int)
+function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
   if direction == -1
     multiply_slice_matrix_inv_left!(p, l, curr_slice - 1, gf)
     multiply_slice_matrix_right!(p, l, curr_slice - 1, gf)
@@ -175,14 +179,14 @@ function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Array{GreensType,2}, c
   end
 end
 
-function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{GreensType,2},slice::Int,direction::Int)
+function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Matrix{GreensType},slice::Int,direction::Int)
   temp = copy(gf)
   wrap_greens_chkr!(p, l, temp, slice, direction)
   return temp
 end
 
 
-function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Array{GreensType,2}, curr_slice::Int,direction::Int)
+function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
   if direction == -1
     gf[:] = slice_matrix_no_chkr(p, l, curr_slice - 1, -1.) * gf
     gf[:] = gf * slice_matrix_no_chkr(p, l, curr_slice - 1, 1.)
@@ -192,7 +196,7 @@ function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Array{GreensType,2}
   end
 end
 
-function wrap_greens_no_chkr(p::Parameters, l::Lattice, gf::Array{GreensType,2},slice::Int,direction::Int)
+function wrap_greens_no_chkr(p::Parameters, l::Lattice, gf::Matrix{GreensType},slice::Int,direction::Int)
   temp = copy(gf)
   wrap_greens_no_chkr!(p, l, temp, slice, direction)
   return temp
