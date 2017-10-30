@@ -151,14 +151,14 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
 
   for slice in reverse(s.ranges[idx])
     if p.chkr
-      multiply_daggered_slice_matrix_left!(p, l, slice, curr_U)
+      multiply_daggered_slice_matrix_left!(p, l, slice, s.curr_U)
     else
-      curr_U = ctranspose(slice_matrix_no_chkr(p, l, slice)) * curr_U
+      s.curr_U = ctranspose(slice_matrix_no_chkr(p, l, slice)) * s.curr_U
     end
   end
 
-  curr_U *=  spdiagm(s.d_stack[:, idx + 1])
-  s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(curr_U)
+  s.curr_U *=  spdiagm(s.d_stack[:, idx + 1])
+  s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(s.curr_U)
   s.t_stack[:, :, idx] = T * s.t_stack[:, :, idx + 1]
 end
 
