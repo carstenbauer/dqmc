@@ -222,7 +222,7 @@ end
 
 function calculate_detratio_full(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
   s.delta_i = delta_i_naive_full(s,p,l,i,new_op)
-  s.M = s.eye_flv + s.delta_i * (s.eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
+  s.M = eye_flv + s.delta_i * (eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
   return det(s.M)
 end
 
@@ -251,15 +251,15 @@ function test_local_update_gf_full_delta(s::Stack, p::Parameters, l::Lattice)
 end
 
 function update_greens_naive(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
-  firstfactor = (s.eye_full - s.greens)
+  firstfactor = (eye_full - s.greens)
   secondfactor = (delta_naive_full(s,p,l,i,new_op) - s.greens)
-  # return inv(s.eye_full + firstfactor * secondfactor) * s.greens
-  return \(s.eye_full + firstfactor * secondfactor, s.greens)
+  # return inv(eye_full + firstfactor * secondfactor) * s.greens
+  return \(eye_full + firstfactor * secondfactor, s.greens)
 end
 
 function update_greens(s::Stack, p::Parameters, l::Lattice, i::Int)
-  # first_term = (s.greens - s.eye_full)[:,i:l.sites:end] * inv(s.M)
-  first_term = /((s.greens - s.eye_full)[:,i:l.sites:end], s.M)
+  # first_term = (s.greens - eye_full)[:,i:l.sites:end] * inv(s.M)
+  first_term = /((s.greens - eye_full)[:,i:l.sites:end], s.M)
   second_term = s.delta_i * s.greens[i:l.sites:end,:]
   return s.greens + first_term * second_term
 end

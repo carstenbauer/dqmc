@@ -52,7 +52,7 @@ h5write("tests/DetRatioCheck.h5", "M_imag", imag(M))
 h5write("tests/DetRatioCheck.h5", "greens_imag", imag(s.greens))
 h5write("tests/DetRatioCheck.h5", "greens_real", real(s.greens))
 
-first_term = /((s.greens - s.eye_full)[:,site:l.sites:end], s.M)
+first_term = /((s.greens - eye_full)[:,site:l.sites:end], s.M)
 second_term = s.delta_i * s.greens[site:l.sites:end,:]
 gupdated = s.greens + first_term * second_term
 

@@ -29,8 +29,8 @@ end
 @inline function calculate_detratio(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
   interaction_matrix_exp_op!(p,l,p.hsfield[:,i,s.current_slice],-1.,p.eVop1) #V1i
   interaction_matrix_exp_op!(p,l,new_op,1.,p.eVop2) #V2i
-  s.delta_i = p.eVop1 * p.eVop2  - s.eye_flv
-  s.M = s.eye_flv + s.delta_i * (s.eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
+  s.delta_i = p.eVop1 * p.eVop2  - eye_flv
+  s.M = eye_flv + s.delta_i * (eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
   return det(s.M)
 end
 

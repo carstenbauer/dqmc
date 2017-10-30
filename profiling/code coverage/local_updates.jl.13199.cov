@@ -30,15 +30,15 @@
         - function calculate_detratio(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
     64640   @inbounds V1i = interaction_matrix_exp_op(p,l,p.hsfield[:,i,s.current_slice],-1.)
     64640   V2i = interaction_matrix_exp_op(p,l,new_op)
-    64640   s.delta_i = V1i * V2i  - s.eye_flv
-    64640   @inbounds s.M = s.eye_flv + s.delta_i * (s.eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
+    64640   s.delta_i = V1i * V2i  - eye_flv
+    64640   @inbounds s.M = eye_flv + s.delta_i * (eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
     64640   return det(s.M)
         - end
         - 
         - 
         - function update_greens!(s::Stack, p::Parameters, l::Lattice, i::Int)
-        -   # first_term = (s.greens - s.eye_full)[:,i:l.sites:end] * inv(s.M)
-    42424   @inbounds first_term = /((s.greens - s.eye_full)[:,i:l.sites:end], s.M)
+        -   # first_term = (s.greens - eye_full)[:,i:l.sites:end] * inv(s.M)
+    42424   @inbounds first_term = /((s.greens - eye_full)[:,i:l.sites:end], s.M)
     42424   @inbounds second_term = s.delta_i * s.greens[i:l.sites:end,:]
     42424   s.greens = s.greens + first_term * second_term
         - end

@@ -80,8 +80,8 @@
         2   s.delta_i = zeros(Complex{Float64}, p.flv, p.flv)
         2   s.M = zeros(Complex{Float64}, p.flv, p.flv)
         - 
-        2   s.eye_flv = eye(p.flv,p.flv)
-        2   s.eye_full = eye(p.flv*l.sites,p.flv*l.sites)
+        2   eye_flv = eye(p.flv,p.flv)
+        2   eye_full = eye(p.flv*l.sites,p.flv*l.sites)
         - 
         -   # Global update backup
         2   s.gb_u_stack = zero(s.u_stack)

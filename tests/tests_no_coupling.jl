@@ -13,7 +13,7 @@ function test_interactions_are_zero(s::Stack,p::Parameters,l::Lattice)
     new_op = rand(3)
     V1i = interaction_matrix_exp_op(p,l,p.hsfield[:,rand(1:l.sites),rand(1:p.slices)],-1.)
     V2i = interaction_matrix_exp_op(p,l,new_op)
-    delta_i = V1i * V2i  - s.eye_flv
+    delta_i = V1i * V2i  - eye_flv
     if delta_i != zeros(eltype(delta_i),size(delta_i)...)
         error("Delta_i not zero for free fermions!")
     end

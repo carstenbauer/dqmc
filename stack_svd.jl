@@ -76,8 +76,8 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.delta_i = zeros(Complex{Float64}, p.flv, p.flv)
   s.M = zeros(Complex{Float64}, p.flv, p.flv)
 
-  s.eye_flv = eye(p.flv,p.flv)
-  s.eye_full = eye(p.flv*l.sites,p.flv*l.sites)
+  eye_flv = eye(p.flv,p.flv)
+  eye_full = eye(p.flv*l.sites,p.flv*l.sites)
 
   # Global update backup
   s.gb_u_stack = similar(s.u_stack)

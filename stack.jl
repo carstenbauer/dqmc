@@ -30,10 +30,6 @@ mutable struct Stack
   delta_i::Matrix{GreensType}
   M::Matrix{GreensType}
 
-  eye_flv::Matrix{GreensType}
-  eye_full::Matrix{GreensType}
-  ones_vec::Vector{Float64}
-
   ranges::Array{UnitRange, 1}
   n_elements::Int
   current_slice::Int # running internally over 0:p.slices+1, where 0 and p.slices+1 are artifcial to prepare next sweep direction.
@@ -81,8 +77,9 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.delta_i = zeros(Complex{Float64}, p.flv, p.flv)
   s.M = zeros(Complex{Float64}, p.flv, p.flv)
 
-  s.eye_flv = eye(p.flv,p.flv)
-  s.eye_full = eye(p.flv*l.sites,p.flv*l.sites)
+  global const eye_flv = eye(p.flv,p.flv)
+  global const eye_full = eye(p.flv*l.sites,p.flv*l.sites)
+  global const ones_vec = ones(p.flv*l.sites)
 
   # Global update backup
   s.gb_u_stack = zero(s.u_stack)
@@ -102,9 +99,9 @@ end
 
 
 function build_stack(s::Stack, p::Parameters, l::Lattice)
-  s.u_stack[:, :, 1] = s.eye_full # TODO CHECK! Is this safe?
-  s.d_stack[:, 1] = ones(p.flv*l.sites)
-  s.t_stack[:, :, 1] = s.eye_full
+  s.u_stack[:, :, 1] = eye_full # TODO CHECK! Is this safe?
+  s.d_stack[:, 1] = ones_vec
+  s.t_stack[:, :, 1] = eye_full
 
   # s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   # s.t_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
