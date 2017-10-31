@@ -119,60 +119,6 @@ end
 
 #### WITH ARTIFICIAL B-FIELD
 
-function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
-
-  println("Initializing hopping exponentials (Bfield, Checkerboard)")
-  # pc = Int(floor(l.sites/4))
-
-  corners = find_four_site_hopping_corners(l)
-
-  chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp_Bfield(p,l, corners, 0.5)
-  chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp_Bfield(p,l, corners, 1.)
-
-  eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2) # group (A, B), spin (up, down), flavor (x, y)
-  eT_half_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
-  eT = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
-  eT_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
-
-  for g in 1:2
-    for f in 1:2
-      for s in 1:2
-        eT_half[g,s,f] = foldl(*,chkr_hop_4site_half[:,g,s,f])
-        eT_half_inv[g,s,f] = foldl(*,chkr_hop_4site_half_inv[:,g,s,f])
-        eT[g,s,f] = foldl(*,chkr_hop_4site[:,g,s,f])
-        eT_inv[g,s,f] = foldl(*,chkr_hop_4site_inv[:,g,s,f])
-      end
-    end
-  end
-
-  eT_A_half = cat([1,2], eT_half[1,1,1], eT_half[1,2,2], eT_half[1,2,1], eT_half[1,1,2])
-  eT_B_half = cat([1,2], eT_half[2,1,1], eT_half[2,2,2], eT_half[2,2,1], eT_half[2,1,2])
-  eT_A_half_inv = cat([1,2], eT_half_inv[1,1,1], eT_half_inv[1,2,2], eT_half_inv[1,2,1], eT_half_inv[1,1,2])
-  eT_B_half_inv = cat([1,2], eT_half_inv[2,1,1], eT_half_inv[2,2,2], eT_half_inv[2,2,1], eT_half_inv[2,1,2])
-  eT_A = cat([1,2], eT[1,1,1], eT[1,2,2], eT[1,2,1], eT[1,1,2])
-  eT_B = cat([1,2], eT[2,1,1], eT[2,2,2], eT[2,2,1], eT[2,1,2])
-  eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2], eT_inv[1,2,1], eT_inv[1,1,2])
-  eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2])
-
-
-  l.chkr_hop_half = [eT_A_half, eT_B_half]
-  l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
-  l.chkr_hop = [eT_A, eT_B]
-  l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
-
-  l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
-
-  hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt.(l.chkr_mu)
-  r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
-  r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
-  println("Checkerboard (Bfield) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
-  println("Checkerboard (Bfield) - exact (eff rel):\t\t", maximum(r))
-end
-
-
 
 function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner::Int,f::Int, B::Float64, sql::Matrix{Int})
   sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
@@ -234,6 +180,60 @@ function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, cor
   end
 
   return chkr_hop_4site, chkr_hop_4site_inv
+end
+
+
+function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
+
+  println("Initializing hopping exponentials (Bfield, Checkerboard)")
+  # pc = Int(floor(l.sites/4))
+
+  corners = find_four_site_hopping_corners(l)
+
+  chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp_Bfield(p,l, corners, 0.5)
+  chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp_Bfield(p,l, corners, 1.)
+
+  eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2) # group (A, B), spin (up, down), flavor (x, y)
+  eT_half_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
+  eT = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
+  eT_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
+
+  for g in 1:2
+    for f in 1:2
+      for s in 1:2
+        eT_half[g,s,f] = foldl(*,chkr_hop_4site_half[:,g,s,f])
+        eT_half_inv[g,s,f] = foldl(*,chkr_hop_4site_half_inv[:,g,s,f])
+        eT[g,s,f] = foldl(*,chkr_hop_4site[:,g,s,f])
+        eT_inv[g,s,f] = foldl(*,chkr_hop_4site_inv[:,g,s,f])
+      end
+    end
+  end
+
+  eT_A_half = cat([1,2], eT_half[1,1,1], eT_half[1,2,2], eT_half[1,2,1], eT_half[1,1,2])
+  eT_B_half = cat([1,2], eT_half[2,1,1], eT_half[2,2,2], eT_half[2,2,1], eT_half[2,1,2])
+  eT_A_half_inv = cat([1,2], eT_half_inv[1,1,1], eT_half_inv[1,2,2], eT_half_inv[1,2,1], eT_half_inv[1,1,2])
+  eT_B_half_inv = cat([1,2], eT_half_inv[2,1,1], eT_half_inv[2,2,2], eT_half_inv[2,2,1], eT_half_inv[2,1,2])
+  eT_A = cat([1,2], eT[1,1,1], eT[1,2,2], eT[1,2,1], eT[1,1,2])
+  eT_B = cat([1,2], eT[2,1,1], eT[2,2,2], eT[2,2,1], eT[2,1,2])
+  eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2], eT_inv[1,2,1], eT_inv[1,1,2])
+  eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2])
+
+
+  l.chkr_hop_half = [eT_A_half, eT_B_half]
+  l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
+  l.chkr_hop = [eT_A, eT_B]
+  l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
+
+  l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
+  l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
+  l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
+  l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
+
+  hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt.(l.chkr_mu)
+  r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
+  r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
+  println("Checkerboard (Bfield) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
+  println("Checkerboard (Bfield) - exact (eff rel):\t\t", maximum(r))
 end
 
 
