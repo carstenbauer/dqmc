@@ -89,9 +89,11 @@ function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 
     ### MONTE CARLO
     println("\n\nMC Thermalize - ", p.thermalization)
+    flush(STDOUT)
     MC_thermalize(s, p, l, a)
 
     println("\n\nMC Measure - ", p.measurements)
+    flush(STDOUT)
     MC_measure(s, p, l, a)
 
     nothing
