@@ -34,20 +34,20 @@ mutable struct Lattice
   chkr_mu::SparseMatrixCSC{HoppingType, Int64}
   chkr_mu_inv::SparseMatrixCSC{HoppingType, Int64}
 
-  # peter remnants
+  # Currently NOT used in checkerboard.jl
   checkerboard::Matrix{Int}
   groups::Vector{UnitRange}
 
   Lattice() = new()
 end
 
-# TODO: checkerboard content in this function
-# TODO: too general for square lattice! leave it that way?
+
 function init_lattice_from_filename(filename::String, l::Lattice)
   xdoc = parse_file(filename)
   xroot = LightXML.root(xdoc)
   l.sites = 1
 
+  # Parse header
   for a in attributes(xroot)
       if LightXML.name(a) == "vertices"
         l.sites = parse(Int, value(a))
@@ -59,9 +59,6 @@ function init_lattice_from_filename(filename::String, l::Lattice)
   edges = get_elements_by_tagname(xroot, "EDGE")
   l.n_bonds = length(edges)
 
-  # checkerboard
-  # l.chkr_hop = SparseMatrixCSC[]
-  # l.chkr_hop_inv = SparseMatrixCSC[]
   l.groups = UnitRange[]
   l.n_neighbors = 0
   edges_used = zeros(Int64, length(edges))
@@ -87,15 +84,16 @@ function init_lattice_from_filename(filename::String, l::Lattice)
           bd_type = parse(Int, value(a)) + 1
         elseif LightXML.name(a) == "id"
           bd_id = parse(Int, value(a))
-        end end
+        end
+      end
 
       if edges_used[bd_id] == 1 continue end
       if sites_used[src] == 1 continue end
       if sites_used[trg] == 1 continue end
 
       if src == 1 || trg == 1
-        # println("Bond ", src, " - ", trg)
-        l.n_neighbors += 1 end
+        l.n_neighbors += 1
+      end
 
       edges_used[bd_id] = 1
       sites_used[src] = 1
