@@ -16,6 +16,7 @@ mutable struct Lattice
   time_neighbors::Matrix{Int} # colidx = slice, rowidx = up, down
   neighbors::Matrix{Int} # colidx = site
                            # first = up, second = right, third and fourth not ordered
+
   bonds::Matrix{Int}
   bond_vecs::Matrix{Float64}
   site_bonds::Matrix{Int}
@@ -257,13 +258,16 @@ end
 
 function init_neighbors_table(p::Parameters,l::Lattice)
   println("Initializing neighbor-tables")
-  # OPT: neighbor table: sort down and left neighbors
-  l.neighbors = zeros(Int64, 4, l.sites) # unsorted order of neighbors
-  for i in 1:l.sites
-    l.neighbors[:,i] = filter(x->x!=i,l.bonds[l.site_bonds[i,:],:])
-  end
-  swap_rows!(l.neighbors,3,1)
-  swap_rows!(l.neighbors,4,2)
+  sql = reshape(1:l.sites, l.L, l.L)
+
+  # Nearest neighbors
+  up = circshift(sql,(-1,0))
+  right = circshift(sql,(0,-1))
+  down = circshift(sql,(1,0))
+  left = circshift(sql,(0,1))
+  l.neighbors = vcat(up[:]',right[:]',down[:]',left[:]')
+
+  nothing
 end
 
 
