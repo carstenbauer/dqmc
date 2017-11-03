@@ -12,7 +12,7 @@ mutable struct Lattice
   L::Int
   n_neighbors::Int
   n_bonds::Int
-  t::Matrix{Float64} # colidx = flavor, rowidx = hor,ver
+  t::Matrix{Float64} # colidx = flavor/band, rowidx = hor,ver
   time_neighbors::Matrix{Int} # colidx = slice, rowidx = up, down
   neighbors::Matrix{Int} # colidx = site
                            # first = up, second = right, third and fourth not ordered
@@ -150,15 +150,23 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
   println("Initializing hopping exponentials")
   Tx = diagm(fill(-p.mu,l.sites))
   Ty = diagm(fill(-p.mu,l.sites))
-  for b in 1:l.n_bonds
-    src = l.bonds[b,1]
-    trg = l.bonds[b,2]
-    if l.bond_vecs[b,1] == 1
-      Tx[trg,src] = Tx[src,trg] += -l.t[1,1]
-      Ty[trg,src] = Ty[src,trg] += -l.t[1,2]
-    else
-      Tx[trg,src] = Tx[src,trg] += -l.t[2,1]
-      Ty[trg,src] = Ty[src,trg] += -l.t[2,2]
+  hor_nb = [2,4]
+  ver_nb = [1,3]
+
+  # Nearest neighbor hoppings
+  @inbounds @views begin
+    for src in 1:l.sites
+      for nb in hor_nb # horizontal neighbors
+        trg = l.neighbors[nb,src]
+        Tx[trg,src] += -l.t[1,1] # t_x_hor
+        Ty[trg,src] += -l.t[1,2] # t_y_hor
+      end
+
+      for nb in ver_nb # vertical neighbors
+        trg = l.neighbors[nb,src]
+        Tx[trg,src] += -l.t[2,1] # t_x_ver
+        Ty[trg,src] += -l.t[2,2] # t_y_ver
+      end
     end
   end
 
