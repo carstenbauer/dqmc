@@ -75,6 +75,8 @@ a = Analysis()
 
 preallocate_arrays(p,l.sites)
 
+@printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000./60.)
+
 function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     
     # Init hsfield
