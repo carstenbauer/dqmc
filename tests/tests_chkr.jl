@@ -82,7 +82,7 @@ function plot_greens_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
     greens_chkr = calculate_greens_and_logdet_chkr(p,l,1)[1]
 
     maxabsdiffs[k] = maximum(absdiff(greens,greens_chkr))
-    maxreldiffs[k] = maximum(reldiff(greens,greens_chkr))
+    maxreldiffs[k] = maximum(effreldiff(greens,greens_chkr))
   end
 
   # restore old delta_tau
@@ -101,6 +101,17 @@ function plot_greens_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
 
   savefig("chkr_greens_error_L_$(l.L).png")
 
+  figure()
+  loglog(delta_tau_range,maxreldiffs, label="numerics")
+  loglog(delta_tau_range,delta_tau_range, label="\$ O(\\Delta\\tau) \$")
+  loglog(delta_tau_range,delta_tau_range.^2, label="\$ O(\\Delta\\tau^2) \$")
+  title("Checkerboard error in \$ G \$ (L=$(l.L))")
+  ylabel("max rel diff \$ (G, G_{chkr}) \$")
+  xlabel("\$ \\Delta\\tau\$")
+  legend()
+
+  savefig("chkr_greens_rel_error_L_$(l.L).png")
+
 end
 
 
@@ -111,8 +122,8 @@ function test_greens_chkr_speed(p::Parameters, l::Lattice, samples::Int=10)
   t_chkr = 0.
   A = eye(Complex128, p.flv*l.sites)
   for k in 1:samples
-    t += (@timed calculate_greens_udv(p,l,1))[2]
-    t_chkr += (@timed calculate_greens_udv_chkr(p,l,1))[2]
+    t += (@timed measure_greens_and_logdet_no_chkr(p,l))[2]
+    t_chkr += (@timed measure_greens_and_logdet(p,l))[2]
   end
 
   @printf("avg time w/o checkerboard: %.1e\n", t/samples)

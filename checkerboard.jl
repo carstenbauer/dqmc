@@ -113,7 +113,7 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
   r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
   println("Checkerboard - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
-  println("Checkerboard - exact (eff rel):\t\t", maximum(r))
+  # println("Checkerboard - exact (eff rel):\t\t", maximum(r))
 end
 
 
