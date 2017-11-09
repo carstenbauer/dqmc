@@ -218,11 +218,12 @@ function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
   eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2], eT_inv[1,2,1], eT_inv[1,1,2])
   eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2])
 
-
   l.chkr_hop_half = [eT_A_half, eT_B_half]
   l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
+  l.chkr_hop_half_dagger = [ctranspose(eT_A_half), ctranspose(eT_B_half)]
   l.chkr_hop = [eT_A, eT_B]
   l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
+  l.chkr_hop_dagger = [ctranspose(eT_A), ctranspose(eT_B)]
 
   l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
   l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
