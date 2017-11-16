@@ -1,4 +1,4 @@
-# dqmc.jl called with arguments: sdwO3_L_4_B_2_dt_0.1_1 ${SLURM_ARRAY_TASK_ID}
+# dqmc.jl called with arguments: whatever.in.xml
 start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 
@@ -6,14 +6,23 @@ using Helpers
 include("parameters.jl")
 
 ### PROGRAM ARGUMENTS
-# ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]
-prefix = convert(String, ARGS[1])
-idx = 1
-try idx = parse(Int, ARGS[2]); end # SLURM_ARRAY_TASK_ID 
-output_file = prefix * ".task" * string(idx) * ".out.h5"
+if length(ARGS) == 1
+  # ARGS = ["whatever.in.xml"]
+  input_xml = ARGS[1]
+  output_file = input_xml[1:searchindex(input_xml, ".in.xml")-1]*".out.h5"
+elseif length(ARGS) == 2
+  # Backward compatibility
+  # ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]
+  prefix = convert(String, ARGS[1])
+  idx = 1
+  try idx = parse(Int, ARGS[2]); end # SLURM_ARRAY_TASK_ID 
+  output_file = prefix * ".task" * string(idx) * ".out.h5"
 
-println("Prefix is ", prefix, " and idx is ", idx)
-input_xml = prefix * ".task" * string(idx) * ".in.xml"
+  println("Prefix is ", prefix, " and idx is ", idx)
+  input_xml = prefix * ".task" * string(idx) * ".in.xml"
+else
+  error("Call with \"whatever.in.xml\" or e.g. \"sdwO3_L_4_B_2_dt_0.1_1 \${SLURM_ARRAY_TASK_ID}\"")
+end
 
 # hdf5 write test
 f = HDF5.h5open(output_file, "w")
@@ -27,18 +36,24 @@ p.output_file = output_file
 params = parse_inputxml(p, input_xml)
 
 ### SET DATATYPES
-global const HoppingType = p.Bfield ? Complex128 : Float64;
-global const GreensType = Complex128;
+if p.Bfield
+  global const HoppingType = Complex128;
+  global const GreensType = Complex128;
+else
+  global const HoppingType = Float64;
+  global const GreensType = p.opdim > 1 ? Complex128 : Float64; # O(1) -> real GF
+end
+
 println("HoppingType = ", HoppingType)
 println("GreensType = ", GreensType)
 
 
-include("linalg.jl")
 include("lattice.jl")
+include("stack.jl")
+include("linalg.jl")
 include("checkerboard.jl")
 include("interactions.jl")
 include("action.jl")
-include("stack.jl")
 include("local_updates.jl")
 include("global_updates.jl")
 include("observable.jl")
@@ -73,15 +88,13 @@ end
 s = Stack()
 a = Analysis()
 
-preallocate_arrays(p,l.sites)
-
 @printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000./60.)
 
 function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     
     # Init hsfield
     println("\nInitializing HS field")
-    p.hsfield = rand(3,l.sites,p.slices)
+    p.hsfield = rand(p.opdim,l.sites,p.slices)
     println("Initializing boson action\n")
     p.boson_action = calculate_boson_action(p,l)
 
@@ -175,11 +188,11 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     cs = min(p.measurements, 100)
 
     configurations = Observable{Float64}("configurations", size(p.hsfield), cs)
-    greens = Observable{Complex{Float64}}("greens", size(s.greens), cs)
+    greens = Observable{GreensType}("greens", size(s.greens), cs)
 
     boson_action = Observable{Float64}("boson_action", cs)
     mean_abs_op = Observable{Float64}("mean_abs_op", cs)
-    mean_op = Observable{Float64}("mean_op", (3), cs)
+    mean_op = Observable{Float64}("mean_op", (p.opdim), cs)
 
 
     acc_rate = 0.0

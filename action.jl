@@ -2,7 +2,7 @@ function calculate_boson_action(p::Parameters, l::Lattice, hsfield::Array{Float6
 
   S = 0.0
 
-  h = reshape(hsfield, (3,l.L,l.L,p.slices))
+  h = reshape(hsfield, (p.opdim,l.L,l.L,p.slices))
 
   # temporal gradient
   t = h - circshift(h, (0,0,0,-1))
@@ -56,7 +56,7 @@ function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, slice
     op_later = p.hsfield[:,site,l.time_neighbors[1,slice]]
     op_time_neighbors = op_later + op_earlier
 
-    op_space_neighbors = zeros(3)
+    op_space_neighbors = zeros(p.opdim)
     @simd for n in 1:4
       op_space_neighbors += p.hsfield[:,l.neighbors[n,site],slice]
     end

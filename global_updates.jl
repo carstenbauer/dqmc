@@ -9,9 +9,9 @@ end
 
 @inline function global_update_perform_shift!(s::Stack, p::Parameters, l::Lattice)
     @inbounds @views begin
-      p.hsfield[1,:,:] .+= rand(p.box_global)
-      p.hsfield[2,:,:] .+= rand(p.box_global)
-      p.hsfield[3,:,:] .+= rand(p.box_global)
+      @simd for k in 1:p.opdim
+        p.hsfield[k,:,:] .+= rand(p.box_global)
+      end
     end
 end
 
@@ -32,9 +32,6 @@ function global_update(s::Stack, p::Parameters, l::Lattice)
 
   p.boson_action = calculate_boson_action(p, l)
 
-  # @printf("S_new: %.2e\n", p.boson_action)
-  # @printf("S_old: %.2e\n", S_old)
-  # @printf("S_new - S_old: %.2e\n", p.boson_action - S_old)
   p_boson = exp(-(p.boson_action - S_old)) # exp_delta_S_boson
 
   # calculate detratio = fermion accept. prob.

@@ -1,3 +1,9 @@
+if !isdefined(:HoppingType)
+  global const HoppingType = Complex128; # assume O(2) or O(3)
+  warn("HoppingType wasn't set on loading checkerboard.jl")
+  println("HoppingType = ", HoppingType)
+end
+
 """
 Checkerboard initialization: Assaad four site version for square lattice
 """
@@ -88,14 +94,25 @@ function init_checkerboard_matrices(p::Parameters, l::Lattice)
   eTy_A_inv = foldl(*,chkr_hop_4site_inv[:,1,2])
   eTy_B_inv = foldl(*,chkr_hop_4site_inv[:,2,2])
 
-  eT_A_half = cat([1,2],eTx_A_half,eTy_A_half,eTx_A_half,eTy_A_half)
-  eT_B_half = cat([1,2],eTx_B_half,eTy_B_half,eTx_B_half,eTy_B_half)
-  eT_A_half_inv = cat([1,2],eTx_A_half_inv,eTy_A_half_inv,eTx_A_half_inv,eTy_A_half_inv)
-  eT_B_half_inv = cat([1,2],eTx_B_half_inv,eTy_B_half_inv,eTx_B_half_inv,eTy_B_half_inv)
-  eT_A = cat([1,2],eTx_A,eTy_A,eTx_A,eTy_A)
-  eT_B = cat([1,2],eTx_B,eTy_B,eTx_B,eTy_B)
-  eT_A_inv = cat([1,2],eTx_A_inv,eTy_A_inv,eTx_A_inv,eTy_A_inv)
-  eT_B_inv = cat([1,2],eTx_B_inv,eTy_B_inv,eTx_B_inv,eTy_B_inv)
+  if p.opdim == 3
+    eT_A_half = cat([1,2],eTx_A_half,eTy_A_half,eTx_A_half,eTy_A_half)
+    eT_B_half = cat([1,2],eTx_B_half,eTy_B_half,eTx_B_half,eTy_B_half)
+    eT_A_half_inv = cat([1,2],eTx_A_half_inv,eTy_A_half_inv,eTx_A_half_inv,eTy_A_half_inv)
+    eT_B_half_inv = cat([1,2],eTx_B_half_inv,eTy_B_half_inv,eTx_B_half_inv,eTy_B_half_inv)
+    eT_A = cat([1,2],eTx_A,eTy_A,eTx_A,eTy_A)
+    eT_B = cat([1,2],eTx_B,eTy_B,eTx_B,eTy_B)
+    eT_A_inv = cat([1,2],eTx_A_inv,eTy_A_inv,eTx_A_inv,eTy_A_inv)
+    eT_B_inv = cat([1,2],eTx_B_inv,eTy_B_inv,eTx_B_inv,eTy_B_inv)
+  else
+    eT_A_half = cat([1,2],eTx_A_half,eTy_A_half)
+    eT_B_half = cat([1,2],eTx_B_half,eTy_B_half)
+    eT_A_half_inv = cat([1,2],eTx_A_half_inv,eTy_A_half_inv)
+    eT_B_half_inv = cat([1,2],eTx_B_half_inv,eTy_B_half_inv)
+    eT_A = cat([1,2],eTx_A,eTy_A)
+    eT_B = cat([1,2],eTx_B,eTy_B)
+    eT_A_inv = cat([1,2],eTx_A_inv,eTy_A_inv)
+    eT_B_inv = cat([1,2],eTx_B_inv,eTy_B_inv)
+  end
 
   l.chkr_hop_half = [eT_A_half, eT_B_half]
   l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
@@ -209,14 +226,19 @@ function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
     end
   end
 
-  eT_A_half = cat([1,2], eT_half[1,1,1], eT_half[1,2,2], eT_half[1,2,1], eT_half[1,1,2])
-  eT_B_half = cat([1,2], eT_half[2,1,1], eT_half[2,2,2], eT_half[2,2,1], eT_half[2,1,2])
-  eT_A_half_inv = cat([1,2], eT_half_inv[1,1,1], eT_half_inv[1,2,2], eT_half_inv[1,2,1], eT_half_inv[1,1,2])
-  eT_B_half_inv = cat([1,2], eT_half_inv[2,1,1], eT_half_inv[2,2,2], eT_half_inv[2,2,1], eT_half_inv[2,1,2])
-  eT_A = cat([1,2], eT[1,1,1], eT[1,2,2], eT[1,2,1], eT[1,1,2])
-  eT_B = cat([1,2], eT[2,1,1], eT[2,2,2], eT[2,2,1], eT[2,1,2])
-  eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2], eT_inv[1,2,1], eT_inv[1,1,2])
-  eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2])
+  if p.opdim == 3
+    eT_A_half = cat([1,2], eT_half[1,1,1], eT_half[1,2,2], eT_half[1,2,1], eT_half[1,1,2])
+    eT_B_half = cat([1,2], eT_half[2,1,1], eT_half[2,2,2], eT_half[2,2,1], eT_half[2,1,2])
+    eT_A_half_inv = cat([1,2], eT_half_inv[1,1,1], eT_half_inv[1,2,2], eT_half_inv[1,2,1], eT_half_inv[1,1,2])
+    eT_B_half_inv = cat([1,2], eT_half_inv[2,1,1], eT_half_inv[2,2,2], eT_half_inv[2,2,1], eT_half_inv[2,1,2])
+    eT_A = cat([1,2], eT[1,1,1], eT[1,2,2], eT[1,2,1], eT[1,1,2])
+    eT_B = cat([1,2], eT[2,1,1], eT[2,2,2], eT[2,2,1], eT[2,1,2])
+    eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2], eT_inv[1,2,1], eT_inv[1,1,2])
+    eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2])
+  else
+    #TODO: Bfield for O(2) and O(1) model
+    error("Bfield currently only supported for O(3).")
+  end
 
   l.chkr_hop_half = [eT_A_half, eT_B_half]
   l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
@@ -234,7 +256,7 @@ function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
   r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
   println("Checkerboard (Bfield) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
-  println("Checkerboard (Bfield) - exact (eff rel):\t\t", maximum(r))
+  # println("Checkerboard (Bfield) - exact (eff rel):\t\t", maximum(r))
 end
 
 
@@ -244,21 +266,21 @@ end
 """
 Slice matrix
 """
-function slice_matrix(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
-  res = eye(Complex128, p.flv*l.sites)
+function slice_matrix(s::Stack, p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
+  res = eye(HoppingType, p.flv*l.sites)
   if power > 0
-    multiply_slice_matrix_left!(p, l, slice, res)
+    multiply_slice_matrix_left!(s,p, l, slice, res)
   else
-    multiply_slice_matrix_inv_left!(p, l, slice, res)
+    multiply_slice_matrix_inv_left!(s,p, l, slice, res)
   end
   return res
 end
 
 
-function multiply_slice_matrix_left!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+function multiply_slice_matrix_left!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
 
-  interaction_matrix_exp!(p,l,slice,1.,p.eV)
-  M[:] = p.eV * M
+  interaction_matrix_exp!(s,p,l,slice,1.,s.eV)
+  M[:] = s.eV * M
   M[:] = l.chkr_mu * M
 
   M[:] = l.chkr_hop_half[2] * M
@@ -266,32 +288,32 @@ function multiply_slice_matrix_left!(p::Parameters, l::Lattice, slice::Int, M::A
   M[:] = l.chkr_hop_half[2] * M
 end
 
-function multiply_slice_matrix_right!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+function multiply_slice_matrix_right!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
 
-  interaction_matrix_exp!(p,l,slice,1.,p.eV)
+  interaction_matrix_exp!(s,p,l,slice,1.,s.eV)
   M[:] = M * l.chkr_hop_half[2]
   M[:] = M * l.chkr_hop[1]
   M[:] = M * l.chkr_hop_half[2]
 
   M[:] = M * l.chkr_mu
-  M[:] = M * p.eV
+  M[:] = M * s.eV
 end
 
-function multiply_slice_matrix_inv_left!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+function multiply_slice_matrix_inv_left!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
 
-  interaction_matrix_exp!(p, l, slice, -1., p.eV)
+  interaction_matrix_exp!(s,p, l, slice, -1., s.eV)
   M[:] = l.chkr_hop_half_inv[2] * M
   M[:] = l.chkr_hop_inv[1] * M
   M[:] = l.chkr_hop_half_inv[2] * M
 
   M[:] = l.chkr_mu_inv * M
-  M[:] = p.eV * M
+  M[:] = s.eV * M
 end
 
-function multiply_slice_matrix_inv_right!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+function multiply_slice_matrix_inv_right!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
 
-  interaction_matrix_exp!(p, l, slice, -1., p.eV)
-  M[:] = M * p.eV
+  interaction_matrix_exp!(s,p, l, slice, -1., s.eV)
+  M[:] = M * s.eV
   M[:] = M * l.chkr_mu_inv
 
   M[:] = M * l.chkr_hop_half_inv[2]
@@ -299,42 +321,42 @@ function multiply_slice_matrix_inv_right!(p::Parameters, l::Lattice, slice::Int,
   M[:] = M * l.chkr_hop_half_inv[2]
 end
 
-function multiply_daggered_slice_matrix_left!(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+function multiply_daggered_slice_matrix_left!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
 
-  interaction_matrix_exp!(p, l, slice, 1., p.eV)
+  interaction_matrix_exp!(s,p, l, slice, 1., s.eV)
   M[:] = l.chkr_hop_half_dagger[2] * M
   M[:] = l.chkr_hop_dagger[1] * M
   M[:] = l.chkr_hop_half_dagger[2] * M
 
-  # p.eV == ctranspose(p.eV) and l.chkr_mu == ctranspose(l.chkr_mu)
+  # s.eV == ctranspose(s.eV) and l.chkr_mu == ctranspose(s.chkr_mu)
   M[:] = l.chkr_mu * M
-  M[:] = p.eV * M
+  M[:] = s.eV * M
 
 end
 
 
 
 
-function multiply_slice_matrix_left(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+function multiply_slice_matrix_left(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
   X = copy(M)
-  multiply_slice_matrix_left!(p, l, slice, X)
+  multiply_slice_matrix_left!(s,p, l, slice, X)
   return X
 end
 
-function multiply_slice_matrix_right(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+function multiply_slice_matrix_right(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
   X = copy(M)
-  multiply_slice_matrix_right!(p, l, slice, X)
+  multiply_slice_matrix_right!(s,p, l, slice, X)
   return X
 end
 
-function multiply_slice_matrix_inv_left(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+function multiply_slice_matrix_inv_left(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
   X = copy(M)
-  multiply_slice_matrix_inv_left!(p, l, slice, X)
+  multiply_slice_matrix_inv_left!(s,p, l, slice, X)
   return X
 end
 
-function multiply_slice_matrix_inv_right(p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{Complex128})
+function multiply_slice_matrix_inv_right(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
   X = copy(M)
-  multiply_slice_matrix_inv_right!(p, l, slice, X)
+  multiply_slice_matrix_inv_right!(s,p, l, slice, X)
   return X
 end

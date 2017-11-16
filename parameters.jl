@@ -9,6 +9,7 @@ mutable struct Parameters
   delta_tau::Float64
   slices::Int
   safe_mult::Int
+  opdim::Int # order parameter dimension
 
   thermalization::Int # no measurements, no saving
   measurements::Int # save and (maybe) measure
@@ -37,31 +38,19 @@ mutable struct Parameters
 
   all_checks::Bool # true: check for propagation instblts. and S_b consistency
 
-  #### Array allocations
-  eV::Matrix{Complex128}
-  eVop1::Matrix{Complex128}
-  eVop2::Matrix{Complex128}
-
   function Parameters()
     p = new()
     p.global_updates = true
     p.chkr = true
     p.Bfield = false
-    p.box = Uniform(-0.2,0.2)
+    p.box = Uniform(-0.5,0.5)
     p.box_global = Uniform(-0.1,0.1)
     p.global_rate = 5
     p.write_every_nth = 1
     p.all_checks = false
+    p.opdim = 3
     return p
   end
-end
-
-
-function preallocate_arrays(p::Parameters, l_sites::Int)
-  p.eV = zeros(Complex128, p.flv * l_sites, p.flv * l_sites)
-  p.eVop1 = zeros(Complex128, p.flv, p.flv)
-  p.eVop2 = zeros(Complex128, p.flv, p.flv)
-  nothing
 end
 
 
@@ -99,6 +88,17 @@ function parse_inputxml(p::Parameters, input_xml::String)
   p.flv = 4
 
   ### PARSE OPTIONAL PARAMS
+  if haskey(params, "OPDIM")
+    p.opdim = parse(Int, params["OPDIM"]);
+    if p.opdim == 1 || p.opdim == 2
+      p.flv = 2
+    elseif p.opdim == 3
+      p.flv = 4
+    else
+      error("OPDIM must be 1, 2 or 3!")
+    end
+  end
+
   if haskey(params, "SEED")
     srand(parse(Int, params["SEED"]));
   end

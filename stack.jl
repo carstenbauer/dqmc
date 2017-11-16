@@ -1,5 +1,6 @@
 if !isdefined(:GreensType)
-  global const GreensType = Complex128; # always complex for O(3)
+  global const GreensType = Complex128; # assume O(2) or O(3)
+  warn("GreensType wasn't set on loading stack.jl")
   println("GreensType = ", GreensType)
 end
 
@@ -49,6 +50,9 @@ mutable struct Stack
 
   #### Array allocations
   curr_U::Matrix{GreensType}
+  eV::Matrix{GreensType}
+  eVop1::Matrix{GreensType}
+  eVop2::Matrix{GreensType}
 
   Stack() = new()
 end
@@ -57,29 +61,29 @@ end
 function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   s.n_elements = convert(Int, p.slices / p.safe_mult) + 1
 
-  s.u_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
+  s.u_stack = zeros(GreensType, p.flv*l.sites, p.flv*l.sites, s.n_elements)
   s.d_stack = zeros(Float64, p.flv*l.sites, s.n_elements)
-  s.t_stack = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites, s.n_elements)
+  s.t_stack = zeros(GreensType, p.flv*l.sites, p.flv*l.sites, s.n_elements)
 
-  s.greens = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.greens_temp = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.greens = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
+  s.greens_temp = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
 
-  s.Ul = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.Ur = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.Tl = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.Tr = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.Ul = eye(GreensType, p.flv*l.sites, p.flv*l.sites)
+  s.Ur = eye(GreensType, p.flv*l.sites, p.flv*l.sites)
+  s.Tl = eye(GreensType, p.flv*l.sites, p.flv*l.sites)
+  s.Tr = eye(GreensType, p.flv*l.sites, p.flv*l.sites)
   s.Dl = ones(Float64, p.flv*l.sites)
   s.Dr = ones(Float64, p.flv*l.sites)
 
-  s.U = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.U = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
   s.D = zeros(Float64, p.flv*l.sites)
-  s.T = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
-  s.u = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.T = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
+  s.u = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
   s.d = zeros(Float64, p.flv*l.sites)
-  s.t = zeros(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
+  s.t = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
 
-  s.delta_i = zeros(Complex{Float64}, p.flv, p.flv)
-  s.M = zeros(Complex{Float64}, p.flv, p.flv)
+  s.delta_i = zeros(GreensType, p.flv, p.flv)
+  s.M = zeros(GreensType, p.flv, p.flv)
 
   # Global update backup
   s.gb_u_stack = zero(s.u_stack)
@@ -96,6 +100,9 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
   end
 
   s.curr_U = zero(s.U)
+  s.eV = zeros(GreensType, p.flv * l.sites, p.flv * l.sites)
+  s.eVop1 = zeros(GreensType, p.flv, p.flv)
+  s.eVop2 = zeros(GreensType, p.flv, p.flv)
 
 end
 
@@ -126,9 +133,9 @@ function add_slice_sequence_left(s::Stack, p::Parameters, l::Lattice, idx::Int)
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
     if p.chkr
-      multiply_slice_matrix_left!(p, l, slice, s.curr_U)
+      multiply_slice_matrix_left!(s, p, l, slice, s.curr_U)
     else
-      s.curr_U = slice_matrix_no_chkr(p, l, slice) * s.curr_U
+      s.curr_U = slice_matrix_no_chkr(s, p, l, slice) * s.curr_U
     end
   end
 
@@ -147,9 +154,9 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
 
   for slice in reverse(s.ranges[idx])
     if p.chkr
-      multiply_daggered_slice_matrix_left!(p, l, slice, s.curr_U)
+      multiply_daggered_slice_matrix_left!(s, p, l, slice, s.curr_U)
     else
-      s.curr_U = ctranspose(slice_matrix_no_chkr(p, l, slice)) * s.curr_U
+      s.curr_U = ctranspose(slice_matrix_no_chkr(s, p, l, slice)) * s.curr_U
     end
   end
 
@@ -160,45 +167,45 @@ end
 
 
 # Beff(slice) = exp(−1/2∆τT)exp(−1/2∆τT)exp(−∆τV(slice))
-function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
+function slice_matrix_no_chkr(s::Stack, p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
   if power > 0
-    return l.hopping_matrix_exp * l.hopping_matrix_exp * interaction_matrix_exp(p, l, slice, power)
+    return l.hopping_matrix_exp * l.hopping_matrix_exp * interaction_matrix_exp(s, p, l, slice, power)
   else
-    return interaction_matrix_exp(p, l, slice, power) * l.hopping_matrix_exp_inv * l.hopping_matrix_exp_inv
+    return interaction_matrix_exp(s, p, l, slice, power) * l.hopping_matrix_exp_inv * l.hopping_matrix_exp_inv
   end
 end
 
 
-@inline function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
+@inline function wrap_greens_chkr!(s::Stack, p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
   if direction == -1
-    multiply_slice_matrix_inv_left!(p, l, curr_slice - 1, gf)
-    multiply_slice_matrix_right!(p, l, curr_slice - 1, gf)
+    multiply_slice_matrix_inv_left!(s, p, l, curr_slice - 1, gf)
+    multiply_slice_matrix_right!(s, p, l, curr_slice - 1, gf)
   else
-    multiply_slice_matrix_left!(p, l, curr_slice, gf)
-    multiply_slice_matrix_inv_right!(p, l, curr_slice, gf)
+    multiply_slice_matrix_left!(s, p, l, curr_slice, gf)
+    multiply_slice_matrix_inv_right!(s, p, l, curr_slice, gf)
   end
 end
 
-function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Matrix{GreensType},slice::Int,direction::Int)
+function wrap_greens_chkr(s::Stack, p::Parameters, l::Lattice, gf::Matrix{GreensType},slice::Int,direction::Int)
   temp = copy(gf)
-  wrap_greens_chkr!(p, l, temp, slice, direction)
+  wrap_greens_chkr!(s, p, l, temp, slice, direction)
   return temp
 end
 
 
-function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
+function wrap_greens_no_chkr!(s::Stack, p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
   if direction == -1
-    gf[:] = slice_matrix_no_chkr(p, l, curr_slice - 1, -1.) * gf
-    gf[:] = gf * slice_matrix_no_chkr(p, l, curr_slice - 1, 1.)
+    gf[:] = slice_matrix_no_chkr(s, p, l, curr_slice - 1, -1.) * gf
+    gf[:] = gf * slice_matrix_no_chkr(s, p, l, curr_slice - 1, 1.)
   else
-    gf[:] = slice_matrix_no_chkr(p, l, curr_slice, 1.) * gf
-    gf[:] = gf * slice_matrix_no_chkr(p, l, curr_slice, -1.)
+    gf[:] = slice_matrix_no_chkr(s, p, l, curr_slice, 1.) * gf
+    gf[:] = gf * slice_matrix_no_chkr(s, p, l, curr_slice, -1.)
   end
 end
 
-function wrap_greens_no_chkr(p::Parameters, l::Lattice, gf::Matrix{GreensType},slice::Int,direction::Int)
+function wrap_greens_no_chkr(s::Stack, p::Parameters, l::Lattice, gf::Matrix{GreensType},slice::Int,direction::Int)
   temp = copy(gf)
-  wrap_greens_no_chkr!(p, l, temp, slice, direction)
+  wrap_greens_no_chkr!(s, p, l, temp, slice, direction)
   return temp
 end
 
@@ -228,7 +235,11 @@ end
 Only reasonable immediately after calculate_greens()!
 """
 function calculate_logdet(s::Stack, p::Parameters, l::Lattice)
-  s.log_det = real(logdet(s.U) + sum(log.(s.d)) + logdet(s.T))
+  if p.opdim == 1
+    s.log_det = real(log(complex(det(s.U))) + sum(log.(s.d)) + logdet(complex(det(s.T))))
+  else
+    s.log_det = real(logdet(s.U) + sum(log.(s.d)) + logdet(s.T))
+  end
 end
 
 
@@ -261,9 +272,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         end
 
         if p.chkr
-          wrap_greens_chkr!(p, l, s.greens_temp, s.current_slice - 1, 1)
+          wrap_greens_chkr!(s, p, l, s.greens_temp, s.current_slice - 1, 1)
         else
-          wrap_greens_no_chkr!(p, l, s.greens_temp, s.current_slice - 1, 1)
+          wrap_greens_no_chkr!(s, p, l, s.greens_temp, s.current_slice - 1, 1)
         end
 
         calculate_greens(s, p, l) # greens_{slice we are propagating to}
@@ -286,9 +297,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
     else
       # Wrapping
       if p.chkr
-        wrap_greens_chkr!(p, l, s.greens, s.current_slice, 1)
+        wrap_greens_chkr!(s, p, l, s.greens, s.current_slice, 1)
       else
-        wrap_greens_no_chkr!(p, l, s.greens, s.current_slice, 1)
+        wrap_greens_no_chkr!(s, p, l, s.greens, s.current_slice, 1)
       end
       s.current_slice += 1
     end
@@ -308,9 +319,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
         # wrap to greens_{p.slices}
         if p.chkr
-          wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)
+          wrap_greens_chkr!(s, p, l, s.greens, s.current_slice + 1, -1)
         else
-          wrap_greens_no_chkr!(p, l, s.greens, s.current_slice + 1, -1)
+          wrap_greens_no_chkr!(s, p, l, s.greens, s.current_slice + 1, -1)
         end
 
       elseif 0 < s.current_slice < p.slices
@@ -333,9 +344,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         end
 
         if p.chkr
-          wrap_greens_chkr!(p, l, s.greens, s.current_slice + 1, -1)
+          wrap_greens_chkr!(s, p, l, s.greens, s.current_slice + 1, -1)
         else
-          wrap_greens_no_chkr!(p, l, s.greens, s.current_slice + 1, -1)
+          wrap_greens_no_chkr!(s, p, l, s.greens, s.current_slice + 1, -1)
         end
 
       else # we are going to 0
@@ -349,9 +360,9 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
     else
       # Wrapping
       if p.chkr
-        wrap_greens_chkr!(p, l, s.greens, s.current_slice, -1)
+        wrap_greens_chkr!(s, p, l, s.greens, s.current_slice, -1)
       else
-        wrap_greens_no_chkr!(p, l, s.greens, s.current_slice, -1)
+        wrap_greens_no_chkr!(s, p, l, s.greens, s.current_slice, -1)
       end
       s.current_slice -= 1
     end

@@ -1,9 +1,11 @@
+if !isdefined(:HoppingType)
+  global const HoppingType = Complex128; # assume worst case
+  warn("HoppingType wasn't set on loading lattice.jl")
+  println("HoppingType = ", HoppingType)
+end
+
 using LightXML
 using Helpers
-
-if !isdefined(:HoppingType)
-  global const HoppingType = Float64;
-end
 
 # define lattice type
 mutable struct Lattice
@@ -174,8 +176,13 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
   eTy_minus = expm(-0.5 * p.delta_tau * Ty)
   eTx_plus = expm(0.5 * p.delta_tau * Tx)
   eTy_plus = expm(0.5 * p.delta_tau * Ty)
-  l.hopping_matrix_exp = cat([1,2],eTx_minus,eTy_minus,eTx_minus,eTy_minus)
-  l.hopping_matrix_exp_inv = cat([1,2],eTx_plus,eTy_plus,eTx_plus,eTy_plus)
+  if p.opdim == 3
+    l.hopping_matrix_exp = cat([1,2],eTx_minus,eTy_minus,eTx_minus,eTy_minus)
+    l.hopping_matrix_exp_inv = cat([1,2],eTx_plus,eTy_plus,eTx_plus,eTy_plus)
+  else # O(1) and O(2)
+    l.hopping_matrix_exp = cat([1,2],eTx_minus,eTy_minus)
+    l.hopping_matrix_exp_inv = cat([1,2],eTx_plus,eTy_plus)
+  end
   return nothing
 end
 
@@ -218,6 +225,10 @@ function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int}, pbc::Bool)::Compl
 end
 
 function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void
+  if p.opdim != 3
+    error("Bfield currently only supported for O(3) case.")
+  end
+  
   println("Initializing hopping exponentials (Bfield)")
   B = zeros(2,2) # colidx = flavor, rowidx = spin up,down
   if p.Bfield
