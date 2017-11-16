@@ -270,10 +270,10 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
         end
       end
       if mod(i, 100) == 0
-        a.acc_rate = a.acc_rate / (10 * 2 * p.slices)
-        a.acc_rate_global = a.acc_rate_global / (10 / p.global_rate)
+        a.acc_rate = a.acc_rate / (100 * 2 * p.slices)
+        a.acc_rate_global = a.acc_rate_global / (100 / p.global_rate)
         println("\t", i)
-        @printf("\t\tup-down sweep dur: %.2fs\n", toq()/10)
+        @printf("\t\tup-down sweep dur: %.2fs\n", toq()/100)
         @printf("\t\tacc rate (local) : %.1f%%\n", a.acc_rate*100)
         if p.global_updates
           @printf("\t\tacc rate (global): %.1f%%\n", a.acc_rate_global*100)
