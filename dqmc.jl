@@ -115,6 +115,31 @@ function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 end
 
 
+function MC_update(s::Stack, p::Parameters, l::Lattice, i::Int, a::Analysis)
+
+    propagate(s, p, l)
+
+    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
+      # attempt global update after every fifth down-up sweep
+      # println("Attempting global update...")
+      a.prop_global += 1
+      b = global_update(s, p, l)
+      a.acc_rate_global += b
+      a.acc_global += b
+      # println("Accepted: ", b)
+    end
+
+    # println("Before local")
+    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
+    a.acc_rate += local_updates(s, p, l)
+    # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
+    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
+    # println("")
+
+    nothing
+end
+
+
 function MC_thermalize(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 
     # stack init and test
@@ -261,31 +286,6 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
       end
     end
     toq();
-    nothing
-end
-
-
-function MC_update(s::Stack, p::Parameters, l::Lattice, i::Int, a::Analysis)
-
-    propagate(s, p, l)
-
-    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
-      # attempt global update after every fifth down-up sweep
-      # println("Attempting global update...")
-      a.prop_global += 1
-      b = global_update(s, p, l)
-      a.acc_rate_global += b
-      a.acc_global += b
-      # println("Accepted: ", b)
-    end
-
-    # println("Before local")
-    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
-    a.acc_rate += local_updates(s, p, l)
-    # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
-    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
-    # println("")
-
     nothing
 end
 
