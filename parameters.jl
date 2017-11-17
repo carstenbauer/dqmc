@@ -5,6 +5,7 @@ include("xml_parameters.jl")
 
 mutable struct Parameters
   lattice_file::String
+  hoppings::String
   beta::Float64
   delta_tau::Float64
   slices::Int
@@ -61,6 +62,7 @@ function set_parameters(p::Parameters, params) #TODO what is the type of params 
   p.delta_tau = parse(Float64, params["DELTA_TAU"])
   p.safe_mult = parse(Int, params["SAFE_MULT"])
   p.lattice_file = params["LATTICE_FILE"]
+  p.hoppings = params["HOPPINGS"]
   p.mu = parse(Float64, params["MU"])
   p.lambda = parse(Float64, params["LAMBDA"])
   p.r = parse(Float64, params["R"])
@@ -117,13 +119,21 @@ function set_parameters(p::Parameters, params) #TODO what is the type of params 
     p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"])
   end
 
-  if haskey(params, "GreensType")
-    global const GreensType = eval(parse(params["GreensType"]))
+  ### SET DATATYPES
+  if p.Bfield
+    global const HoppingType = Complex128;
+    global const GreensType = Complex128;
+  else
+    global const HoppingType = Float64;
+    global const GreensType = p.opdim > 1 ? Complex128 : Float64; # O(1) -> real GF
   end
 
-  if haskey(params, "HoppingType")
-    global const HoppingType = eval(parse(params["HoppingType"]))
-  end
+  params["GreensType"] = string(GreensType)
+  params["HoppingType"] = string(HoppingType)
+
+  p.hsfield = zeros(p.opdim, 1, p.slices) # just to initialize it somehow
+
+  nothing
 end
 
 function load_parameters_xml(p::Parameters, input_xml::String)
@@ -150,17 +160,20 @@ end
 
 function load_parameters_h5(p::Parameters, input_h5::String)
   # READ Parameters from h5 file
-  params = Dict{String, String}()
+  f = HDF5.h5open(input_h5, "r")
+
+  params = Dict{Any, Any}()
 
   try
     for e in names(f["params"])
-           params[e] = read(f["params/$e"]))
+           params[e] = read(f["params/$e"])
     end
   catch e
     println(e)
   end
 
   set_parameters(p, params)
+  close(f)
 
-  params
+  return params
 end

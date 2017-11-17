@@ -35,18 +35,6 @@ close(f)
 p = Parameters()
 p.output_file = output_file
 params = load_parameters_xml(p, input_xml)
-
-### SET DATATYPES
-if p.Bfield
-  global const HoppingType = Complex128;
-  global const GreensType = Complex128;
-else
-  global const HoppingType = Float64;
-  global const GreensType = p.opdim > 1 ? Complex128 : Float64; # O(1) -> real GF
-end
-
-params["GreensType"] = string(GreensType)
-params["HoppingType"] = string(HoppingType)
 parameters2hdf5(params, output_file)
 
 println("HoppingType = ", HoppingType)
@@ -74,22 +62,8 @@ mutable struct Analysis
     Analysis() = new()
 end
 
-
-### LATTICE
 l = Lattice()
-l.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
-l.t = reshape([parse(Float64, f) for f in split(params["HOPPINGS"], ',')],(2,2))
-init_lattice_from_filename(params["LATTICE_FILE"], l)
-init_neighbors_table(p,l)
-init_time_neighbors_table(p,l)
-if p.Bfield
-  init_hopping_matrix_exp_Bfield(p,l)
-  init_checkerboard_matrices_Bfield(p,l)
-else
-  init_hopping_matrix_exp(p,l)
-  init_checkerboard_matrices(p,l)
-end
-
+load_lattice(p,l)
 s = Stack()
 a = Analysis()
 
@@ -249,9 +223,9 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
             effective_greens2greens_no_chkr!(p, l, greens.timeseries[:,:,greens.count])
           end
 
-          # compare(greens.timeseries[:,:,greens.count], measure_greens_and_logdet(p, l, p.safe_mult)[1])
+          # compare(greens.timeseries[:,:,greens.count], measure_greens_and_logdet(s, p, l, p.safe_mult)[1])
 
-          # add_element(greens, measure_greens_and_logdet(p, l, p.safe_mult)[1])
+          # add_element(greens, measure_greens_and_logdet(s, p, l, p.safe_mult)[1])
 
           if boson_action.count == cs
               println("Dumping...")

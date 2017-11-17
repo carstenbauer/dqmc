@@ -7,6 +7,7 @@ using Helpers
 using Git
 include("parameters.jl")
 include("xml_parameters.jl")
+include("observable.jl")
 
 ### PROGRAM ARGUMENTS
 output_file = convert(String, ARGS[1])
@@ -93,24 +94,28 @@ end
 
 ### CHECK GIT COMMIT CONSISTENCY
 git_commit = Git.head(dir=dirname(@__FILE__))
-if !haskey(f, "params/GIT_COMMIT_DQMC") || (git_commit != f["params/GIT_COMMIT_DQMC"])
+if !HDF5.exists(f, "params/GIT_COMMIT_DQMC") || (git_commit != f["params/GIT_COMMIT_DQMC"])
   warn("Git commit used for dqmc doesn't match current commit of code!!!")
 end
 if HDF5.exists(f, "params/GIT_COMMIT_MEASURE")
   warn("Overwriting GIT_COMMIT_MEASURE!")
   HDF5.o_delete(f, "params/GIT_COMMIT_MEASURE")
 end
-f["params/GIT_COMMIT_MEASURE"] = git_commit
+f["params/GIT_COMMIT_MEASURE"] = git_commit.string
 
 
 # load configurations
 confs = read(f["configurations"])
 num_confs = size(confs)[end]
+println("\n Found $(num_confs) configurations.")
 
 close(f)
 
 
 ######### All set. Let's get going ##########
+
+p = Parameters()
+load_parameters_h5(p, output_file)
 
 include("lattice.jl")
 include("stack.jl")
@@ -120,108 +125,105 @@ include("interactions.jl")
 include("action.jl")
 # include("local_updates.jl")
 # include("global_updates.jl")
-include("observable.jl")
 include("boson_measurements.jl")
 include("fermion_measurements.jl")
 
-# load DQMC simulation parameters
-p = Parameters()
-load_parameters_h5(p, output_file)
-
-### LATTICE
 l = Lattice()
-l.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
-l.t = reshape([parse(Float64, f) for f in split(params["HOPPINGS"], ',')],(2,2))
-init_lattice_from_filename(params["LATTICE_FILE"], l)
-init_neighbors_table(p,l)
-init_time_neighbors_table(p,l)
-if p.Bfield
-  init_hopping_matrix_exp_Bfield(p,l)
-  init_checkerboard_matrices_Bfield(p,l)
-else
-  init_hopping_matrix_exp(p,l)
-  init_checkerboard_matrices(p,l)
-end
+load_lattice(p,l)
 
+s = Stack() # only used for temporary arrays, e.g. s.eV
+initialize_stack(s, p, l)
 
+println("")
+dump(m)
 
+function Measure(m::Measurements, s::Stack, p::Parameters, l::Lattice, confs::Array{Float64, 4})
 
-# measure
-tic()
-println("\nMeasuring...")
-cs = num_confs # currently, we do not dump intermediate results
+  m.safe_mult = (m.safe_mult == -1) ? p.safe_mult : m.safe_mult
 
-chi = Observable{Float64}("boson_suscept", cs)
-m2 = Observable{Float64}("m2", cs)
-m4 = Observable{Float64}("m4", cs)
+  tic()
+  println("\nMeasuring...")
+  cs = num_confs # currently, we do not dump intermediate results
 
-greens = Observable{Complex128}("greens", (p.flv*l.sites, p.flv*l.sites), cs)
-fermion_action = Observable{Float64}("fermion_action", cs)
-action = Observable{Float64}("action", cs)
+  chi = Observable{Float64}("boson_suscept", cs)
+  m2 = Observable{Float64}("m2", cs)
+  m4 = Observable{Float64}("m4", cs)
 
-S_b = hdf52obs(output_file, "boson_action").timeseries
+  greens = Observable{GreensType}("greens", (p.flv*l.sites, p.flv*l.sites), cs)
+  fermion_action = Observable{Float64}("fermion_action", cs)
+  action = Observable{Float64}("action", cs)
 
-elapsed_time = 0.0
-for c in 1:num_confs
-  conf = confs[:,:,:,c]
+  S_b = hdf52obs(output_file, "boson_action").timeseries
 
-  if BINDER_CUMULANT
-    curr_m2, curr_m4 = measure_binder_factors(conf)
-    add_element(m2, curr_m2)
-    add_element(m4, curr_m4)
+  elapsed_time = 0.0
+  for c in 1:num_confs
+    conf = confs[:,:,:,c]
+
+    if m.binder
+      curr_m2, curr_m4 = measure_binder_factors(conf)
+      add_element(m2, curr_m2)
+      add_element(m4, curr_m4)
+    end
+
+    if m.boson_suscept
+      add_element(chi, measure_chi_static(conf))
+    end
+
+    if m.greens
+      p.hsfield = conf
+      curr_greens, ld = measure_greens_and_logdet(s, p, l, m.safe_mult)
+      add_element(greens, curr_greens)
+
+      S_f = ld # O(3) default
+      if p.opdim == 2 || p.opdim == 1
+        # O(1) & O(2)
+        # S_f = log(det(G)^2) = 2*log(det(G)) = 2*ld
+        S_f = 2*ld
+      end
+
+      add_element(fermion_action, S_f)
+      add_element(action, S_b[c]+S_f)
+    end
+
+    if mod(c, 100) == 0
+      println("\t", c)
+      tperconf = toq()/100
+      elapsed_time += tperconf*100
+      @printf("\t\ttime per conf: %.2fs\n", tperconf)
+      @printf("\t\ttime elapsed: %.2fs\n", elapsed_time)
+      @printf("\t\testimated time remaining: %.2fs\n", (num_confs - c) * tperconf)
+      tic()
+    end
   end
 
-  if BOSON_SUSCEPT
-    add_element(chi, measure_chi_static_direct(conf))
+  # save to disk
+  println("Dumping results...")
+  @time begin
+    obs2hdf5(output_file, chi)
+    obs2hdf5(output_file, m2)
+    obs2hdf5(output_file, m4)
+
+    obs2hdf5(output_file, greens)
+    obs2hdf5(output_file, fermion_action)
+    obs2hdf5(output_file, action)
+
+    println("Dumping block of $cs datapoints was a success")
   end
 
-  if GREENS_FUNCTION
-    p.hsfield = conf
-    curr_greens, S_f = measure_greens_and_logdet(p, l, GREENS_FUNCTION_SAFE_MULT)
-    add_element(greens, curr_greens)
-    add_element(fermion_action, S_f) # log(det(G)) = S_f
-    add_element(action, S_b[c]+S_f)
-  end
-
-  if mod(c, 100) == 0
-    println("\t", c)
-    tperconf = toq()/100
-    elapsed_time += tperconf*100
-    @printf("\t\ttime per conf: %.2fs\n", tperconf)
-    @printf("\t\ttime elapsed: %.2fs\n", elapsed_time)
-    @printf("\t\testimated time remaining: %.2fs\n", (num_confs - c) * tperconf)
-    tic()
+  # calculate Binder cumulant
+  if m.binder
+    println("\nCalculating and saving Binder cumulant")
+    m2ev2 = mean(m2.timeseries)^2
+    m4ev = mean(m4.timeseries)
+    binder = 1 - 5/3 * m4ev/m2ev2
+    f = h5open(output_file, "r+")
+      if HDF5.exists(f, "obs/binder") HDF5.o_delete(f, "obs/binder") end
+      f["obs/binder"] = binder
+    close(f)
   end
 end
 
-# save to disk
-println("Dumping results...")
-@time begin
-  obs2hdf5(output_file, chi)
-  obs2hdf5(output_file, m2)
-  obs2hdf5(output_file, m4)
-
-  obs2hdf5(output_file, greens)
-  obs2hdf5(output_file, fermion_action)
-  obs2hdf5(output_file, action)
-
-  println("Dumping block of $cs datapoints was a success")
-end
-
-# calculate Binder cumulant
-if m.binder
-  println("\nCalculating and saving Binder cumulant")
-  m2ev2 = mean(m2.timeseries)^2
-  m4ev = mean(m4.timeseries)
-  binder = 1 - 5/3 * m4ev/m2ev2
-  f = h5open(output_file, "r+")
-    if HDF5.exists(f, "obs/binder") HDF5.o_delete(f, "obs/binder") end
-    f["obs/binder"] = binder
-  close(f)
-end
-
-
-
+Measure(m,s,p,l,confs)
 
 end_time = now()
 println("\nEnded: ", Dates.format(end_time, "d.u yyyy HH:MM"))

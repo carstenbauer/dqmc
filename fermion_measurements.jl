@@ -21,20 +21,20 @@ end
 """
 Effective Green's function -> Green's function
 """
-function effective_greens2greens!(p::Parameters, l::Lattice, greens::Array{GreensType, 2})
+function effective_greens2greens!(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
   greens = greens * l.chkr_hop_half[2]
   greens = greens * l.chkr_hop_half[1]
   greens = l.chkr_hop_half_inv[2] * greens
   greens = l.chkr_hop_half_inv[1] * greens
 end
 
-function effective_greens2greens(p::Parameters, l::Lattice, greens::Array{GreensType, 2})
+function effective_greens2greens(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
   g = copy(greens)
   effective_greens2greens!(p, l, g)
   return g
 end
 
-function effective_greens2greens_no_chkr!(p::Parameters, l::Lattice, greens::Array{GreensType, 2})
+function effective_greens2greens_no_chkr!(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
   greens = greens * l.hopping_matrix_exp
   greens = l.hopping_matrix_exp_inv * greens
 end
@@ -44,7 +44,7 @@ end
 Green's function postprocessing
 """
 # Go from xup, ydown, xdown, yup -> xup, yup, xdown, ydown
-function permute_greens(greens::Array{GreensType, 2})
+function permute_greens(greens::AbstractArray{GreensType, 2})
   const perm = [1,4,3,2] # flv*spin: xup, ydown, xdown, yup -> xup, yup, xdown, ydown
   const N = Int(sqrt(length(greens))/4)
   return reshape(reshape(greens, (N,4,N,4))[:,perm,:,perm], (4*N,4*N)); # rfs1, rfs2
@@ -53,7 +53,7 @@ end
 # Assuming translational invariance go to momentum space Greens function (k, fs1, fs2)
 using PyCall
 @pyimport numpy as np
-function fft_greens(greens::Array{GreensType})
+function fft_greens(greens::AbstractArray{GreensType})
   const L = Int(sqrt(sqrt(length(greens))/4))
   g = reshape(greens, (L,L,4,L,L,4)); # y1, x1, fs1, y2, x2, fs2
   g = fft(g, (1,2))*1/L; # ky1, kx1, fs1, y2, x2, fs2
