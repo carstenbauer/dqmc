@@ -44,7 +44,7 @@ mutable struct Parameters
     p.chkr = true
     p.Bfield = false
     p.box = Uniform(-0.5,0.5)
-    p.box_global = Uniform(-0.1,0.1)
+    p.box_global = Uniform(-0.5,0.5)
     p.global_rate = 5
     p.write_every_nth = 1
     p.all_checks = false
@@ -53,24 +53,7 @@ mutable struct Parameters
   end
 end
 
-
-function parse_inputxml(p::Parameters, input_xml::String)
-  # READ INPUT XML
-  params = Dict{Any, Any}()
-  try
-    params = xml2parameters(input_xml)
-
-    # Check and store code version (git commit)
-    if haskey(params,"GIT_COMMIT_DQMC") && Git.head(dir=dirname(@__FILE__)) != params["GIT_COMMIT_DQMC"]
-      warn("Git commit in input xml file does not match current commit of code.")
-    end
-    params["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__))
-
-    parameters2hdf5(params, output_file)
-  catch e
-    println(e)
-  end
-
+function set_parameters(p::Parameters, params) #TODO what is the type of params Dict?
   ### PARSE MANDATORY PARAMS
   p.thermalization = parse(Int, params["THERMALIZATION"])
   p.measurements = parse(Int, params["MEASUREMENTS"])
@@ -133,6 +116,51 @@ function parse_inputxml(p::Parameters, input_xml::String)
   if haskey(params,"WRITE_EVERY_NTH")
     p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"])
   end
+
+  if haskey(params, "GreensType")
+    global const GreensType = eval(parse(params["GreensType"]))
+  end
+
+  if haskey(params, "HoppingType")
+    global const HoppingType = eval(parse(params["HoppingType"]))
+  end
+end
+
+function load_parameters_xml(p::Parameters, input_xml::String)
+  # READ INPUT XML
+  params = Dict{Any, Any}()
+  try
+    params = xml2parameters(input_xml)
+
+    # Check and store code version (git commit)
+    if haskey(params,"GIT_COMMIT_DQMC") && Git.head(dir=dirname(@__FILE__)) != params["GIT_COMMIT_DQMC"]
+      warn("Git commit in input xml file does not match current commit of code.")
+    end
+    params["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__))
+
+  catch e
+    println(e)
+  end
+
+  set_parameters(p, params)
+
+  params
+end
+
+
+function load_parameters_h5(p::Parameters, input_h5::String)
+  # READ Parameters from h5 file
+  params = Dict{String, String}()
+
+  try
+    for e in names(f["params"])
+           params[e] = read(f["params/$e"]))
+    end
+  catch e
+    println(e)
+  end
+
+  set_parameters(p, params)
 
   params
 end

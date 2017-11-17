@@ -3,6 +3,7 @@ start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 
 using Helpers
+using Git
 include("parameters.jl")
 
 ### PROGRAM ARGUMENTS
@@ -33,7 +34,7 @@ close(f)
 ### PARAMETERS
 p = Parameters()
 p.output_file = output_file
-params = parse_inputxml(p, input_xml)
+params = load_parameters_xml(p, input_xml)
 
 ### SET DATATYPES
 if p.Bfield
@@ -43,6 +44,10 @@ else
   global const HoppingType = Float64;
   global const GreensType = p.opdim > 1 ? Complex128 : Float64; # O(1) -> real GF
 end
+
+params["GreensType"] = string(GreensType)
+params["HoppingType"] = string(HoppingType)
+parameters2hdf5(params, output_file)
 
 println("HoppingType = ", HoppingType)
 println("GreensType = ", GreensType)
