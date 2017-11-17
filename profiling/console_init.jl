@@ -6,18 +6,28 @@ using Helpers
 start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 
-using Helpers
+using Git
 include("../parameters.jl")
 
 ### PROGRAM ARGUMENTS
-ARGS = ["sdwO3_L_8_B_5_dt_0.1_1", 1]
-prefix = convert(String, ARGS[1])
-idx = 1
-try idx = parse(Int, ARGS[2]); end # SLURM_ARRAY_TASK_ID 
-output_file = prefix * ".task" * string(idx) * ".out.h5"
+ARGS = ["console_init.in.xml"]
+if length(ARGS) == 1
+  # ARGS = ["whatever.in.xml"]
+  input_xml = ARGS[1]
+  output_file = input_xml[1:searchindex(input_xml, ".in.xml")-1]*".out.h5"
+elseif length(ARGS) == 2
+  # Backward compatibility
+  # ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]
+  prefix = convert(String, ARGS[1])
+  idx = 1
+  try idx = parse(Int, ARGS[2]); end # SLURM_ARRAY_TASK_ID 
+  output_file = prefix * ".task" * string(idx) * ".out.h5"
 
-println("Prefix is ", prefix, " and idx is ", idx)
-input_xml = prefix * ".task" * string(idx) * ".in.xml"
+  println("Prefix is ", prefix, " and idx is ", idx)
+  input_xml = prefix * ".task" * string(idx) * ".in.xml"
+else
+  error("Call with \"whatever.in.xml\" or e.g. \"sdwO3_L_4_B_2_dt_0.1_1 \${SLURM_ARRAY_TASK_ID}\"")
+end
 
 # hdf5 write test
 f = HDF5.h5open(output_file, "w")
@@ -28,21 +38,19 @@ close(f)
 ### PARAMETERS
 p = Parameters()
 p.output_file = output_file
-params = parse_inputxml(p, input_xml)
+params = load_parameters_xml(p, input_xml)
+parameters2hdf5(params, output_file)
 
-### SET DATATYPES
-global const HoppingType = p.Bfield ? Complex128 : Float64;
-global const GreensType = Complex128;
 println("HoppingType = ", HoppingType)
 println("GreensType = ", GreensType)
 
 
-include("../linalg.jl")
 include("../lattice.jl")
+include("../stack.jl")
+include("../linalg.jl")
 include("../checkerboard.jl")
 include("../interactions.jl")
 include("../action.jl")
-include("../stack.jl")
 include("../local_updates.jl")
 include("../global_updates.jl")
 include("../observable.jl")
@@ -58,26 +66,10 @@ mutable struct Analysis
     Analysis() = new()
 end
 
-
-### LATTICE
 l = Lattice()
-l.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
-l.t = reshape([parse(Float64, f) for f in split(params["HOPPINGS"], ',')],(2,2))
-init_lattice_from_filename(params["LATTICE_FILE"], l)
-init_neighbors_table(p,l)
-init_time_neighbors_table(p,l)
-if p.Bfield
-  init_hopping_matrix_exp_Bfield(p,l)
-  init_checkerboard_matrices_Bfield(p,l)
-else
-  init_hopping_matrix_exp(p,l)
-  init_checkerboard_matrices(p,l)
-end
-
+load_lattice(p,l)
 s = Stack()
 a = Analysis()
-
-preallocate_arrays(p,l.sites)
 
 # Init hsfield
 println("\nInitializing HS field")
