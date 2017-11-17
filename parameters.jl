@@ -50,6 +50,7 @@ mutable struct Parameters
     p.write_every_nth = 1
     p.all_checks = false
     p.opdim = 3
+    p.flv = 4
     return p
   end
 end
@@ -68,9 +69,9 @@ function set_parameters(p::Parameters, params) #TODO what is the type of params 
   p.r = parse(Float64, params["R"])
   p.c = parse(Float64, params["C"])
   p.u = parse(Float64, params["U"])
+  ###
 
   p.beta = p.slices * p.delta_tau
-  p.flv = 4
 
   ### PARSE OPTIONAL PARAMS
   if haskey(params, "OPDIM")
@@ -160,7 +161,11 @@ end
 
 function load_parameters_h5(p::Parameters, input_h5::String)
   # READ Parameters from h5 file
-  f = HDF5.h5open(input_h5, "r")
+  if input_h5[end-2:end] == "jld"
+    f = jldopen(input_h5, "r")
+  else
+    f = HDF5.h5open(input_h5, "r")
+  end
 
   params = Dict{Any, Any}()
 
