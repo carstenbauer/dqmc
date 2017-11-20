@@ -11,6 +11,8 @@ commit = Git.head()
 if !isdir(output_root) mkdir(output_root) end
 cd(output_root)
 
+R_POINTS = [0.0,0.6,1.2,1.8,2.4,3.0,3.6,4.2,4.8,5.4,6.0]
+
 for L in [8]
 for beta in [5, 10]
 for dt in [0.1]
@@ -25,11 +27,12 @@ prefix = "sdwO3_L_$(L)_B_$(beta)_dt_$(dt)_$(k)"
 mkdir(prefix)
 cd(prefix)
 
-p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "SLICES"=>[Int(beta / dt)], "DELTA_TAU"=>[dt], "SAFE_MULT"=>[10], "C"=>[3.0], "GLOBAL_UPDATES"=>["TRUE"], "GLOBAL_RATE"=>[10], "U"=>[1.0], "R"=>[0.0,0.6,1.2,1.8,2.4,3.0,3.6,4.2,4.8,5.4,6.0], "LAMBDA"=>[2.0], "HOPPINGS"=>["1.0,0.5,-0.5,-1.0"], "MU"=>[-0.5], "SEED"=>[55796], "BOX_HALF_LENGTH"=>[0.1])
+p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "SLICES"=>[Int(beta / dt)], "DELTA_TAU"=>[dt], "SAFE_MULT"=>[10], "C"=>[3.0], "GLOBAL_UPDATES"=>["TRUE"], "GLOBAL_RATE"=>[5], "U"=>[1.0], "R"=>R_POINTS, "LAMBDA"=>[2.0], "HOPPINGS"=>["1.0,0.5,-0.5,-1.0"], "MU"=>[-0.5], "SEED"=>[55796])
 p["THERMALIZATION"] = 1000
 p["MEASUREMENTS"] = 20000
 p["WRITE_EVERY_NTH"] = 10
-p["B_FIELD"] = false
+p["B_FIELD"] = true
+p["CHECKERBOARD"] = true
 
 p["GIT_COMMIT"] = [commit]
 parameterset2xml(p, prefix)
