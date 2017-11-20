@@ -48,7 +48,7 @@ mutable struct Parameters
     p.box_global = Uniform(-0.5,0.5)
     p.global_rate = 5
     p.write_every_nth = 1
-    p.all_checks = false
+    p.all_checks = true
     p.opdim = 3
     p.flv = 4
     return p

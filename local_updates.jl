@@ -17,6 +17,8 @@ function local_updates(s::Stack, p::Parameters, l::Lattice)
     #   println("Negative fermion weight.")
     # elseif detratio == 0
     #   println("Encountered non-invertible M with det = 0.")
+    elseif p.opdim < 3 && p_acc_fermion < 0
+      println("Negative fermion weight!")
     end
 
     p_acc = exp_delta_S_boson * p_acc_fermion

@@ -1,5 +1,6 @@
 julia_code_file = "/projects/ag-trebst/bauer/codes/julia-sdw-dqmc/dqmc.jl"
-output_root = "/projects/ag-trebst/bauer/sdwO3/julia-dqmc"
+# output_root = "/projects/ag-trebst/bauer/sdwO3/julia-dqmc"
+output_root = pwd()
 lattice_dir = "/projects/ag-trebst/bauer/lattices"
 
 include("$(dirname(julia_code_file))/xml_parameters.jl")
@@ -11,7 +12,10 @@ commit = Git.head()
 if !isdir(output_root) mkdir(output_root) end
 cd(output_root)
 
-R_POINTS = [0.0,0.6,1.2,1.8,2.4,3.0,3.6,4.2,4.8,5.4,6.0]
+
+
+const R_POINTS = [0.0,0.6,1.2,1.8,2.4,3.0,3.6,4.2,4.8,5.4,6.0]
+const OPDIM = 2
 
 for L in [8]
 for beta in [5, 10]
@@ -22,7 +26,7 @@ W = L # square lattice
 dir = "L_$(L)"
 if !isdir(dir) mkdir(dir) end
 cd(dir)
-prefix = "sdwO3_L_$(L)_B_$(beta)_dt_$(dt)_$(k)"
+prefix = "sdwO$(OPDIM)_L_$(L)_B_$(beta)_dt_$(dt)_$(k)"
 
 mkdir(prefix)
 cd(prefix)
@@ -33,9 +37,13 @@ p["MEASUREMENTS"] = 20000
 p["WRITE_EVERY_NTH"] = 10
 p["B_FIELD"] = true
 p["CHECKERBOARD"] = true
+p["OPDIM"] = OPDIM
 
 p["GIT_COMMIT"] = [commit]
 parameterset2xml(p, prefix)
+
+
+
 
 #SBATCH --cpus-per-task=4
 job_cheops = """
@@ -49,10 +57,9 @@ job_cheops = """
 
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
-export JULIA_PKGDIR=/projects/ag-trebst/bauer/.julia
-source /projects/ag-trebst/bauer/julia-curr-env
+source /projects/ag-trebst/bauer/julia-mkl-intel-env
 cd $(output_root)/$(dir)/$(prefix)/
-julia $(julia_code_file) $(prefix) \$\{SLURM_ARRAY_TASK_ID\}
+julia -O3 $(julia_code_file) $(prefix) \$\{SLURM_ARRAY_TASK_ID\}
 """
 f = open("$(prefix).sh", "w")
 write(f, job_cheops)
