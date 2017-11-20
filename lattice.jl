@@ -190,6 +190,7 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
   eTy_minus = expm(-0.5 * p.delta_tau * Ty)
   eTx_plus = expm(0.5 * p.delta_tau * Tx)
   eTy_plus = expm(0.5 * p.delta_tau * Ty)
+
   if p.opdim == 3
     l.hopping_matrix_exp = cat([1,2],eTx_minus,eTy_minus,eTx_minus,eTy_minus)
     l.hopping_matrix_exp_inv = cat([1,2],eTx_plus,eTy_plus,eTx_plus,eTy_plus)
@@ -197,11 +198,12 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
     l.hopping_matrix_exp = cat([1,2],eTx_minus,eTy_minus)
     l.hopping_matrix_exp_inv = cat([1,2],eTx_plus,eTy_plus)
   end
+
   return nothing
 end
 
 
-function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int}, pbc::Bool)::Complex128
+function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int}, pbc::Bool)
     # peirls_phase_factors e^{im*Aij}
     # argument pbc: is this hopping via PBC (true) or within the finite lattice (false)
     i2, i1 = ind2sub(sql, i)
@@ -238,11 +240,7 @@ function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int}, pbc::Bool)::Compl
     end
 end
 
-function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void
-  if p.opdim != 3
-    error("Bfield currently only supported for O(3) case.")
-  end
-  
+function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void  
   println("Initializing hopping exponentials (Bfield)")
   B = zeros(2,2) # colidx = flavor, rowidx = spin up,down
   if p.Bfield
@@ -282,8 +280,13 @@ function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void
   eT_minus = map(Ti -> expm(-0.5 * p.delta_tau * Ti), T)
   eT_plus = map(Ti -> expm(0.5 * p.delta_tau * Ti), T)
 
-  l.hopping_matrix_exp = cat([1,2], eT_minus[1,1], eT_minus[2,2], eT_minus[2,1], eT_minus[1,2])
-  l.hopping_matrix_exp_inv = cat([1,2], eT_plus[1,1], eT_plus[2,2], eT_plus[2,1], eT_plus[1,2])
+  if p.opdim == 3
+    l.hopping_matrix_exp = cat([1,2], eT_minus[1,1], eT_minus[2,2], eT_minus[2,1], eT_minus[1,2])
+    l.hopping_matrix_exp_inv = cat([1,2], eT_plus[1,1], eT_plus[2,2], eT_plus[2,1], eT_plus[1,2])
+  else # O(1) and O(2)
+    l.hopping_matrix_exp = cat([1,2], eT_minus[1,1], eT_minus[2,2])
+    l.hopping_matrix_exp_inv = cat([1,2], eT_plus[1,1], eT_plus[2,2])
+  end
 
   return nothing
 end

@@ -234,10 +234,16 @@ function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
     eT_A = cat([1,2], eT[1,1,1], eT[1,2,2], eT[1,2,1], eT[1,1,2])
     eT_B = cat([1,2], eT[2,1,1], eT[2,2,2], eT[2,2,1], eT[2,1,2])
     eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2], eT_inv[1,2,1], eT_inv[1,1,2])
-    eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2])
-  else
-    #TODO: Bfield for O(2) and O(1) model
-    error("Bfield currently only supported for O(3).")
+    eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2])    
+  else # O(2) and O(1) model
+    eT_A_half = cat([1,2], eT_half[1,1,1], eT_half[1,2,2])
+    eT_B_half = cat([1,2], eT_half[2,1,1], eT_half[2,2,2])
+    eT_A_half_inv = cat([1,2], eT_half_inv[1,1,1], eT_half_inv[1,2,2])
+    eT_B_half_inv = cat([1,2], eT_half_inv[2,1,1], eT_half_inv[2,2,2])
+    eT_A = cat([1,2], eT[1,1,1], eT[1,2,2])
+    eT_B = cat([1,2], eT[2,1,1], eT[2,2,2])
+    eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2])
+    eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2])
   end
 
   l.chkr_hop_half = [eT_A_half, eT_B_half]

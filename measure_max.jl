@@ -147,6 +147,9 @@ p.opdim = 2
 p.Bfield = true
 p.chkr = true
 
+global const HoppingType = Complex128;
+global const GreensType = Complex128;
+
 close(f)
 
 include("lattice.jl")
