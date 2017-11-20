@@ -39,7 +39,7 @@ function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice)
     println("")
     println("current slice: ", s.current_slice, "(", n,")")
 
-    g = calculate_greens_and_logdet_chkr(p,l,s.current_slice)[1]
+    g = calculate_greens_and_logdet_chkr(s,p,l,s.current_slice)[1]
     mean_absdiff[n] = mean(absdiff(g,s.greens))
     println("mean absdiff: ", mean_absdiff[n])
     mean_reldiff[n] = mean(effreldiff(g,s.greens))

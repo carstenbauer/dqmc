@@ -125,10 +125,16 @@ p.slices = read(f["M"])
 p.delta_tau = read(f["dtau"])
 p.safe_mult = read(f["safe_mult"])
 L = read(f["L"])
-p.lattice_file = "/projects/ag-trebst/bauer/lattices/square_L_$(L)_W_$(L).xml"
-@static if is_windows()
+
+global const HOSTNAME = lowercase(gethostname())
+if contains(HOSTNAME, "thp.uni-koeln.de")
+  p.lattice_file = "/home/bauer/lattices/square_L_$(L)_W_$(L).xml"
+elseif HOSTNAME == "thinkable"
   p.lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/square_L_$(L)_W_$(L).xml"
+else # cheops
+  p.lattice_file = "/projects/ag-trebst/bauer/lattices/square_L_$(L)_W_$(L).xml"
 end
+
 p.hoppings = read(f["hoppings"])
 p.mu = read(f["mu"])
 p.lambda = read(f["lambda"])
