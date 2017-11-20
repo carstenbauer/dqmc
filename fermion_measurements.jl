@@ -7,12 +7,12 @@ end
 """
 Measurements
 """
-function measure_greens_and_logdet(s::Stack, p::Parameters, l::Lattice, safe_mult::Int=1)
+function measure_greens_and_logdet(s::Stack, p::Parameters, l::Lattice, safe_mult::Int=p.safe_mult)
   greens, greens_logdet = calculate_greens_and_logdet_chkr(s, p, l, 1, safe_mult)
   return effective_greens2greens!(p, l, greens), greens_logdet
 end
 
-function measure_greens_and_logdet_no_chkr(s::Stack, p::Parameters, l::Lattice, safe_mult::Int=1)
+function measure_greens_and_logdet_no_chkr(s::Stack, p::Parameters, l::Lattice, safe_mult::Int=p.safe_mult)
   greens, greens_logdet = calculate_greens_and_logdet(s, p, l, 1, safe_mult)
   return effective_greens2greens_no_chkr!(p, l, greens), greens_logdet
 end
@@ -82,7 +82,7 @@ Calculate effective(!) Green's function (direct, i.e. without stack) using SVD D
 """
 # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
 # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
-function calculate_slice_matrix_chain_udv(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+function calculate_slice_matrix_chain_udv(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=p.safe_mult)
   @assert 0 < start <= p.slices
   @assert 0 < stop <= p.slices
   @assert start <= stop
@@ -108,7 +108,7 @@ function calculate_slice_matrix_chain_udv(s::Stack, p::Parameters, l::Lattice, s
   return (U,D,Vt,svs)
 end
 
-function calculate_slice_matrix_chain_chkr_udv(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+function calculate_slice_matrix_chain_chkr_udv(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=p.safe_mult)
   @assert 0 < start <= p.slices
   @assert 0 < stop <= p.slices
   @assert start <= stop
@@ -136,16 +136,16 @@ function calculate_slice_matrix_chain_chkr_udv(s::Stack, p::Parameters, l::Latti
 end
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) in a stable manner
-function calculate_greens_udv(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
+function calculate_greens_udv(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=p.safe_mult)
   return calculate_greens_and_logsvs_udv(s,p,l,slice,safe_mult)[1]
 end
 
-function calculate_greens_chkr_udv(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
+function calculate_greens_chkr_udv(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=p.safe_mult)
   return calculate_greens_and_logsvs_chkr_udv(s,p,l,slice,safe_mult)[1]
 end
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its logdet in a stable manner
-function calculate_greens_and_logdet_udv(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
+function calculate_greens_and_logdet_udv(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=p.safe_mult)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(s,p,l,slice,p.slices,safe_mult)
 
@@ -168,7 +168,7 @@ function calculate_greens_and_logdet_udv(s::Stack, p::Parameters, l::Lattice, sl
   return U*D*Vt, sum(log.(diag(D)))
 end
 
-function calculate_greens_and_logdet_chkr_udv(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
+function calculate_greens_and_logdet_chkr_udv(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=p.safe_mult)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Ur, Dr, Vtr = calculate_slice_matrix_chain_chkr_udv(s,p,l,slice,p.slices,safe_mult)
 
@@ -197,7 +197,7 @@ end
 Calculate effective(!) Green's function (direct, i.e. without stack) using QR DECOMPOSITION
 """
 # Calculate Ul, Dl, Tl =B(stop) ... B(start)
-function calculate_slice_matrix_chain_qr(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+function calculate_slice_matrix_chain_qr(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=p.safe_mult)
   @assert 0 < start <= p.slices
   @assert 0 < stop <= p.slices
   @assert start <= stop
@@ -224,7 +224,7 @@ function calculate_slice_matrix_chain_qr(s::Stack, p::Parameters, l::Lattice, st
 end
 
 # Calculate (Ur, Dr, Tr)' = B(stop) ... B(start)  => Ur,Dr, Tr = B(start)' ... B(stop)'
-function calculate_slice_matrix_chain_qr_dagger(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+function calculate_slice_matrix_chain_qr_dagger(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=p.safe_mult)
   @assert 0 < start <= p.slices
   @assert 0 < stop <= p.slices
   @assert start <= stop
@@ -251,7 +251,7 @@ function calculate_slice_matrix_chain_qr_dagger(s::Stack, p::Parameters, l::Latt
 end
 
 # Calculate Ul, Dl, Tl =B(stop) ... B(start)
-function calculate_slice_matrix_chain_chkr_qr(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+function calculate_slice_matrix_chain_chkr_qr(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=p.safe_mult)
   @assert 0 < start <= p.slices
   @assert 0 < stop <= p.slices
   @assert start <= stop
@@ -279,7 +279,7 @@ function calculate_slice_matrix_chain_chkr_qr(s::Stack, p::Parameters, l::Lattic
 end
 
 # Calculate (Ur, Dr, Tr)' = B(stop) ... B(start)  => Ur,Dr, Tr = B(start)' ... B(stop)'
-function calculate_slice_matrix_chain_chkr_qr_dagger(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+function calculate_slice_matrix_chain_chkr_qr_dagger(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=p.safe_mult)
   @assert 0 < start <= p.slices
   @assert 0 < stop <= p.slices
   @assert start <= stop
@@ -307,7 +307,7 @@ function calculate_slice_matrix_chain_chkr_qr_dagger(s::Stack, p::Parameters, l:
 end
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its singular values in a stable manner
-function calculate_greens_and_logdet(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
+function calculate_greens_and_logdet(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=p.safe_mult)
   # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
   Ur, Dr, Tr = calculate_slice_matrix_chain_qr_dagger(s,p,l,slice,p.slices, safe_mult)
 
@@ -338,7 +338,7 @@ function calculate_greens_and_logdet(s::Stack, p::Parameters, l::Lattice, slice:
 end
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its singular values in a stable manner
-function calculate_greens_and_logdet_chkr(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=1)
+function calculate_greens_and_logdet_chkr(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=p.safe_mult)
   # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
   Ur, Dr, Tr = calculate_slice_matrix_chain_chkr_qr_dagger(s,p,l,slice,p.slices, safe_mult)
 
