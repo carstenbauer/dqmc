@@ -146,7 +146,7 @@ p.flv = 2
 p.opdim = 2
 p.Bfield = true
 p.chkr = true
-p.hsfield = zeros(p.opdim, l.L, p.slices)
+p.hsfield = zeros(p.opdim, L, p.slices)
 
 global const HoppingType = Complex128;
 global const GreensType = Complex128;
