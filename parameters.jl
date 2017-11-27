@@ -132,6 +132,8 @@ function set_parameters(p::Parameters, params) #TODO what is the type of params 
   params["GreensType"] = string(GreensType)
   params["HoppingType"] = string(HoppingType)
 
+  params["L"] = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
+
   p.hsfield = zeros(p.opdim, 1, p.slices) # just to initialize it somehow
 
   nothing
