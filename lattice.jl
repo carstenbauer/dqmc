@@ -208,6 +208,7 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
 end
 
 function init_peirls_phases(p::Parameters, l::Lattice)
+  println("Initializing Peirls phases (Bfield)")
   const L = l.L
 
   B = zeros(2,2) # colidx = flavor, rowidx = spin up,down
