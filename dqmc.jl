@@ -244,6 +244,8 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 
               clear(configurations)
               clear(greens)
+
+              saverng(p.output_file)
               println("Dumping block of $cs datapoints was a success")
               flush(STDOUT)
             end
