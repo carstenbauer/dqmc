@@ -240,32 +240,6 @@ function init_peirls_phases(p::Parameters, l::Lattice)
               phis[x,y,x,yp] = B[s,f] * L * (x -1)
               phis[x,yp,x,y] = - phis[x,y,x,yp]
           end
-              
-          # #nnn
-          # phis[x,y,xp,yp] = -B[s,f] * (y -1 + 0.5)
-          # phis[xp,yp,x,y] = -phis[x,y,xp,yp]
-          
-          # phis[x,y,xm,yp] = B[s,f] * (y -1 + 0.5)
-          # phis[xm,yp,x,y] = -phis[x,y,xm,yp]
-          
-          # if y == L
-          #     phis[x,y,xp,yp] = B[s,f] * (L * (x -1) + 0.5)
-          #     phis[xp,yp,x,y] = - phis[x,y,xp,yp]
-              
-          #     phis[x,y,xm,yp] = B[s,f] * (L * (x-1) - 0.5)
-          #     phis[xm,yp,x,y] = - phis[x,y,xm,yp]
-          # end
-              
-          # #nnnn
-          # phis[x,y,x,yp2] = 0
-          # phis[x,yp2,x,y] = 0
-          
-          # phis[x,y,xp2,y] = -2 * B[s,f] * (y-1)
-          # phis[xp2,y,x,y] = -phis[x,y,xp2,y]
-          # if (y == L) || (y == L - 1)
-          #     phis[x,y,x,yp2] = B[s,f] * L * (x-1)
-          #     phis[x,yp2,x,y] = - phis[x,y,x,yp2]
-          # end
         end
       end
       l.peirls[s,f] = reshape(permutedims(phis, [2,1,4,3]), (l.sites,l.sites))
