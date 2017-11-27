@@ -8,6 +8,7 @@ mutable struct Parameters
   hoppings::String
   beta::Float64
   delta_tau::Float64
+  L::Int
   slices::Int
   safe_mult::Int
   opdim::Int # order parameter dimension
@@ -39,6 +40,8 @@ mutable struct Parameters
 
   all_checks::Bool # true: check for propagation instblts. and S_b consistency
 
+  seed::Int
+
   function Parameters()
     p = new()
     p.global_updates = true
@@ -51,6 +54,7 @@ mutable struct Parameters
     p.all_checks = true
     p.opdim = 3
     p.flv = 4
+    p.seed = 4729339882041979125
     return p
   end
 end
@@ -72,6 +76,7 @@ function set_parameters(p::Parameters, params) #TODO what is the type of params 
   ###
 
   p.beta = p.slices * p.delta_tau
+  p.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
 
   ### PARSE OPTIONAL PARAMS
   if haskey(params, "OPDIM")
@@ -86,7 +91,7 @@ function set_parameters(p::Parameters, params) #TODO what is the type of params 
   end
 
   if haskey(params, "SEED")
-    srand(parse(Int, params["SEED"]));
+    p.seed = parse(Int, params["SEED"])
   end
 
   if haskey(params,"GLOBAL_UPDATES")
@@ -183,4 +188,64 @@ function load_parameters_h5(p::Parameters, input_h5::String)
   close(f)
 
   return params
+end
+
+
+function parameters2hdf5(p::Parameters, filename::String)
+  isfile(filename)?f = h5open(filename, "r+"):f = h5open(filename, "w")
+  for i in 1:nfields(Parameters)
+    field = fieldname(Parameters, i)
+    field_name = string(field)
+    field_value = getfield(p, field)
+    field_type = typeof(field_value)
+
+    if field_type == Distributions.Uniform{Float64}
+      field_value = field_value.b
+    elseif field_type == Bool
+      # HDF5 1.8.x doesn't support Bool fields, use Int instead.
+      field_value = Int(field_value)
+    end
+
+    try
+      if HDF5.exists(f, "params/" * field_name)
+        if read(f["params/"*field_name]) != field_value
+          close(f)
+          error(field_name, " exists but differs from current ")
+        end
+      else
+        f["params/" * field_name] = field_value
+      end
+    catch e
+      close(f)
+      warn("Error in dumping parameters to hdf5: ", e)
+    end
+  end
+  close(f)
+end
+
+"""
+Debugging convenience function: randomly initialize p
+"""
+function Base.Random.rand!(p::Parameters)
+  params = Dict{String,Any}()
+  params["THERMALIZATION"] = rand(1:1000)
+  params["MEASUREMENTS"] = rand(1:1000)
+  params["SLICES"] = rand(1:400)
+  params["DELTA_TAU"] = rand()
+  params["SAFE_MULT"] = rand(1:10)
+  params["LATTICE_FILE"] = "L_$(rand(1:20)).xml"
+  params["HOPPINGS"] = "$(rand()),$(rand()),$(rand()),$(rand())"
+  params["MU"] = rand()
+  params["LAMBDA"] = rand()
+  params["R"] = rand()
+  params["C"] = rand()
+  params["U"] = rand()
+
+  for i in eachindex(params.vals)
+    isassigned(params.vals, i) && (params.vals[i] = string(params.vals[i]))
+  end
+
+  set_parameters(p, params)
+  p.output_file = "asd.h5"
+  nothing
 end

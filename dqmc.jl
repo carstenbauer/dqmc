@@ -35,7 +35,7 @@ close(f)
 p = Parameters()
 p.output_file = output_file
 params = load_parameters_xml(p, input_xml)
-parameters2hdf5(params, output_file)
+parameters2hdf5(p, p.output_file)
 
 println("HoppingType = ", HoppingType)
 println("GreensType = ", GreensType)
@@ -71,6 +71,8 @@ a = Analysis()
 
 function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     
+    srand(p.seed); # init RNG
+
     # Init hsfield
     println("\nInitializing HS field")
     p.hsfield = rand(p.opdim,l.sites,p.slices)

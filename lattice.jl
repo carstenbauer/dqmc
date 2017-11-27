@@ -45,7 +45,7 @@ mutable struct Lattice
 end
 
 function load_lattice(p::Parameters, l::Lattice)
-  l.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
+  l.L = p.L
   l.t = reshape([parse(Float64, f) for f in split(p.hoppings, ',')],(2,2))
   init_lattice_from_filename(p.lattice_file, l)
   init_neighbors_table(p,l)
