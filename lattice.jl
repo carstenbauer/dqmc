@@ -46,8 +46,6 @@ mutable struct Lattice
   Lattice() = new()
 end
 
-init_hopping_matrices(p,l) = println("This should never appear anywhere!") # TODO: remove this hack
-
 function load_lattice(p::Parameters, l::Lattice)
   l.L = p.L
   l.t = reshape([parse(Float64, f) for f in split(p.hoppings, ',')],(2,2))
