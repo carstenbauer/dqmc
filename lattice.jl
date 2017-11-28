@@ -75,7 +75,7 @@ function init_lattice_from_filename(filename::String, l::Lattice)
   l.groups = UnitRange[]
   l.n_neighbors = 0
   edges_used = zeros(Int64, length(edges))
-  l.checkerboard = zeros(3, length(edges))
+  l.checkerboard = zeros(4, length(edges))
   group_start = 1
   group_end = 1
 
@@ -112,7 +112,7 @@ function init_lattice_from_filename(filename::String, l::Lattice)
       sites_used[src] = 1
       sites_used[trg] = 1
 
-      l.checkerboard[:, group_end] = [src, trg, bd_type]
+      l.checkerboard[:, group_end] = [src, trg, bd_id, bd_type]
       group_end += 1
     end
     push!(l.groups, group_start:group_end-1)
