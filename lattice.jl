@@ -46,20 +46,15 @@ mutable struct Lattice
   Lattice() = new()
 end
 
+init_hopping_matrices(p,l) = println("This should never appear anywhere!") # TODO: remove this hack
+
 function load_lattice(p::Parameters, l::Lattice)
   l.L = p.L
   l.t = reshape([parse(Float64, f) for f in split(p.hoppings, ',')],(2,2))
   init_lattice_from_filename(p.lattice_file, l)
   init_neighbors_table(p,l)
   init_time_neighbors_table(p,l)
-  if p.Bfield
-    init_peirls_phases(p,l)
-    init_hopping_matrix_exp_Bfield(p,l)
-    init_checkerboard_matrices_Bfield(p,l)
-  else
-    init_hopping_matrix_exp(p,l)
-    init_checkerboard_matrices(p,l)
-  end
+  init_hopping_matrices(p,l)
 end
 
 function init_lattice_from_filename(filename::String, l::Lattice)

@@ -30,8 +30,13 @@ else
 end
 
 # hdf5 write test/ dump git commit
+branch = Git.branch(dir=dirname(@__FILE__)).string
+if !startswith(branch, "master")
+  warn("Not on branch master but \"$(branch)\"!!!")
+end
 HDF5.h5open(output_file, "w") do f
   f["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__)).string
+  f["GIT_BRANCH_DQMC"] = branch
 end
 
 
@@ -48,6 +53,7 @@ println("GreensType = ", GreensType)
 include("../lattice.jl")
 include("../stack.jl")
 include("../linalg.jl")
+include("../hoppings.jl")
 include("../checkerboard.jl")
 include("../interactions.jl")
 include("../action.jl")

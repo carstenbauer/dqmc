@@ -1,7 +1,5 @@
 using FFTW # v.0.6 naming bug
 using Distributions
-include("xml_parameters.jl")
-include("hdf5_parameters.jl")
 
 mutable struct Parameters
   lattice_file::String
@@ -145,3 +143,6 @@ function deduce_remaining_parameters(p::Parameters)
   p.hsfield = zeros(p.opdim, 1, p.slices) # just to initialize it somehow
   nothing
 end
+
+include("xml_parameters.jl")
+include("hdf5_parameters.jl")

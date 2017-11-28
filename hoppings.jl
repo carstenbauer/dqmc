@@ -4,6 +4,18 @@ if !isdefined(:HoppingType)
   println("HoppingType = ", HoppingType)
 end
 
+function init_hopping_matrices(p::Parameters, l::Lattice)
+  if p.Bfield
+    init_peirls_phases(p,l)
+    init_hopping_matrix_exp_Bfield(p,l)
+    init_checkerboard_matrices_Bfield(p,l)
+  else
+    init_hopping_matrix_exp(p,l)
+    init_checkerboard_matrices(p,l)
+  end
+  nothing
+end
+
 function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
   println("Initializing hopping exponentials")
   !p.Bfield || warn("You should be using `init_hopping_matrix_exp_Bfield()` or set p.Bfield = false!")
