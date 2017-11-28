@@ -59,6 +59,12 @@ mutable struct Parameters
   end
 end
 
+"""
+    set_parameters(p::Parameters, params::Dict)
+
+params::Dict -> p::Parameters (mandatory and optional).
+Also triggers `deduce_remaining_parameters()` to e.g. calculate p.beta and set global DataTypes.
+"""
 function set_parameters(p::Parameters, params::Dict)
   ### PARSE MANDATORY PARAMS
   p.thermalization = parse(Int, params["THERMALIZATION"])
@@ -74,9 +80,6 @@ function set_parameters(p::Parameters, params::Dict)
   p.c = parse(Float64, params["C"])
   p.u = parse(Float64, params["U"])
   ###
-
-  p.beta = p.slices * p.delta_tau
-  p.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
 
   ### PARSE OPTIONAL PARAMS
   if haskey(params, "OPDIM")
@@ -125,6 +128,20 @@ function set_parameters(p::Parameters, params::Dict)
     p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"])
   end
 
+  deduce_remaining_parameters(p)
+
+  nothing
+end
+
+"""
+    deduce_remaining_parameters(p::Parameters)
+    
+Assumes that `p` has been loaded from XML or HDF5 and sets remaining (dependent) fields in `p`.
+"""
+function deduce_remaining_parameters(p::Parameters)
+  p.beta = p.slices * p.delta_tau
+  p.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
+
   ### SET DATATYPES
   if p.Bfield
     global const HoppingType = Complex128;
@@ -134,16 +151,16 @@ function set_parameters(p::Parameters, params::Dict)
     global const GreensType = p.opdim > 1 ? Complex128 : Float64; # O(1) -> real GF
   end
 
-  params["GreensType"] = string(GreensType)
-  params["HoppingType"] = string(HoppingType)
-
-  params["L"] = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
-
   p.hsfield = zeros(p.opdim, 1, p.slices) # just to initialize it somehow
 
   nothing
 end
 
+"""
+    xml2parameters!(p::Parameters, input_xml)
+    
+Load `p` from XML file (e.g. `.in.xml`).
+"""
 function xml2parameters!(p::Parameters, input_xml::String)
   # READ INPUT XML
   params = Dict{Any, Any}()
@@ -159,8 +176,12 @@ function xml2parameters!(p::Parameters, input_xml::String)
   params
 end
 
+"""
+    hdf52parameters!(p::Parameters, input_h5)
+    
+Load `p` from HDF5 file (e.g. `.out.h5`).
+"""
 function hdf52parameters!(p::Parameters, input_h5::String)
-  
   fields = fieldnames(Parameters)
   HDF5.h5open(input_h5, "r") do f
     try
@@ -182,11 +203,21 @@ function hdf52parameters!(p::Parameters, input_h5::String)
         end
       end
     catch e
-      println(e)
+      error("Error in loading Parameters object from HDF5: ", e)
     end
   end
+
+  deduce_remaining_parameters(p)
+
+  nothing
 end
 
+
+"""
+    parameters2hdf5(p::Parameters, filename)
+    
+Save `p` to HDF5 file (e.g. `.out.h5`).
+"""
 function parameters2hdf5(p::Parameters, filename::String)
   isfile(filename)?f = h5open(filename, "r+"):f = h5open(filename, "w")
   for i in 1:nfields(Parameters)
@@ -220,6 +251,10 @@ function parameters2hdf5(p::Parameters, filename::String)
 end
 
 
+
+
+
+
 """
 Debugging convenience function: randomly initialize p
 """
@@ -247,9 +282,13 @@ function Base.Random.rand!(p::Parameters)
   nothing
 end
 
-
-# deprecated. should only be used for old data (where we dumped params::Dict instead of p::Parameters)
+"""
+    hdf52parameters!_old(p::Parameters, filename)
+    
+Deprecated version of `hdf52parameters!`. Use it only for old data (created before 28.11.2017).
+"""
 function hdf52parameters!_old(p::Parameters, input_h5::String)
+  warn("DEPRECATED: Only use for old data (where we dumped `params::Dict`). Should now use `hdf52parameters!` instead.")
   # READ Parameters from h5 file
   if input_h5[end-2:end] == "jld"
     f = jldopen(input_h5, "r")
