@@ -23,6 +23,8 @@ mutable struct Lattice
   bond_vecs::Matrix{Float64}
   site_bonds::Matrix{Int}
 
+  peirls::Matrix{Matrix{Float64}} # phis and NOT exp(im*phi); cols = flavor, row = spin; each inner matrix: trg, src (linidx)
+
   hopping_matrix_exp::Matrix{HoppingType} # mu included
   hopping_matrix_exp_inv::Matrix{HoppingType}
 
@@ -51,6 +53,7 @@ function load_lattice(p::Parameters, l::Lattice)
   init_neighbors_table(p,l)
   init_time_neighbors_table(p,l)
   if p.Bfield
+    init_peirls_phases(p,l)
     init_hopping_matrix_exp_Bfield(p,l)
     init_checkerboard_matrices_Bfield(p,l)
   else
@@ -164,6 +167,8 @@ end
 
 function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
   println("Initializing hopping exponentials")
+  !p.Bfield || warn("You should be using `init_hopping_matrix_exp_Bfield()` or set p.Bfield = false!")
+
   Tx = diagm(fill(-p.mu,l.sites))
   Ty = diagm(fill(-p.mu,l.sites))
   hor_nb = [2,4]
@@ -202,77 +207,73 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
   return nothing
 end
 
+function init_peirls_phases(p::Parameters, l::Lattice)
+  println("Initializing Peirls phases (Bfield)")
+  const L = l.L
 
-function peirls(i::Int , j::Int, B::Float64, sql::Matrix{Int}, pbc::Bool)
-    # peirls_phase_factors e^{im*Aij}
-    # argument pbc: is this hopping via PBC (true) or within the finite lattice (false)
-    i2, i1 = ind2sub(sql, i)
-    j2, j1 = ind2sub(sql, j)
-    L = size(sql, 1)
+  B = zeros(2,2) # colidx = flavor, rowidx = spin up,down
+  if p.Bfield
+    B[1,1] = B[2,2] = 2 * pi / l.sites
+    B[1,2] = B[2,1] = - 2 * pi / l.sites
+  end
 
-    if !pbc
-      if i1 in 1:L-1 && j1 == i1+1
-          return exp(im*(- 2*pi * B * (i2 - 1)))
+  l.peirls = Matrix{Matrix{Float64}}(2,2) # colidx = flavor, rowidx = spin up,down
+  for f in 1:2 # flv
+    for s in 1:2 # spin
+      phis = fill(NaN, L, L, L, L)
+
+      for x in 1:L
+        for y in 1:L
+          xp = mod1(x + 1, L)
+          yp = mod1(y + 1, L)
           
-      elseif i1 in 2:L && j1 == i1-1
-          return exp(im*(2*pi * B * (i2 - 1)))
+          #nn
+          phis[x,y,x,yp] = 0
+          phis[x,yp,x,y] = 0
           
-      else
-          return exp(im*0.)
+          phis[x,y,xp,y] = - B[s,f] * (y - 1)
+          phis[xp,y,x,y] = - phis[x,y,xp,y]
+          if y == L
+              phis[x,y,x,yp] = B[s,f] * L * (x -1)
+              phis[x,yp,x,y] = - phis[x,y,x,yp]
+          end
+        end
       end
-      
-    else
-      if i1 == L && j1 == 1
-          return exp(im*(- 2*pi * B * (i2 - 1)))
-          
-      elseif i1 == 1 && j1 == L
-          return exp(im*(2*pi * B * (i2 - 1)))
-          
-      elseif i2 == L && j2 == 1
-          return exp(im*(2*pi * B * L * (i1 - 1)))
-          
-      elseif i2 == 1 && j2 == L
-          return exp(im*(- 2*pi * B * L * (i1 - 1)))
-          
-      else
-          return exp(im*0.)
-      end
+      l.peirls[s,f] = reshape(permutedims(phis, [2,1,4,3]), (l.sites,l.sites))
+
     end
+  end
 end
 
 function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void  
   println("Initializing hopping exponentials (Bfield)")
-  B = zeros(2,2) # colidx = flavor, rowidx = spin up,down
-  if p.Bfield
-    B[1,1] = B[2,2] = 1./l.sites
-    B[1,2] = B[2,1] = - 1./l.sites
-  end
+  p.Bfield || warn("You should be using `init_hopping_matrix_exp()` or set p.Bfield = true!")
 
   T = Matrix{Matrix{HoppingType}}(2,2) # colidx = flavor, rowidx = spin up,down
   for i in 1:4
     T[i] = convert(Matrix{HoppingType}, diagm(fill(-p.mu,l.sites)))
   end
 
-  # for linidx to cartesianidx   
-  sql = reshape(collect(1:l.sites), (l.L,l.L))
+  hor_nb = [2,4]
+  ver_nb = [1,3]
 
-  for b in 1:l.n_bonds
-    src = l.bonds[b,1]
-    trg = l.bonds[b,2]
-    pbc = trg < src
-    if l.bond_vecs[b,1] == 1 #hopping direction
-      for f in 1:2 #flv
-        for s in 1:2 #spin
-          T[s,f][trg,src] += - peirls(trg, src, B[s,f], sql, pbc) * l.t[1,f]
-          T[s,f][src,trg] += - peirls(src, trg, B[s,f], sql, pbc) * l.t[1,f]
+  # Nearest neighbor hoppings
+  @inbounds @views begin
+    for f in 1:2
+      for s in 1:2
+
+        for src in 1:l.sites
+          for nb in hor_nb # horizontal neighbors
+            trg = l.neighbors[nb,src]
+            T[s,f][trg,src] += - exp(im * l.peirls[s,f][trg,src]) * l.t[1,f] # horizontal
+          end
+
+          for nb in ver_nb # vertical neighbors
+            trg = l.neighbors[nb,src]
+            T[s,f][trg,src] += - exp(im * l.peirls[s,f][trg,src]) * l.t[2,f] # vertical
+          end
         end
-      end
-    else
-      for f in 1:2
-        for s in 1:2
-          T[s,f][trg,src] += - peirls(trg, src, B[s,f], sql, pbc) * l.t[2,f]
-          T[s,f][src,trg] += - peirls(src, trg, B[s,f], sql, pbc) * l.t[2,f]
-        end
+
       end
     end
   end

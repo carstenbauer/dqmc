@@ -136,14 +136,9 @@ end
 
 #### WITH ARTIFICIAL B-FIELD
 
-
-function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner::Int,f::Int, B::Float64, sql::Matrix{Int})
+function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner::Int,f::Int,s::Int)
   sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
   shift_sites_clockwise = circshift(sites_clockwise,-1)
-
-  pbc_v = (corner%l.L) == 0 # corner is on top edge of lattice?
-  pbc_h = corner>(l.sites-l.L) # corner is on right edge of lattice?
-  pbc = Bool[pbc_v, pbc_h, pbc_v, pbc_h]
 
   h = l.t[1,f]
   v = l.t[2,f]
@@ -154,10 +149,11 @@ function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner:
     i = sites_clockwise[k]
     j = shift_sites_clockwise[k]
 
-    hop[k] *= peirls(i,j,B,sql, pbc[k])
-    hop[k+4] *= peirls(j,i,B,sql, pbc[k])
+    hop[k] *= exp(im * l.peirls[s,f][i,j]) # i,j = trg,src
+    hop[k+4] *= exp(im * l.peirls[s,f][j,i]) # j,i = trg,src
   end
 
+  # return T only filled with T_ijkl hoppings
   return sparse([sites_clockwise; shift_sites_clockwise],[shift_sites_clockwise; sites_clockwise],hop,l.sites,l.sites)
 end
 
@@ -168,12 +164,9 @@ function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, cor
 
   B = zeros(2,2) # rowidx = spin up,down, colidx = flavor
   if p.Bfield
-    B[1,1] = B[2,2] = 1./l.sites
-    B[1,2] = B[2,1] = - 1./l.sites
+    B[1,1] = B[2,2] = 2 * pi / l.sites
+    B[1,2] = B[2,1] = - 2 * pi / l.sites
   end
-
-  # for linidx to cartesianidx   
-  sql = reshape(collect(1:l.sites), (l.L,l.L))
 
   pc = Int(floor(l.sites/4))
 
@@ -188,8 +181,8 @@ function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, cor
 
           fac = -prefac * p.delta_tau
           
-          chkr_hop_4site[c,g,s,f] = sparse(rem_eff_zeros!(expm(fac * full(build_four_site_hopping_matrix_Bfield(p,l,corners[g][c],f,B[s,f],sql)))))
-          chkr_hop_4site_inv[c,g,s,f] = sparse(rem_eff_zeros!(expm(-fac * full(build_four_site_hopping_matrix_Bfield(p,l,corners[g][c],f,B[s,f],sql)))))
+          chkr_hop_4site[c,g,s,f] = sparse(rem_eff_zeros!(expm(fac * full(build_four_site_hopping_matrix_Bfield(p,l,corners[g][c],f,s)))))
+          chkr_hop_4site_inv[c,g,s,f] = sparse(rem_eff_zeros!(expm(-fac * full(build_four_site_hopping_matrix_Bfield(p,l,corners[g][c],f,s)))))
 
         end
       end
@@ -198,7 +191,6 @@ function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, cor
 
   return chkr_hop_4site, chkr_hop_4site_inv
 end
-
 
 function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
 
@@ -264,8 +256,6 @@ function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
   println("Checkerboard (Bfield) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
   # println("Checkerboard (Bfield) - exact (eff rel):\t\t", maximum(r))
 end
-
-
 
 
 
@@ -339,8 +329,6 @@ function multiply_daggered_slice_matrix_left!(s::Stack, p::Parameters, l::Lattic
   M[:] = s.eV * M
 
 end
-
-
 
 
 function multiply_slice_matrix_left(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
