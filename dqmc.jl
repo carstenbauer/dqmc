@@ -155,6 +155,7 @@ function MC_thermalize(s::Stack, p::Parameters, l::Lattice, a::Analysis)
         if p.global_updates
           @printf("\t\tacc rate (global): %.1f%%\n", a.acc_rate_global*100)
           @printf("\t\tacc rate (global, overall): %.1f%%\n", a.acc_global/a.prop_global*100)
+          @printf("\t\tproposed (global, overall): %.1f%%\n", a.prop_global)
         end
 
         # adaption (first half of thermalization)
