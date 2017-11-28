@@ -136,7 +136,6 @@ end
 
 #### WITH ARTIFICIAL B-FIELD
 
-
 function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner::Int,f::Int,s::Int)
   sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
   shift_sites_clockwise = circshift(sites_clockwise,-1)
@@ -154,7 +153,7 @@ function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner:
     hop[k+4] *= exp(im * l.peirls[s,f][j,i]) # j,i = trg,src
   end
 
-  # return T_ijkl
+  # return T only filled with T_ijkl hoppings
   return sparse([sites_clockwise; shift_sites_clockwise],[shift_sites_clockwise; sites_clockwise],hop,l.sites,l.sites)
 end
 
@@ -192,7 +191,6 @@ function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, cor
 
   return chkr_hop_4site, chkr_hop_4site_inv
 end
-
 
 function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
 
@@ -258,8 +256,6 @@ function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
   println("Checkerboard (Bfield) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
   # println("Checkerboard (Bfield) - exact (eff rel):\t\t", maximum(r))
 end
-
-
 
 
 
@@ -333,8 +329,6 @@ function multiply_daggered_slice_matrix_left!(s::Stack, p::Parameters, l::Lattic
   M[:] = s.eV * M
 
 end
-
-
 
 
 function multiply_slice_matrix_left(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number

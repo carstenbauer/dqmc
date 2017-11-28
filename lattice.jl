@@ -226,10 +226,6 @@ function init_peirls_phases(p::Parameters, l::Lattice)
         for y in 1:L
           xp = mod1(x + 1, L)
           yp = mod1(y + 1, L)
-          # xm = mod1(x - 1, L)
-          # ym = mod1(y - 1, L)
-          # xp2 = mod1(x + 2, L)
-          # yp2 = mod1(y + 2, L)
           
           #nn
           phis[x,y,x,yp] = 0
