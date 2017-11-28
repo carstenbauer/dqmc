@@ -29,17 +29,17 @@ else
   error("Call with \"whatever.in.xml\" or e.g. \"sdwO3_L_4_B_2_dt_0.1_1 \${SLURM_ARRAY_TASK_ID}\"")
 end
 
-# hdf5 write test
-f = HDF5.h5open(output_file, "w")
-f["params/TEST"] = 42
-close(f)
+# hdf5 write test/ dump git commit
+HDF5.h5open(output_file, "w") do f
+  f["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__)).string
+end
 
 
 ### PARAMETERS
 p = Parameters()
 p.output_file = output_file
-params = load_parameters_xml(p, input_xml)
-parameters2hdf5(params, output_file)
+xml2parameters!(p, input_xml)
+parameters2hdf5(p, p.output_file)
 
 println("HoppingType = ", HoppingType)
 println("GreensType = ", GreensType)
@@ -70,6 +70,8 @@ l = Lattice()
 load_lattice(p,l)
 s = Stack()
 a = Analysis()
+
+srand(p.seed); # init RNG
 
 # Init hsfield
 println("\nInitializing HS field")

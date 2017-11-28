@@ -30,8 +30,12 @@ end
 
 # hdf5 read/write test
 f = HDF5.h5open(output_file, "r+")
-if HDF5.has(f, "params/TEST") HDF5.o_delete(f["params"],"TEST") end
-f["params/TEST"] = 43
+git_commit = Git.head(dir=dirname(@__FILE__))
+if HDF5.exists(f, "GIT_COMMIT_MEASURE")
+  warn("Overwriting GIT_COMMIT_MEASURE!")
+  HDF5.o_delete(f, "GIT_COMMIT_MEASURE")
+end
+f["GIT_COMMIT_MEASURE"] = git_commit.string
 
 existing_obs = listobs(output_file)
 
@@ -96,18 +100,6 @@ catch e
   println(e)
   exit()
 end
-
-
-# ### CHECK GIT COMMIT CONSISTENCY
-# git_commit = Git.head(dir=dirname(@__FILE__))
-# if !HDF5.exists(f, "params/GIT_COMMIT_DQMC") || (git_commit != f["params/GIT_COMMIT_DQMC"])
-#   warn("Git commit used for dqmc doesn't match current commit of code!!!")
-# end
-# if HDF5.exists(f, "params/GIT_COMMIT_MEASURE")
-#   warn("Overwriting GIT_COMMIT_MEASURE!")
-#   HDF5.o_delete(f, "params/GIT_COMMIT_MEASURE")
-# end
-# f["params/GIT_COMMIT_MEASURE"] = git_commit.string
 
 
 # load configurations

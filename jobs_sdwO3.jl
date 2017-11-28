@@ -20,7 +20,7 @@ const OPDIM = 2
 for L in [8]
 for beta in [5, 10]
 for dt in [0.1]
-for (k, seed) in enumerate([55796])
+# for (k, seed) in enumerate([55796])
 W = L # square lattice
 
 dir = "L_$(L)"
@@ -31,11 +31,11 @@ prefix = "sdwO$(OPDIM)_L_$(L)_B_$(beta)_dt_$(dt)_$(k)"
 mkdir(prefix)
 cd(prefix)
 
-p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "SLICES"=>[Int(beta / dt)], "DELTA_TAU"=>[dt], "SAFE_MULT"=>[10], "C"=>[3.0], "GLOBAL_UPDATES"=>["TRUE"], "GLOBAL_RATE"=>[5], "U"=>[1.0], "R"=>R_POINTS, "LAMBDA"=>[2.0], "HOPPINGS"=>["1.0,0.5,-0.5,-1.0"], "MU"=>[-0.5], "SEED"=>[55796])
+p = Dict{Any, Any}("LATTICE_FILE"=>["$lattice_dir/square_L_$(L)_W_$(W).xml"], "SLICES"=>[Int(beta / dt)], "DELTA_TAU"=>[dt], "SAFE_MULT"=>[10], "C"=>[3.0], "GLOBAL_UPDATES"=>["TRUE"], "GLOBAL_RATE"=>[5], "U"=>[1.0], "R"=>R_POINTS, "LAMBDA"=>[2.0], "HOPPINGS"=>["1.0,0.5,-0.5,-1.0"], "MU"=>[-0.5])
 p["THERMALIZATION"] = 1000
 p["MEASUREMENTS"] = 20000
 p["WRITE_EVERY_NTH"] = 10
-p["B_FIELD"] = true
+p["BFIELD"] = true
 p["CHECKERBOARD"] = true
 p["OPDIM"] = OPDIM
 
@@ -66,7 +66,7 @@ write(f, job_cheops)
 close(f)
 
 cd("../..")
-end
+# end # seed loop
 end
 end
 end

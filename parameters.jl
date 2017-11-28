@@ -1,6 +1,6 @@
 using FFTW # v.0.6 naming bug
 using Distributions
-using Git
+using HDF5
 include("xml_parameters.jl")
 
 mutable struct Parameters
@@ -59,7 +59,7 @@ mutable struct Parameters
   end
 end
 
-function set_parameters(p::Parameters, params) #TODO what is the type of params Dict?
+function set_parameters(p::Parameters, params::Dict)
   ### PARSE MANDATORY PARAMS
   p.thermalization = parse(Int, params["THERMALIZATION"])
   p.measurements = parse(Int, params["MEASUREMENTS"])
@@ -102,8 +102,8 @@ function set_parameters(p::Parameters, params) #TODO what is the type of params 
     p.chkr = parse(Bool, lowercase(params["CHECKERBOARD"]))
   end
 
-  if haskey(params,"B_FIELD")
-    p.Bfield = parse(Bool, lowercase(params["B_FIELD"]))
+  if haskey(params,"BFIELD")
+    p.Bfield = parse(Bool, lowercase(params["BFIELD"]))
   end
 
 
@@ -144,17 +144,11 @@ function set_parameters(p::Parameters, params) #TODO what is the type of params 
   nothing
 end
 
-function load_parameters_xml(p::Parameters, input_xml::String)
+function xml2parameters!(p::Parameters, input_xml::String)
   # READ INPUT XML
   params = Dict{Any, Any}()
   try
     params = xml2parameters(input_xml)
-
-    # Check and store code version (git commit)
-    if haskey(params,"GIT_COMMIT_DQMC") && Git.head(dir=dirname(@__FILE__)) != params["GIT_COMMIT_DQMC"]
-      warn("Git commit in input xml file does not match current commit of code.")
-    end
-    params["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__))
 
   catch e
     println(e)
@@ -165,31 +159,33 @@ function load_parameters_xml(p::Parameters, input_xml::String)
   params
 end
 
+function hdf52parameters!(p::Parameters, input_h5::String)
+  
+  fields = fieldnames(Parameters)
+  HDF5.h5open(input_h5, "r") do f
+    try
+      for field_name in names(f["params"])
+        field = Symbol(field_name)
+        if field in fields
 
-function load_parameters_h5(p::Parameters, input_h5::String)
-  # READ Parameters from h5 file
-  if input_h5[end-2:end] == "jld"
-    f = jldopen(input_h5, "r")
-  else
-    f = HDF5.h5open(input_h5, "r")
-  end
+          value = read(f["params/$(field_name)"])
+          if field_name in ["global_updates", "chkr", "Bfield", "all_checks"] # handle Bools
+            value = Bool(value)
+          elseif field_name in ["box", "box_global"] # handle Distributions
+            value = Distributions.Uniform{Float64}(-value, value)
+          end
 
-  params = Dict{Any, Any}()
+          setfield!(p, field, value)
 
-  try
-    for e in names(f["params"])
-           params[e] = read(f["params/$e"])
+        else
+          warn("HDF5 contains \"params/$(field_name)\" which is not a field of type Parameters! Maybe old file? Try `hdf52parameters!_old`.")
+        end
+      end
+    catch e
+      println(e)
     end
-  catch e
-    println(e)
   end
-
-  set_parameters(p, params)
-  close(f)
-
-  return params
 end
-
 
 function parameters2hdf5(p::Parameters, filename::String)
   isfile(filename)?f = h5open(filename, "r+"):f = h5open(filename, "w")
@@ -223,6 +219,7 @@ function parameters2hdf5(p::Parameters, filename::String)
   close(f)
 end
 
+
 """
 Debugging convenience function: randomly initialize p
 """
@@ -248,4 +245,30 @@ function Base.Random.rand!(p::Parameters)
   set_parameters(p, params)
   p.output_file = "asd.h5"
   nothing
+end
+
+
+# deprecated. should only be used for old data (where we dumped params::Dict instead of p::Parameters)
+function hdf52parameters!_old(p::Parameters, input_h5::String)
+  # READ Parameters from h5 file
+  if input_h5[end-2:end] == "jld"
+    f = jldopen(input_h5, "r")
+  else
+    f = HDF5.h5open(input_h5, "r")
+  end
+
+  params = Dict{Any, Any}()
+
+  try
+    for e in names(f["params"])
+           params[e] = read(f["params/$e"])
+    end
+  catch e
+    println(e)
+  end
+
+  set_parameters(p, params)
+  close(f)
+
+  return params
 end
