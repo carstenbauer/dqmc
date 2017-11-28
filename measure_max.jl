@@ -8,7 +8,6 @@ using Git
 using JLD
 using HDF5
 include("parameters.jl")
-include("xml_parameters.jl")
 include("observable.jl")
 
 ### PROGRAM ARGUMENTS
@@ -148,6 +147,7 @@ close(f)
 include("lattice.jl")
 include("stack.jl")
 include("linalg.jl")
+include("hoppings.jl")
 include("checkerboard.jl")
 include("interactions.jl")
 include("action.jl")

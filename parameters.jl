@@ -145,31 +145,3 @@ function deduce_remaining_parameters(p::Parameters)
   p.hsfield = zeros(p.opdim, 1, p.slices) # just to initialize it somehow
   nothing
 end
-
-
-"""
-Debugging convenience function: randomly initialize p
-"""
-function Base.Random.rand!(p::Parameters)
-  params = Dict{String,Any}()
-  params["THERMALIZATION"] = rand(1:1000)
-  params["MEASUREMENTS"] = rand(1:1000)
-  params["SLICES"] = rand(1:400)
-  params["DELTA_TAU"] = rand()
-  params["SAFE_MULT"] = rand(1:10)
-  params["LATTICE_FILE"] = "L_$(rand(1:20)).xml"
-  params["HOPPINGS"] = "$(rand()),$(rand()),$(rand()),$(rand())"
-  params["MU"] = rand()
-  params["LAMBDA"] = rand()
-  params["R"] = rand()
-  params["C"] = rand()
-  params["U"] = rand()
-
-  for i in eachindex(params.vals)
-    isassigned(params.vals, i) && (params.vals[i] = string(params.vals[i]))
-  end
-
-  set_parameters(p, params)
-  p.output_file = "asd.h5"
-  nothing
-end

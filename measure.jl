@@ -6,7 +6,6 @@ println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 using Helpers
 using Git
 include("parameters.jl")
-include("xml_parameters.jl")
 include("observable.jl")
 
 ### PROGRAM ARGUMENTS
@@ -116,6 +115,7 @@ hdf52parameters!(p, output_file)
 include("lattice.jl")
 include("stack.jl")
 include("linalg.jl")
+include("hoppings.jl")
 include("checkerboard.jl")
 include("interactions.jl")
 include("action.jl")

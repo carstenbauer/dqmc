@@ -37,6 +37,7 @@ println("GreensType = ", GreensType)
 
 include("linalg.jl")
 include("lattice.jl")
+include("hoppings.jl")
 include("checkerboard.jl")
 include("interactions.jl")
 include("action.jl")
