@@ -42,6 +42,7 @@ mutable struct Lattice
   # Currently NOT used in checkerboard.jl
   checkerboard::Matrix{Int}
   groups::Vector{UnitRange}
+  n_groups::Int
 
   Lattice() = new()
 end
@@ -118,6 +119,7 @@ function init_lattice_from_filename(filename::String, l::Lattice)
     push!(l.groups, group_start:group_end-1)
     group_start = group_end
   end
+  l.n_groups = length(l.groups)
 
   # bonds & bond vectors
   println("\nLoading lattice with ", l.sites , " sites")
