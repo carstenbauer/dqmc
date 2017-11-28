@@ -34,7 +34,7 @@ close(f)
 params = Dict{Any, Any}()
 try
   println("Prefix is ", prefix, " and idx is ", idx)
-  params = xml2parameters(prefix * ".task" * string(idx) * ".in.xml")
+  params = xml2params(prefix * ".task" * string(idx) * ".in.xml")
 
   # Check and store code version (git commit)
   if haskey(params,"GIT_COMMIT") && Git.head(dir=dirname(@__FILE__)) != params["GIT_COMMIT"]

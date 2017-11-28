@@ -1,9 +1,27 @@
-# conversion between parameters::Dict (NOT ::Parameters !!), xml file and hdf5 file
 using LightXML
 using Iterators
-import HDF5
 
-function xml2parameters(fname::String)
+"""
+    xml2parameters!(p::Parameters, input_xml)
+    
+Load `p` from XML file (e.g. `.in.xml`).
+"""
+function xml2parameters!(p::Parameters, input_xml::String)
+  # READ INPUT XML
+  params = Dict{Any, Any}()
+  try
+    params = xml2params(input_xml)
+
+  catch e
+    println(e)
+  end
+
+  set_parameters(p, params)
+
+  params
+end
+
+function xml2params(fname::String)
   params = Dict{Any, Any}()
   xdoc = parse_file(fname)
   xroot = LightXML.root(xdoc)
@@ -23,26 +41,7 @@ function xml2parameters(fname::String)
   return params
 end
 
-function parameters2hdf5(params::Dict, filename::String)
-  f = HDF5.h5open(filename, "r+")
-  for (k, v) in params
-    try
-      if HDF5.exists(f, "params/" * k)
-        if read(f["params/"*k]) != v
-          error(k, " exists but differs from current ")
-        end
-      else
-        f["params/" * k] = v
-      end
-    catch e
-    end
-
-  end
-
-  close(f)
-end
-
-function parameterset2xml(params::Dict, prefix::String)
+function paramset2xml(params::Dict, prefix::String)
   for (i, param_set) in enumerate(product(values(params)...))
     xdoc = XMLDocument()
     xroot = create_root(xdoc, "SIMULATION")

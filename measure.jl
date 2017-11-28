@@ -62,7 +62,7 @@ m = Measurements()
 # load parameters from measure.in.xml
 params = Dict{Any, Any}()
 try
-  params = xml2parameters(input_file)
+  params = xml2params(input_file)
 
   if haskey(params, "OVERWRITE") && !parse(Bool, lowercase(params["OVERWRITE"]))
     m.overwrite = false

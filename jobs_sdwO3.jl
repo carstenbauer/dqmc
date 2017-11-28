@@ -40,7 +40,7 @@ p["CHECKERBOARD"] = true
 p["OPDIM"] = OPDIM
 
 p["GIT_COMMIT"] = [commit]
-parameterset2xml(p, prefix)
+paramset2xml(p, prefix)
 
 
 
