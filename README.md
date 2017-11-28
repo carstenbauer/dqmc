@@ -1,1 +1,1 @@
-Fermions + O(3) SDW order parameter on square lattice with determinant quantum Monte Carlo
+Fermions + O(N) SDW order parameter on square lattice with determinant quantum Monte Carlo
