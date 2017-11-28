@@ -27,7 +27,7 @@ git_commit = Git.head(dir=dirname(@__FILE__))
 if !HDF5.exists(f, "GIT_COMMIT_DQMC") || (git_commit != f["GIT_COMMIT_DQMC"])
   warn("Git commit used for dqmc doesn't match current commit of code!!!")
 end
-if Git.branch(dir=dirname(@__FILE__)).string != "master"
+if Git.branch(dir=dirname(@__FILE__)).string[1:end-1] != "master"
   warn("Not on branch master!!!")
 end
 if HDF5.exists(f, "GIT_COMMIT_MEASURE")
