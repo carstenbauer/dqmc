@@ -88,7 +88,6 @@ function init_lattice_from_filename(filename::String, l::Lattice)
   end
 
   l.n_neighbors = count(x->x==1, l.bonds[:, 1]) + count(x->x==1, l.bonds[:, 2]) # neighbors of site 1
-  println("$(l.n_neighbors) neighbors")
 end
 
 function init_neighbors_table(p::Parameters,l::Lattice)
