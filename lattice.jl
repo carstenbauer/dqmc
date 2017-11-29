@@ -16,8 +16,7 @@ mutable struct Lattice
   n_bonds::Int
   t::Matrix{Float64} # colidx = flavor/band, rowidx = hor,ver
   time_neighbors::Matrix{Int} # colidx = slice, rowidx = up, down
-  neighbors::Matrix{Int} # colidx = site
-                           # first = up, second = right, third and fourth not ordered
+  neighbors::Matrix{Int} # colidx = site, rowidx = up down right left
 
   bonds::Matrix{Int}
   bond_vecs::Matrix{Float64}
