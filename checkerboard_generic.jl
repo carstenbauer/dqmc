@@ -4,11 +4,45 @@ if !isdefined(:HoppingType)
   println("HoppingType = ", HoppingType)
 end
 
+
+function build_checkerboard(p::Parameters, l::Lattice)
+  l.groups = UnitRange[]
+  edges_used = zeros(Int64, l.n_bonds)
+  l.checkerboard = zeros(3, l.n_bonds)
+  group_start = 1
+  group_end = 1
+
+  while minimum(edges_used) == 0
+    sites_used = zeros(Int64, l.sites)
+
+    for id in 1:l.n_bonds
+      src, trg, typ = l.bonds[id,1:3]
+
+      if edges_used[id] == 1 continue end
+      if sites_used[src] == 1 continue end
+      if sites_used[trg] == 1 continue end
+
+      edges_used[id] = 1
+      sites_used[src] = 1
+      sites_used[trg] = 1
+
+      l.checkerboard[:, group_end] = [src, trg, id]
+      group_end += 1
+    end
+    push!(l.groups, group_start:group_end-1)
+    group_start = group_end
+  end
+  l.n_groups = length(l.groups)
+end
+
+
 # helper to cutoff numerical zeros
 rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X,X)
 
 function init_checkerboard_matrices(p::Parameters, l::Lattice)
   println("Initializing hopping exponentials (Checkerboard, generic)")
+
+  build_checkerboard(p,l)
 
   const n_groups = l.n_groups
   eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
@@ -78,6 +112,8 @@ end
 
 function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
   println("Initializing hopping exponentials (Bfield, Checkerboard, generic)")
+
+  build_checkerboard(p,l)
 
   const n_groups = l.n_groups
   eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
