@@ -33,6 +33,7 @@ end
 HDF5.h5open(output_file, "w") do f
   f["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__)).string
   f["GIT_BRANCH_DQMC"] = branch
+  f["RUNNING"] = 1
 end
 
 
@@ -280,6 +281,11 @@ end
 
 
 MC_run(s,p,l,a)
+
+HDF5.h5open(output_file, "r+") do f
+  HDF5.o_delete(f, "RUNNING")
+  f["RUNNING"] = 0
+end
 
 end_time = now()
 println("Ended: ", Dates.format(end_time, "d.u yyyy HH:MM"))
