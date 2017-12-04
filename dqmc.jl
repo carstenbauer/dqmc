@@ -239,12 +239,14 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
           if boson_action.count == cs
               println("Dumping...")
             @time begin
-              confs2hdf5(p.output_file, configurations)
-              obs2hdf5(p.output_file, greens)
+              h5open(p.output_file, "r+") do f
+                confs2hdf5(f, configurations)
+                obs2hdf5(f, greens)
 
-              obs2hdf5(p.output_file, boson_action)
-              obs2hdf5(p.output_file, mean_abs_op)
-              obs2hdf5(p.output_file, mean_op)
+                obs2hdf5(f, boson_action)
+                obs2hdf5(f, mean_abs_op)
+                obs2hdf5(f, mean_op)
+              end
               clear(boson_action)
               clear(mean_abs_op)
               clear(mean_op)

@@ -19,7 +19,7 @@ mutable struct Observable{T<:Number}
 end
 
 
-function add_element{T}(obs::Observable{T}, element::Union{Number,Array})
+function add_element(obs::Observable{T}, element::Union{Number,Array}) where T
   if size(element) != obs.elsize
     error("Element size incompatible with observable size.")
   end
@@ -44,14 +44,19 @@ function add_element{T}(obs::Observable{T}, element::Union{Number,Array})
 end
 
 
-function obs2hdf5{T}(filename::String, obs::Observable{T})
+function obs2hdf5(filename::String, obs::Observable{T}) where T
   if isempty(obs) return nothing end
 
-  if obs.count != obs.alloc
-    warn("Saving incomplete time series chunk of observable \"$obs.name\".")
-  end
-
   h5open(filename, isfile(filename)?"r+":"w") do f
+    obs2hdf5(f, obs)
+  end
+end
+function obs2hdf5(f::HDF5.HDF5File, obs::Observable{T}) where T
+    if isempty(obs) return nothing end
+
+    if obs.count != obs.alloc
+    warn("Saving incomplete time series chunk of observable \"$obs.name\".")
+    end
 
     new_count = -1
     if !exists(f, "obs/" * obs.name)
@@ -94,45 +99,48 @@ function obs2hdf5{T}(filename::String, obs::Observable{T})
       g["timeseries_real"][colons...,end-obs.count+1:end] = real(obs.timeseries[colons...,:])
       g["timeseries_imag"][colons...,end-obs.count+1:end] = imag(obs.timeseries[colons...,:])
     end
-
-  end
 end
 
 
-function confs2hdf5{T}(filename::String, obs::Observable{T})
-
+function confs2hdf5(filename::String, obs::Observable{T}) where T
+  h5open(filename, isfile(filename)?"r+":"w") do f
+    confs2hdf5(f, obs)
+  end
+end
+function confs2hdf5(f::HDF5.HDF5File, obs::Observable{T}) where T
   if obs.count != obs.alloc
     warn("Saving incomplete time series chunk of observable \"$obs.name\".")
   end
 
-  h5open(filename, isfile(filename)?"r+":"w") do f
-
-    new_count = -1
-    if !exists(f, "configurations")
-      # initialze chunk storage
-      write(f, "count", obs.count)
-      d_create(f, "configurations", T, ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
-      new_count = obs.count
-    else
-      # update counter
-      new_count = read(f["count"]) + obs.count
-      o_delete(f, "count")
-      write(f, "count", new_count)
-    end
-
-    # update (append to) time series
-    colons = [Colon() for k in 1:obs.eldims]
-
-    set_dims!(f["configurations"],(obs.elsize...,new_count))
-    f["configurations"][colons...,end-obs.count+1:end] = obs.timeseries[colons...,:]
-
+  new_count = -1
+  if !exists(f, "configurations")
+    # initialze chunk storage
+    write(f, "count", obs.count)
+    d_create(f, "configurations", T, ((obs.elsize...,obs.count),(obs.elsize...,-1)), "chunk", (obs.elsize...,obs.alloc), "compress", 9)
+    new_count = obs.count
+  else
+    # update counter
+    new_count = read(f["count"]) + obs.count
+    o_delete(f, "count")
+    write(f, "count", new_count)
   end
+
+  # update (append to) time series
+  colons = [Colon() for k in 1:obs.eldims]
+
+  set_dims!(f["configurations"],(obs.elsize...,new_count))
+  f["configurations"][colons...,end-obs.count+1:end] = obs.timeseries[colons...,:]
 end
 
 
 function hdf52obs(filename::String, obsname::String)
   h5open(filename, "r+") do f
-    if !exists(f, "/obs/" * obsname) error("Observable does not exist in \"$filename\"")
+    hdf52obs(f, obsname)
+  end
+end
+
+function hdf52obs(f::HDF5.HDF5File, obsname::String)
+  if !exists(f, "/obs/" * obsname) error("Observable does not exist in \"$filename\"")
     else
       o = f["/obs/" * obsname]
       if exists(o, "timeseries") # Real
@@ -151,7 +159,6 @@ function hdf52obs(filename::String, obsname::String)
         return obs
       end
     end
-  end
 end
 
 
