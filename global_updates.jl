@@ -10,7 +10,7 @@ end
 @inline function global_update_perform_shift!(s::Stack, p::Parameters, l::Lattice)
     @inbounds @views begin
       @simd for k in 1:p.opdim
-        p.hsfield[k,:,:] .+= rand(p.box)
+        p.hsfield[k,:,:] .+= rand(p.box_global)
       end
     end
 end

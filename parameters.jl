@@ -46,7 +46,7 @@ mutable struct Parameters
     p.chkr = true
     p.Bfield = false
     p.box = Uniform(-0.5,0.5)
-    p.box_global = Uniform(-0.5,0.5)
+    p.box_global = p.box
     p.global_rate = 5
     p.write_every_nth = 1
     p.all_checks = true
@@ -105,6 +105,7 @@ function set_parameters(p::Parameters, params::Dict)
   if haskey(params,"BOX_HALF_LENGTH")
     len = parse(Float64, params["BOX_HALF_LENGTH"])
     p.box = Uniform(-len,len)
+    p.box_global = p.box
   end
   if haskey(params,"BOX_GLOBAL_HALF_LENGTH")
     len = parse(Float64, params["BOX_GLOBAL_HALF_LENGTH"])
