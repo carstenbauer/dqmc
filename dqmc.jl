@@ -10,14 +10,14 @@ include("parameters.jl")
 if length(ARGS) == 1
   # ARGS = ["whatever.in.xml"]
   input_xml = ARGS[1]
-  output_file = input_xml[1:searchindex(input_xml, ".in.xml")-1]*".out.h5"
+  output_file = input_xml[1:searchindex(input_xml, ".in.xml")-1]*".out.h5.running"
 elseif length(ARGS) == 2
   # Backward compatibility
   # ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]
   prefix = convert(String, ARGS[1])
   idx = 1
   try idx = parse(Int, ARGS[2]); end # SLURM_ARRAY_TASK_ID 
-  output_file = prefix * ".task" * string(idx) * ".out.h5"
+  output_file = prefix * ".task" * string(idx) * ".out.h5.running"
 
   println("Prefix is ", prefix, " and idx is ", idx)
   input_xml = prefix * ".task" * string(idx) * ".in.xml"
@@ -284,6 +284,8 @@ end
 
 MC_run(s,p,l,a)
 
+
+mv(output_file, output_file[1:end-8]) # .out.h5.running -> .out.h5
 HDF5.h5open(output_file, "r+") do f
   HDF5.o_delete(f, "RUNNING")
   f["RUNNING"] = 0

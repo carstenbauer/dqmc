@@ -52,7 +52,7 @@ job_cheops = """
 #SBATCH --ntasks=1
 #SBATCH --mem=4gb
 #SBATCH --time=7-00:00:00
-#SBATCH --output=$(prefix).task%a.out.log
+#SBATCH --output=$(prefix).task%a.log
 #SBATCH --job-name=$(prefix)
 
 export OMP_NUM_THREADS=1
