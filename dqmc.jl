@@ -284,12 +284,11 @@ end
 
 MC_run(s,p,l,a)
 
-
-mv(output_file, output_file[1:end-8]) # .out.h5.running -> .out.h5
 HDF5.h5open(output_file, "r+") do f
   HDF5.o_delete(f, "RUNNING")
   f["RUNNING"] = 0
 end
+mv(output_file, output_file[1:end-8]) # .out.h5.running -> .out.h5
 
 end_time = now()
 println("Ended: ", Dates.format(end_time, "d.u yyyy HH:MM"))
