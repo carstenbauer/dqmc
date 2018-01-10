@@ -11,7 +11,9 @@ function measure_phi_correlations(conf::AbstractArray{Float64, 3})
   L = Int(sqrt(sites))
   phiFT = rfft(reshape(conf,opdim,L,L,slices),[2,3,4])
   phiFT .*= conj(phiFT)
-  return real(sum(phiFT,1))[1,:,:,:] # sum over op components
+  n = Int(L/2+1)
+  nt = Int(slices/2+1)
+  return real(sum(phiFT,1))[1,:,1:n,1:nt] # sum over op components
 end
 
 import DSP.rfftfreq
