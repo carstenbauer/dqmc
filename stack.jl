@@ -236,7 +236,7 @@ Only reasonable immediately after calculate_greens()!
 """
 function calculate_logdet(s::Stack, p::Parameters, l::Lattice)
   if p.opdim == 1
-    s.log_det = real(log(complex(det(s.U))) + sum(log.(s.d)) + logdet(complex(det(s.T))))
+    s.log_det = real(log(complex(det(s.U))) + sum(log.(s.d)) + log(complex(det(s.T))))
   else
     s.log_det = real(logdet(s.U) + sum(log.(s.d)) + logdet(s.T))
   end
