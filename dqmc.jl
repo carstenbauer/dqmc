@@ -29,6 +29,7 @@ end
 branch = Git.branch(dir=dirname(@__FILE__)).string[1:end-1]
 if branch != "master"
   warn("Not on branch master but \"$(branch)\"!!!")
+  flush(STDOUT)
 end
 HDF5.h5open(output_file, "w") do f
   f["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__)).string
