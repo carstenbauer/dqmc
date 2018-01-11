@@ -75,8 +75,16 @@ function set_parameters(p::Parameters, params::Dict)
   else
     p.measurements = parse(Int, params["MEASUREMENTS"])
   end
-  p.slices = parse(Int, params["SLICES"])
   p.delta_tau = parse(Float64, params["DELTA_TAU"])
+  if haskey(params, "BETA")
+    p.slices = Int(parse(Float64, params["BETA"])/p.delta_tau)
+    println("SLICES = ", p.slices)
+  elseif haskey(params, "T")
+    p.slices = Int((1/parse(Float64, params["T"]))/p.delta_tau)
+    println("SLICES = ", p.slices)
+  else
+    p.slices = parse(Int, params["SLICES"])
+  end
   p.safe_mult = parse(Int, params["SAFE_MULT"])
   p.lattice_file = params["LATTICE_FILE"]
   p.hoppings = params["HOPPINGS"]
