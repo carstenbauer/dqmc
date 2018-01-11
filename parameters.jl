@@ -65,12 +65,12 @@ Also triggers `deduce_remaining_parameters()` to e.g. calculate p.beta and set g
 """
 function set_parameters(p::Parameters, params::Dict)
   ### PARSE MANDATORY PARAMS
-  if haskey("WARMUP")
+  if haskey(params, "WARMUP")
     p.thermalization = parse(Int, params["WARMUP"])/2
   else
     p.thermalization = parse(Int, params["THERMALIZATION"])
   end
-  if haskey("SWEEPS")
+  if haskey(params, "SWEEPS")
     p.measurements = parse(Int, params["SWEEPS"])/2
   else
     p.measurements = parse(Int, params["MEASUREMENTS"])
