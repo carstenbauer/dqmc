@@ -53,7 +53,11 @@ include("lattice.jl")
 include("stack.jl")
 include("linalg.jl")
 include("hoppings.jl")
-include("checkerboard.jl")
+if iseven(p.L)
+  include("checkerboard.jl")
+else
+  include("checkerboard_generic.jl")
+end
 include("interactions.jl")
 include("action.jl")
 include("local_updates.jl")
