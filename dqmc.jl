@@ -1,6 +1,7 @@
 # dqmc.jl called with arguments: whatever.in.xml
 start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
+println("Hostname: ", gethostname())
 
 using Helpers
 using Git
