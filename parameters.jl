@@ -40,6 +40,8 @@ mutable struct Parameters
 
   seed::Int
 
+  resume::Bool # continuing a simulation?
+
   function Parameters()
     p = new()
     p.global_updates = true
@@ -53,6 +55,7 @@ mutable struct Parameters
     p.opdim = 3
     p.flv = 4
     p.seed = 4729339882041979125
+    p.resume = false
     return p
   end
 end
@@ -132,6 +135,9 @@ function set_parameters(p::Parameters, params::Dict)
   end
   if haskey(params,"WRITE_EVERY_NTH")
     p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"])
+  end
+  if haskey(params, "RESUME")
+    p.resume = parse(Bool, lowercase(params["RESUME"]))
   end
 
   deduce_remaining_parameters(p)

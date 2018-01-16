@@ -43,7 +43,29 @@ end
 p = Parameters()
 p.output_file = output_file
 xml2parameters!(p, input_xml)
-parameters2hdf5(p, p.output_file)
+if p.resume
+  println()
+  println("RESUMING MODE")
+  println("Using a copy of old run as .out.h5.running file. Copying ...")
+  cp(output_file[1:end-8], output_file, remove_destination=true)
+  HDF5.h5open(output_file, "r+") do f
+    !HDF5.has(f, "RUNNING") || HDF5.o_delete(f, "RUNNING")
+    f["RUNNING"] = 1
+    !HDF5.has(f, "RESUME") || HDF5.o_delete(f, "RESUME")
+    f["RESUME"] = 1
+  end
+
+  global const lastmeasurements = h5read(output_file, "params/measurements")
+  global const lastwriteevery = h5read(output_file, "params/write_every_nth")
+  global const lastcount = h5read(output_file, "count")
+  println("Found $(lastcount) configurations.")
+  println()
+  global const lastconf = squeeze(h5read(output_file, "configurations", (:,:,:,lastcount)), 4)
+  global const lastgreens = squeeze(h5read(output_file, "obs/greens/timeseries_real", (:,:,lastcount)) + 
+                              im*h5read(output_file, "obs/greens/timeseries_imag", (:,:,lastcount)), 3)
+else
+  parameters2hdf5(p, p.output_file)
+end
 
 println("HoppingType = ", HoppingType)
 println("GreensType = ", GreensType)
@@ -102,6 +124,27 @@ function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     MC_thermalize(s, p, l, a)
 
     println("\n\nMC Measure - ", p.measurements)
+    flush(STDOUT)
+    MC_measure(s, p, l, a)
+
+    nothing
+end
+
+
+function MC_resume(s::Stack, p::Parameters, l::Lattice, a::Analysis)
+    
+    # Init hsfield
+    println("\nLoading last HS field")
+    p.hsfield = deepcopy(lastconf)
+    println("Initializing boson action\n")
+    p.boson_action = calculate_boson_action(p,l)
+
+    global const eye_flv = eye(p.flv,p.flv)
+    global const eye_full = eye(p.flv*l.sites,p.flv*l.sites)
+    global const ones_vec = ones(p.flv*l.sites)
+
+    ### MONTE CARLO
+    println("\n\nMC Measure (resuming) - ", p.measurements, " (total $(p.measurements + lastmeasurements))")
     flush(STDOUT)
     MC_measure(s, p, l, a)
 
@@ -213,15 +256,31 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     mean_abs_op = Observable{Float64}("mean_abs_op", cs)
     mean_op = Observable{Float64}("mean_op", (p.opdim), cs)
 
+    i_start = 1
+    i_end = p.measurements
+
+    if p.resume
+      s.greens = deepcopy(lastgreens)
+      if p.chkr
+        greens2effective_greens!(p, l, s.greens)
+      else
+        greens2effective_greens_no_chkr!(p, l, s.greens)
+      end
+      restorerng(p.output_file)
+
+      togo = mod1(lastmeasurements, lastwriteevery)-1
+      i_start = lastmeasurements-togo+1
+      i_end = p.measurements + lastmeasurements
+    end
 
     acc_rate = 0.0
     acc_rate_global = 0.0
     tic()
-    for i in 1:p.measurements
+    for i in i_start:i_end
       for u in 1:2 * p.slices
         MC_update(s, p, l, i, a)
 
-        if s.current_slice == p.slices && s.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
+        if s.current_slice == p.slices && s.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
           # println("\t\tMeasuring")
           add_element(boson_action, p.boson_action)
 
@@ -287,14 +346,17 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     nothing
 end
 
-
-MC_run(s,p,l,a)
+if !p.resume
+  MC_run(s,p,l,a)
+else
+  MC_resume(s,p,l,a)
+end
 
 HDF5.h5open(output_file, "r+") do f
   HDF5.o_delete(f, "RUNNING")
   f["RUNNING"] = 0
 end
-mv(output_file, output_file[1:end-8]) # .out.h5.running -> .out.h5
+mv(output_file, output_file[1:end-8], remove_destination=true) # .out.h5.running -> .out.h5
 
 end_time = now()
 println("Ended: ", Dates.format(end_time, "d.u yyyy HH:MM"))
