@@ -22,10 +22,10 @@ end
 Effective Green's function -> Green's function
 """
 function effective_greens2greens!(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
-  greens = greens * l.chkr_hop_half[2]
-  greens = greens * l.chkr_hop_half[1]
-  greens = l.chkr_hop_half_inv[2] * greens
-  greens = l.chkr_hop_half_inv[1] * greens
+  greens .= greens * l.chkr_hop_half[2]
+  greens .= greens * l.chkr_hop_half[1]
+  greens .= l.chkr_hop_half_inv[2] * greens
+  greens .= l.chkr_hop_half_inv[1] * greens
 end
 
 function effective_greens2greens(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
@@ -35,8 +35,9 @@ function effective_greens2greens(p::Parameters, l::Lattice, greens::AbstractArra
 end
 
 function effective_greens2greens_no_chkr!(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
-  greens = greens * l.hopping_matrix_exp
-  greens = l.hopping_matrix_exp_inv * greens
+  greens .= greens * l.hopping_matrix_exp
+  greens .= l.hopping_matrix_exp_inv * greens
+  nothing
 end
 
 
