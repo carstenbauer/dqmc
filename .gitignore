@@ -2,6 +2,7 @@
 **/*.h5
 **/*.running
 playground.jl
+testing/
 **/*.bin
 **/*.png
 **/*.pdf
