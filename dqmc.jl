@@ -123,6 +123,11 @@ function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     flush(STDOUT)
     MC_thermalize(s, p, l, a)
 
+    h5open(p.output_file, "r+") do f
+      write(f, "resume/box", p.box.b)
+      write(f, "resume/box_global", p.box_global.b)
+    end
+
     println("\n\nMC Measure - ", p.measurements)
     flush(STDOUT)
     MC_measure(s, p, l, a)
@@ -142,6 +147,13 @@ function MC_resume(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     global const eye_flv = eye(p.flv,p.flv)
     global const eye_full = eye(p.flv*l.sites,p.flv*l.sites)
     global const ones_vec = ones(p.flv*l.sites)
+
+    h5open(p.output_file, "r") do f
+      box = read(f, "resume/box")
+      box_global = read(f, "resume/box_global")
+      p.box = Uniform(-box, box)
+      p.box_global = Uniform(-box_global, box_global)
+    end
 
     ### MONTE CARLO
     println("\n\nMC Measure (resuming) - ", p.measurements, " (total $(p.measurements + lastmeasurements))")
@@ -260,7 +272,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     i_end = p.measurements
 
     if p.resume
-      restorerng(p.output_file)
+      restorerng(p.output_file; group="resume/rng")
       togo = mod1(lastmeasurements, lastwriteevery)-1
       i_start = lastmeasurements-togo+1
       i_end = p.measurements + lastmeasurements
@@ -312,7 +324,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
               clear(configurations)
               clear(greens)
 
-              saverng(p.output_file)
+              saverng(p.output_file; group="resume/rng")
               println("Dumping block of $cs datapoints was a success")
               flush(STDOUT)
             end
