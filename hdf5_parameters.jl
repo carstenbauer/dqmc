@@ -51,7 +51,7 @@ function hdf52parameters!(p::Parameters, input_h5::String)
         if field in fields
 
           value = read(f["params/$(field_name)"])
-          if field_name in ["global_updates", "chkr", "Bfield", "all_checks"] # handle Bools
+          if field_name in ["global_updates", "chkr", "Bfield", "all_checks", "resume"] # handle Bools
             value = Bool(value)
           elseif field_name in ["box", "box_global"] # handle Distributions
             value = Distributions.Uniform{Float64}(-value, value)
