@@ -260,14 +260,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     i_end = p.measurements
 
     if p.resume
-      s.greens = deepcopy(lastgreens)
-      if p.chkr
-        greens2effective_greens!(p, l, s.greens)
-      else
-        greens2effective_greens_no_chkr!(p, l, s.greens)
-      end
       restorerng(p.output_file)
-
       togo = mod1(lastmeasurements, lastwriteevery)-1
       i_start = lastmeasurements-togo+1
       i_end = p.measurements + lastmeasurements
