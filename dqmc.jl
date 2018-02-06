@@ -70,15 +70,18 @@ else
     f["RESUME"] = 1
   end
 
-  global const lastwriteevery = h5read(output_file, "params/write_every_nth")
-  global const lastcount = h5read(output_file, "count")
-  # global const lastmeasurements = h5read(output_file, "params/measurements")
-  global const lastmeasurements = lastcount * lastwriteevery
-  println("Found $(lastcount) configurations.")
+  global const prevcount = h5read(output_file, "count")
+  println("Found $(prevcount) configurations.")
   println()
-  global const lastconf = squeeze(h5read(output_file, "configurations", (:,:,:,lastcount)), 4)
-  global const lastgreens = squeeze(h5read(output_file, "obs/greens/timeseries_real", (:,:,lastcount)) + 
-                              im*h5read(output_file, "obs/greens/timeseries_imag", (:,:,lastcount)), 3)
+  lastmeasurements = h5read(output_file, "params/measurements")
+  global const prevmeasurements = prevcount * p.write_every_nth
+  if prevmeasurements < lastmeasurements
+    println("Finishing last run (i.e. overriding p.measurements)")
+    p.measurements = lastmeasurements - prevmeasurements
+  end
+  global const lastconf = squeeze(h5read(output_file, "configurations", (:,:,:,prevcount)), 4)
+  global const lastgreens = squeeze(h5read(output_file, "obs/greens/timeseries_real", (:,:,prevcount)) + 
+                              im*h5read(output_file, "obs/greens/timeseries_imag", (:,:,prevcount)), 3)
 end
 
 println("HoppingType = ", HoppingType)
@@ -170,7 +173,7 @@ function MC_resume(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     end
 
     ### MONTE CARLO
-    println("\n\nMC Measure (resuming) - ", p.measurements, " (total $(p.measurements + lastmeasurements))")
+    println("\n\nMC Measure (resuming) - ", p.measurements, " (total $(p.measurements + prevmeasurements))")
     flush(STDOUT)
     MC_measure(s, p, l, a)
 
@@ -287,9 +290,9 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 
     if p.resume
       restorerng(p.output_file; group="resume/rng")
-      togo = mod1(lastmeasurements, lastwriteevery)-1
-      i_start = lastmeasurements-togo+1
-      i_end = p.measurements + lastmeasurements
+      togo = mod1(prevmeasurements, p.write_every_nth)-1
+      i_start = prevmeasurements-togo+1
+      i_end = p.measurements + prevmeasurements
     end
 
     acc_rate = 0.0
