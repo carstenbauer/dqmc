@@ -32,39 +32,53 @@ if branch != "master"
   warn("Not on branch master but \"$(branch)\"!!!")
   flush(STDOUT)
 end
-HDF5.h5open(output_file, "w") do f
-  f["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__)).string
-  f["GIT_BRANCH_DQMC"] = branch
-  f["RUNNING"] = 1
-end
-
 
 ### PARAMETERS
 p = Parameters()
 p.output_file = output_file
 xml2parameters!(p, input_xml)
-if p.resume
+
+# mv old .out.h5 to .out.h5.running (and then try to resume below)
+(isfile(output_file[1:end-8]) && !isfile(output_file)) && mv(output_file[1:end-8], output_file)
+
+# check if there is a resumable running file
+if isfile(output_file)
+  h5open(output_file) do f
+    if HDF5.has(f, "resume") && read(f["count"]) > 0 && read(f["GIT_BRANCH_DQMC"]) == branch
+      p.resume = true
+    end
+  end
+end
+if !p.resume
+  # overwrite (potential) running file
+  h5open(output_file, "w") do f
+    f["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__)).string
+    f["GIT_BRANCH_DQMC"] = branch
+    f["RUNNING"] = 1
+  end
+end
+
+if !p.resume
+  parameters2hdf5(p, p.output_file)
+else
   println()
-  println("RESUMING MODE")
-  println("Using a copy of old run as .out.h5.running file. Copying ...")
-  cp(output_file[1:end-8], output_file, remove_destination=true)
-  HDF5.h5open(output_file, "r+") do f
+  println("RESUMING MODE -----------------")
+  h5open(output_file, "r+") do f
     !HDF5.has(f, "RUNNING") || HDF5.o_delete(f, "RUNNING")
     f["RUNNING"] = 1
     !HDF5.has(f, "RESUME") || HDF5.o_delete(f, "RESUME")
     f["RESUME"] = 1
   end
 
-  global const lastmeasurements = h5read(output_file, "params/measurements")
   global const lastwriteevery = h5read(output_file, "params/write_every_nth")
   global const lastcount = h5read(output_file, "count")
+  # global const lastmeasurements = h5read(output_file, "params/measurements")
+  global const lastmeasurements = lastcount * lastwriteevery
   println("Found $(lastcount) configurations.")
   println()
   global const lastconf = squeeze(h5read(output_file, "configurations", (:,:,:,lastcount)), 4)
   global const lastgreens = squeeze(h5read(output_file, "obs/greens/timeseries_real", (:,:,lastcount)) + 
                               im*h5read(output_file, "obs/greens/timeseries_imag", (:,:,lastcount)), 3)
-else
-  parameters2hdf5(p, p.output_file)
 end
 
 println("HoppingType = ", HoppingType)
@@ -357,7 +371,7 @@ else
   MC_resume(s,p,l,a)
 end
 
-HDF5.h5open(output_file, "r+") do f
+h5open(output_file, "r+") do f
   HDF5.o_delete(f, "RUNNING")
   f["RUNNING"] = 0
 end

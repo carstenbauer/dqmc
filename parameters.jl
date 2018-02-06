@@ -40,7 +40,7 @@ mutable struct Parameters
 
   seed::Int
 
-  resume::Bool # continuing a simulation?
+  resume::Bool
 
   function Parameters()
     p = new()
@@ -135,9 +135,6 @@ function set_parameters(p::Parameters, params::Dict)
   end
   if haskey(params,"WRITE_EVERY_NTH")
     p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"])
-  end
-  if haskey(params, "RESUME")
-    p.resume = parse(Bool, lowercase(params["RESUME"]))
   end
 
   deduce_remaining_parameters(p)
