@@ -43,9 +43,11 @@ xml2parameters!(p, input_xml)
 
 # check if there is a resumable running file
 if isfile(output_file)
-  h5open(output_file) do f
-    if HDF5.has(f, "resume") && read(f["count"]) > 0 && read(f["GIT_BRANCH_DQMC"]) == branch
-      p.resume = true
+  try
+    h5open(output_file) do f
+      if HDF5.has(f, "resume") && read(f["count"]) > 0 && read(f["GIT_BRANCH_DQMC"]) == branch
+        p.resume = true
+      end
     end
   end
 end
