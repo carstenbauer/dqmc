@@ -4,7 +4,7 @@ function measure_op(conf::AbstractArray{Float64, 3})
   return mean_abs_op, mean_op
 end
 
-FFTW.set_num_threads(Sys.CPU_CORES)
+FFTW.set_num_threads(1) # we normally have one cpu. can't use Sys.CPU_CORES because this != slurm allocated cores
 # bosonic correlation function C(qy,qx,iw), not normalized
 function measure_phi_correlations(conf::AbstractArray{Float64, 3})
   opdim, sites, slices = size(conf)
