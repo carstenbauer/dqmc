@@ -22,17 +22,33 @@ end
 Effective Green's function -> Green's function
 """
 function effective_greens2greens!(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
-  greens .= greens * l.chkr_hop_half[2]
-  greens .= greens * l.chkr_hop_half[1]
-  greens .= l.chkr_hop_half_inv[2] * greens
-  greens .= l.chkr_hop_half_inv[1] * greens
+  const chkr_hop_half_minus = l.chkr_hop_half
+  const chkr_hop_half_plus = l.chkr_hop_half_inv
+
+  @inbounds @views begin
+      for i in reverse(1:l.n_groups)
+        greens .= greens * chkr_hop_half_minus[i]
+      end
+      for i in reverse(1:l.n_groups)
+        greens .= chkr_hop_half_plus[i] * greens
+      end
+  end
+  nothing
 end
 
 function greens2effective_greens!(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
-  greens .= greens * l.chkr_hop_half_inv[1]
-  greens .= greens * l.chkr_hop_half_inv[2]
-  greens .= l.chkr_hop_half[1] * greens
-  greens .= l.chkr_hop_half[2] * greens
+  const chkr_hop_half_minus = l.chkr_hop_half
+  const chkr_hop_half_plus = l.chkr_hop_half_inv
+
+  @inbounds @views begin
+      for i in 1:l.n_groups
+        greens .= greens * chkr_hop_half_plus[i]
+      end
+      for i in 1:l.n_groups
+        greens .= chkr_hop_half_minus[i] * greens
+      end
+  end
+  nothing
 end
 
 function effective_greens2greens(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
@@ -380,4 +396,53 @@ function calculate_greens_and_logdet_chkr(s::Stack, p::Parameters, l::Lattice, s
   ldet = real(logdet(U) + sum(log.(d)) + logdet(T))
 
   return T * spdiagm(d) * U, ldet
+end
+
+
+# Calculate "G(tau, 0)", i.e. G(slice,1) naively
+function calculate_tdgf_naive(s::Stack, p::Parameters, l::Lattice, slice::Int)
+  G, = calculate_greens_and_logdet(s,p,l,1,2*p.slices)
+  Ul, Dl, Tl = calculate_slice_matrix_chain_qr(s,p,l,1,slice,2*p.slices)
+  B12 = Ul * spdiagm(Dl) * Tl
+  return B12 * G
+end
+
+# Calculate "G(tau, 0)", i.e. G(slice,1)
+function calculate_tdgf(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=p.safe_mult)
+  # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
+  Ur, Dr, Tr = calculate_slice_matrix_chain_qr_dagger(s,p,l,slice,p.slices, safe_mult)
+
+  # Calculate Ul,Dl,Tl=B(slice-1) ... B(1)
+  if slice-1 >= 1
+    Ul, Dl, Tl = calculate_slice_matrix_chain_qr(s,p,l,1,slice-1, safe_mult)
+  else
+    Ul = eye(GreensType, p.flv * l.sites)
+    Dl = ones(Float64, p.flv * l.sites)
+    Tl = eye(GreensType, p.flv * l.sites)
+  end
+
+  tmp = Tl * ctranspose(Tr)
+  U, D, T = decompose_udt(spdiagm(Dl) * tmp * spdiagm(Dr))
+  U = Ul * U
+  T *= ctranspose(Ur)
+
+  u, d, t = decompose_udt(ctranspose(U) * inv(T) + spdiagm(D))
+
+  T = inv(t * T)
+  U *= u
+  U = ctranspose(U)
+  d = 1./d
+
+  # time displace
+  Ul, Dl, Tl = calculate_slice_matrix_chain_qr(s,p,l,1,slice, safe_mult)
+  U, D, T = multiply_safely(Ul, Dl, Tl, T, d, U)
+
+  return U*spdiagm(D)*T
+end
+
+function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
+  mat = Tl * Ur
+  mat = spdiagm(Dl)*mat*spdiagm(Dr)
+  U, D, T = decompose_udt(mat)
+  return Ul*U, D, T*Tr
 end
