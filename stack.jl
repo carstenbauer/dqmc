@@ -58,7 +58,10 @@ mutable struct Stack
 end
 
 
-function initialize_stack(s::Stack, p::Parameters, l::Lattice)
+function initialize_stack(mc::DQMC)
+  const p = mc.p
+  const s = mc.s
+
   s.n_elements = convert(Int, p.slices / p.safe_mult) + 1
 
   s.u_stack = zeros(GreensType, p.flv*l.sites, p.flv*l.sites, s.n_elements)
@@ -107,13 +110,16 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
 end
 
 
-function build_stack(s::Stack, p::Parameters, l::Lattice)
+function build_stack(mc::DQMC)
+  const p = mc.p
+  const s = mc.s
+
   s.u_stack[:, :, 1] = eye_full
   s.d_stack[:, 1] = ones_vec
   s.t_stack[:, :, 1] = eye_full
 
   @inbounds for i in 1:length(s.ranges)
-    add_slice_sequence_left(s, p, l, i)
+    add_slice_sequence_left(mc, i)
   end
 
   s.current_slice = p.slices + 1
@@ -126,16 +132,17 @@ end
 """
 Updates stack[idx+1] based on stack[idx]
 """
-function add_slice_sequence_left(s::Stack, p::Parameters, l::Lattice, idx::Int)
-  
+function add_slice_sequence_left(mc::DQMC, idx::Int)
+  const s = mc.s
+
   copy!(s.curr_U, s.u_stack[:, :, idx])
 
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
-    if p.chkr
-      multiply_slice_matrix_left!(s, p, l, slice, s.curr_U)
+    if mc.p.chkr
+      multiply_slice_matrix_left!(mc, slice, s.curr_U)
     else
-      s.curr_U = slice_matrix_no_chkr(s, p, l, slice) * s.curr_U
+      s.curr_U = slice_matrix_no_chkr(mc, slice) * s.curr_U
     end
   end
 
@@ -148,15 +155,16 @@ end
 """
 Updates stack[idx] based on stack[idx+1]
 """
-function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
-  
+function add_slice_sequence_right(mc::DQMC, idx::Int)
+  const s = mc.s
+
   copy!(s.curr_U, s.u_stack[:, :, idx + 1])
 
   for slice in reverse(s.ranges[idx])
-    if p.chkr
-      multiply_daggered_slice_matrix_left!(s, p, l, slice, s.curr_U)
+    if mc.p.chkr
+      multiply_daggered_slice_matrix_left!(mc, slice, s.curr_U)
     else
-      s.curr_U = ctranspose(slice_matrix_no_chkr(s, p, l, slice)) * s.curr_U
+      s.curr_U = ctranspose(slice_matrix_no_chkr(mc, slice)) * s.curr_U
     end
   end
 
@@ -166,46 +174,36 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
 end
 
 
-# Beff(slice) = exp(−1/2∆τT)exp(−1/2∆τT)exp(−∆τV(slice))
-function slice_matrix_no_chkr(s::Stack, p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
-  if power > 0
-    return l.hopping_matrix_exp * l.hopping_matrix_exp * interaction_matrix_exp(s, p, l, slice, power)
-  else
-    return interaction_matrix_exp(s, p, l, slice, power) * l.hopping_matrix_exp_inv * l.hopping_matrix_exp_inv
-  end
-end
-
-
-@inline function wrap_greens_chkr!(s::Stack, p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
+@inline function wrap_greens_chkr!(mc::DQMC{C}, gf::Matrix{GreensType}, curr_slice::Int,direction::Int) where C<:CBTrue
   if direction == -1
-    multiply_slice_matrix_inv_left!(s, p, l, curr_slice - 1, gf)
-    multiply_slice_matrix_right!(s, p, l, curr_slice - 1, gf)
+    multiply_slice_matrix_inv_left!(mc, curr_slice - 1, gf)
+    multiply_slice_matrix_right!(mc, curr_slice - 1, gf)
   else
-    multiply_slice_matrix_left!(s, p, l, curr_slice, gf)
-    multiply_slice_matrix_inv_right!(s, p, l, curr_slice, gf)
+    multiply_slice_matrix_left!(mc, curr_slice, gf)
+    multiply_slice_matrix_inv_right!(mc, curr_slice, gf)
   end
 end
 
-function wrap_greens_chkr(s::Stack, p::Parameters, l::Lattice, gf::Matrix{GreensType},slice::Int,direction::Int)
+function wrap_greens_chkr(mc::DQMC{C}, gf::Matrix{GreensType},slice::Int,direction::Int) where C<:CBTrue
   temp = copy(gf)
-  wrap_greens_chkr!(s, p, l, temp, slice, direction)
+  wrap_greens_chkr!(mc, temp, slice, direction)
   return temp
 end
 
 
-function wrap_greens_no_chkr!(s::Stack, p::Parameters, l::Lattice, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
+function wrap_greens_no_chkr!(mc::DQMC{C}, gf::Matrix{GreensType}, curr_slice::Int,direction::Int) where C<:CBFalse
   if direction == -1
-    gf[:] = slice_matrix_no_chkr(s, p, l, curr_slice - 1, -1.) * gf
-    gf[:] = gf * slice_matrix_no_chkr(s, p, l, curr_slice - 1, 1.)
+    gf[:] = slice_matrix_no_chkr(mc, curr_slice - 1, -1.) * gf
+    gf[:] = gf * slice_matrix_no_chkr(mc, curr_slice - 1, 1.)
   else
-    gf[:] = slice_matrix_no_chkr(s, p, l, curr_slice, 1.) * gf
-    gf[:] = gf * slice_matrix_no_chkr(s, p, l, curr_slice, -1.)
+    gf[:] = slice_matrix_no_chkr(mc, curr_slice, 1.) * gf
+    gf[:] = gf * slice_matrix_no_chkr(mc, curr_slice, -1.)
   end
 end
 
-function wrap_greens_no_chkr(s::Stack, p::Parameters, l::Lattice, gf::Matrix{GreensType},slice::Int,direction::Int)
+function wrap_greens_no_chkr(mc::DQMC{C}, gf::Matrix{GreensType},slice::Int,direction::Int) where C<:CBFalse
   temp = copy(gf)
-  wrap_greens_no_chkr!(s, p, l, temp, slice, direction)
+  wrap_greens_no_chkr!(mc, temp, slice, direction)
   return temp
 end
 
@@ -213,7 +211,8 @@ end
 """
 Calculates G(slice) using s.Ur,s.Dr,s.Tr=B(slice)' ... B(M)' and s.Ul,s.Dl,s.Tl=B(slice-1) ... B(1)
 """
-function calculate_greens(s::Stack, p::Parameters, l::Lattice)
+function calculate_greens(mc::DQMC)
+  const s = mc.s
 
   tmp = s.Tl * ctranspose(s.Tr)
   s.U, s.D, s.T = decompose_udt(spdiagm(s.Dl) * tmp * spdiagm(s.Dr))
@@ -234,8 +233,10 @@ end
 """
 Only reasonable immediately after calculate_greens()!
 """
-function calculate_logdet(s::Stack, p::Parameters, l::Lattice)
-  if p.opdim == 1
+function calculate_logdet(mc::DQMC)
+  const s = mc.s
+
+  if mc.p.opdim == 1
     s.log_det = real(log(complex(det(s.U))) + sum(log.(s.d)) + log(complex(det(s.T))))
   else
     s.log_det = real(logdet(s.U) + sum(log.(s.d)) + logdet(s.T))
@@ -246,7 +247,10 @@ end
 ################################################################################
 # Propagation
 ################################################################################
-function propagate(s::Stack, p::Parameters, l::Lattice)
+function propagate(mc::DQMC)
+  const s = mc.s
+  const p = mc.p
+
   if s.direction == 1
     if mod(s.current_slice, p.safe_mult) == 0
       s.current_slice +=1 # slice we are going to
@@ -257,14 +261,14 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         s.t_stack[:, :, 1] = eye_full
         s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
 
-        calculate_greens(s, p, l) # greens_1 ( === greens_{m+1} )
-        calculate_logdet(s, p, l)
+        calculate_greens(mc) # greens_1 ( === greens_{m+1} )
+        calculate_logdet(mc)
 
       elseif 1 < s.current_slice <= p.slices
         idx = Int((s.current_slice - 1)/p.safe_mult)
 
         s.Ur[:, :], s.Dr[:], s.Tr[:, :] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.t_stack[:, :, idx+1]
-        add_slice_sequence_left(s, p, l, idx)
+        add_slice_sequence_left(mc, idx)
         s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.t_stack[:, :, idx+1]
 
         if p.all_checks
@@ -272,12 +276,12 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         end
 
         if p.chkr
-          wrap_greens_chkr!(s, p, l, s.greens_temp, s.current_slice - 1, 1)
+          wrap_greens_chkr!(mc, s.greens_temp, s.current_slice - 1, 1)
         else
-          wrap_greens_no_chkr!(s, p, l, s.greens_temp, s.current_slice - 1, 1)
+          wrap_greens_no_chkr!(mc, s.greens_temp, s.current_slice - 1, 1)
         end
 
-        calculate_greens(s, p, l) # greens_{slice we are propagating to}
+        calculate_greens(mc) # greens_{slice we are propagating to}
 
         if p.all_checks
           diff = maximum(absdiff(s.greens_temp, s.greens))
@@ -288,18 +292,18 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
 
       else # we are going to p.slices+1
         idx = s.n_elements - 1
-        add_slice_sequence_left(s, p, l, idx)
+        add_slice_sequence_left(mc, idx)
         s.direction = -1
         s.current_slice = p.slices+1 # redundant
-        propagate(s, p, l)
+        propagate(mc)
       end
 
     else
       # Wrapping
       if p.chkr
-        wrap_greens_chkr!(s, p, l, s.greens, s.current_slice, 1)
+        wrap_greens_chkr!(mc, s.greens, s.current_slice, 1)
       else
-        wrap_greens_no_chkr!(s, p, l, s.greens, s.current_slice, 1)
+        wrap_greens_no_chkr!(mc, s.greens, s.current_slice, 1)
       end
       s.current_slice += 1
     end
@@ -314,27 +318,27 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         s.t_stack[:, :, end] = eye_full
         s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
 
-        calculate_greens(s, p, l) # greens_{p.slices+1} === greens_1
-        calculate_logdet(s, p, l) # calculate logdet for potential global update
+        calculate_greens(mc) # greens_{p.slices+1} === greens_1
+        calculate_logdet(mc) # calculate logdet for potential global update
 
         # wrap to greens_{p.slices}
         if p.chkr
-          wrap_greens_chkr!(s, p, l, s.greens, s.current_slice + 1, -1)
+          wrap_greens_chkr!(mc, s.greens, s.current_slice + 1, -1)
         else
-          wrap_greens_no_chkr!(s, p, l, s.greens, s.current_slice + 1, -1)
+          wrap_greens_no_chkr!(mc, s.greens, s.current_slice + 1, -1)
         end
 
       elseif 0 < s.current_slice < p.slices
         idx = Int(s.current_slice / p.safe_mult) + 1
         s.Ul[:, :], s.Dl[:], s.Tl[:, :] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.t_stack[:, :, idx]
-        add_slice_sequence_right(s, p, l, idx)
+        add_slice_sequence_right(mc, idx)
         s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.t_stack[:, :, idx]
 
         if p.all_checks
           s.greens_temp = copy(s.greens)
         end
 
-        calculate_greens(s, p , l)
+        calculate_greens(mc)
 
         if p.all_checks
           diff = maximum(absdiff(s.greens_temp, s.greens))
@@ -344,25 +348,25 @@ function propagate(s::Stack, p::Parameters, l::Lattice)
         end
 
         if p.chkr
-          wrap_greens_chkr!(s, p, l, s.greens, s.current_slice + 1, -1)
+          wrap_greens_chkr!(mc, s.greens, s.current_slice + 1, -1)
         else
-          wrap_greens_no_chkr!(s, p, l, s.greens, s.current_slice + 1, -1)
+          wrap_greens_no_chkr!(mc, s.greens, s.current_slice + 1, -1)
         end
 
       else # we are going to 0
         idx = 1
-        add_slice_sequence_right(s, p, l, idx)
+        add_slice_sequence_right(mc, idx)
         s.direction = 1
         s.current_slice = 0 # redundant
-        propagate(s,p,l)
+        propagate(mc)
       end
 
     else
       # Wrapping
       if p.chkr
-        wrap_greens_chkr!(s, p, l, s.greens, s.current_slice, -1)
+        wrap_greens_chkr!(mc, s.greens, s.current_slice, -1)
       else
-        wrap_greens_no_chkr!(s, p, l, s.greens, s.current_slice, -1)
+        wrap_greens_no_chkr!(mc, s.greens, s.current_slice, -1)
       end
       s.current_slice -= 1
     end

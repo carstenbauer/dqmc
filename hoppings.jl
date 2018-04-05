@@ -4,19 +4,25 @@ if !isdefined(:HoppingType)
   println("HoppingType = ", HoppingType)
 end
 
-function init_hopping_matrices(p::Parameters, l::Lattice)
+function init_hopping_matrices(mc::DQMC)
+  const p = mc.p
+  const l = mc.l
+
   if p.Bfield
-    init_peirls_phases(p,l)
-    init_hopping_matrix_exp_Bfield(p,l)
-    init_checkerboard_matrices_Bfield(p,l)
+    init_peirls_phases(mc)
+    init_hopping_matrix_exp_Bfield(mc)
+    init_checkerboard_matrices_Bfield(mc)
   else
-    init_hopping_matrix_exp(p,l)
-    init_checkerboard_matrices(p,l)
+    init_hopping_matrix_exp(mc)
+    init_checkerboard_matrices(mc)
   end
   nothing
 end
 
-function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
+function init_hopping_matrix_exp(mc::DQMC)::Void
+  const p = mc.p
+  const l = mc.l
+
   println("Initializing hopping exponentials")
   !p.Bfield || warn("You should be using `init_hopping_matrix_exp_Bfield()` or set p.Bfield = false!")
 
@@ -58,7 +64,10 @@ function init_hopping_matrix_exp(p::Parameters,l::Lattice)::Void
   return nothing
 end
 
-function init_peirls_phases(p::Parameters, l::Lattice)
+function init_peirls_phases(mc::DQMC)
+  const p = mc.p
+  const l = mc.l
+
   println("Initializing Peirls phases (Bfield)")
   const L = l.L
 
@@ -96,7 +105,10 @@ function init_peirls_phases(p::Parameters, l::Lattice)
   end
 end
 
-function init_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice)::Void  
+function init_hopping_matrix_exp_Bfield(mc::DQMC)::Void  
+  const p = mc.p
+  const l = mc.l
+
   println("Initializing hopping exponentials (Bfield)")
   p.Bfield || warn("You should be using `init_hopping_matrix_exp()` or set p.Bfield = true!")
 

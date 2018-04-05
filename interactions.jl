@@ -5,14 +5,16 @@ if !isdefined(:GreensType)
 end
 
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
-function interaction_matrix_exp(s::Stack, p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
-  eV = zeros(GreensType, p.flv * l.sites, p.flv * l.sites)
-  interaction_matrix_exp!(s, p, l, slice, power, eV)
+function interaction_matrix_exp(mc::DQMC, slice::Int, power::Float64=1.)
+  eV = zeros(GreensType, mc.p.flv * mc.l.sites, mc.p.flv * mc.l.sites)
+  interaction_matrix_exp!(mc, slice, power, eV)
   return eV
 end
 
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
-function interaction_matrix_exp!(s::Stack, p::Parameters, l::Lattice, slice::Int, power::Float64=1., eV::Matrix{GreensType}=s.eV)
+function interaction_matrix_exp!(mc::DQMC, slice::Int, power::Float64=1., eV::Matrix{GreensType}=mc.s.eV)
+  const p = mc.p
+  const l = mc.l
 
   C = blockview(l, eV, 1, 1)
   S = blockview(l, eV, 1, 2)
@@ -58,22 +60,21 @@ end
 end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
-function interaction_matrix_exp_op(s::Stack, p::Parameters, l::Lattice, op::Vector{Float64}, power::Float64=1.)
-
-  eVop = Matrix{GreensType}(p.flv,p.flv)
-  interaction_matrix_exp_op!(s,p,l,op,power,eVop)
+function interaction_matrix_exp_op(mc::DQMC, op::Vector{Float64}, power::Float64=1.)
+  eVop = Matrix{GreensType}(mc.p.flv,mc.p.flv)
+  interaction_matrix_exp_op!(mc,op,power,eVop)
   return eVop
 end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
-function interaction_matrix_exp_op!(s::Stack, p::Parameters, l::Lattice, op::Vector{Float64}, power::Float64=1., eVop::Matrix{GreensType}=s.eVop1)
+function interaction_matrix_exp_op!(mc::DQMC, op::Vector{Float64}, power::Float64=1., eVop::Matrix{GreensType}=mc.s.eVop1)
   n = norm(op)
-  sh = power * sinh(p.lambda * p.delta_tau*n)/n
-  Cii = cosh(p.lambda * p.delta_tau*n)
-  if p.opdim == 3
+  sh = power * sinh(mc.p.lambda * mc.p.delta_tau*n)/n
+  Cii = cosh(mc.p.lambda * mc.p.delta_tau*n)
+  if mc.p.opdim == 3
     Sii = (im * op[2] - op[1]) * sh
     Rii = (-op[3]) * sh
-  elseif p.opdim == 2
+  elseif mc.p.opdim == 2
     Sii = (im * op[2] - op[1]) * sh
   else # O(1)
     Sii = - op[1] * sh

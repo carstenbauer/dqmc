@@ -90,22 +90,9 @@ println("HoppingType = ", HoppingType)
 println("GreensType = ", GreensType)
 
 
+
 include("lattice.jl")
 include("stack.jl")
-include("linalg.jl")
-include("hoppings.jl")
-if iseven(p.L)
-  include("checkerboard.jl")
-else
-  include("checkerboard_generic.jl")
-end
-include("interactions.jl")
-include("action.jl")
-include("local_updates.jl")
-include("global_updates.jl")
-include("observable.jl")
-include("boson_measurements.jl")
-include("fermion_measurements.jl")
 
 mutable struct Analysis
     acc_rate::Float64
@@ -133,7 +120,7 @@ DQMC(p::Parameters) = begin
   CB = CBFalse
   p.chkr && (CB = iseven(p.L) ? CBGeneric : CBAssaad)
   mc = DQMC{CB}(p, Lattice(), Stack(), Analysis())
-  load_lattice(mc.p,mc.l)
+  load_lattice(mc)
   mc
 end
 
@@ -150,6 +137,21 @@ function Base.show(io::IO, mc::DQMC{C}) where C<:Checkerboard
 end
 Base.show(io::IO, m::MIME"text/plain", mc::DQMC) = print(io, mc)
 
+include("linalg.jl")
+include("hoppings.jl")
+if iseven(p.L)
+  include("checkerboard.jl")
+else
+  include("checkerboard_generic.jl")
+end
+include("interactions.jl")
+include("action.jl")
+include("local_updates.jl")
+include("global_updates.jl")
+include("observable.jl")
+include("boson_measurements.jl")
+include("fermion_measurements.jl")
+
 function init!(mc::DQMC)
     srand(mc.p.seed); # init RNG
 
@@ -157,18 +159,18 @@ function init!(mc::DQMC)
     println("\nInitializing HS field")
     mc.p.hsfield = rand(mc.p.opdim,mc.l.sites,mc.p.slices)
     println("Initializing boson action\n")
-    mc.p.boson_action = calculate_boson_action(mc.p,mc.l)
+    mc.p.boson_action = calculate_boson_action(mc)
 
     global const eye_flv = eye(mc.p.flv,mc.p.flv)
     global const eye_full = eye(mc.p.flv*mc.l.sites,mc.p.flv*mc.l.sites)
     global const ones_vec = ones(mc.p.flv*mc.l.sites)
 
     # stack init and test
-    initialize_stack(mc.s, mc.p, mc.l)
+    initialize_stack(mc)
     println("Building stack")
-    build_stack(mc.s, mc.p, mc.l)
+    build_stack(mc)
     println("Initial propagate: ", mc.s.current_slice, " ", mc.s.direction)
-    propagate(mc.s, mc.p, mc.l)
+    propagate(mc)
 end
 
 function run!(mc::DQMC)
@@ -193,7 +195,7 @@ function resume!(mc::DQMC)
     println("\nLoading last HS field")
     p.hsfield = deepcopy(lastconf)
     println("Initializing boson action\n")
-    p.boson_action = calculate_boson_action(p,l)
+    p.boson_action = calculate_boson_action(mc)
 
     global const eye_flv = eye(p.flv,p.flv)
     global const eye_full = eye(p.flv*l.sites,p.flv*l.sites)
@@ -278,11 +280,11 @@ function measure!(mc::DQMC)
     const p = mc.p
     const s = mc.s
 
-    initialize_stack(s, p, l)
+    initialize_stack(mc)
     println("Renewing stack")
-    build_stack(s, p, l)
+    build_stack(mc)
     println("Initial propagate: ", s.current_slice, " ", s.direction)
-    propagate(s, p, l)
+    propagate(mc)
 
     cs = min(p.measurements, 100)
 
@@ -385,22 +387,13 @@ function update(mc::DQMC, i::Int)
     propagate(s, p, l)
 
     if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
-      # attempt global update after every fifth down-up sweep
-      # println("Attempting global update...")
       a.prop_global += 1
       b = global_update(s, p, l)
       a.acc_rate_global += b
       a.acc_global += b
-      # println("Accepted: ", b)
     end
 
-    # println("Before local")
-    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
     a.acc_rate += local_updates(s, p, l)
-    # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
-    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
-    # println("")
-
     nothing
 end
 

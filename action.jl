@@ -1,4 +1,6 @@
-function calculate_boson_action(p::Parameters, l::Lattice, hsfield::Array{Float64,3}=p.hsfield)
+function calculate_boson_action(mc::DQMC, hsfield::Array{Float64,3}=p.hsfield)
+  const p = mc.p
+  const l = mc.l
 
   S = 0.0
 
@@ -36,7 +38,9 @@ end
 """
 Calculate Delta_S_boson = S_boson' - S_boson
 """
-function calculate_boson_action_diff(p::Parameters, l::Lattice, site::Int, slice::Int, new_op::Vector{Float64})
+function calculate_boson_action_diff(mc::DQMC, site::Int, slice::Int, new_op::Vector{Float64})
+  const p = mc.p
+  const l = mc.l
   
   dS = 0.0
 

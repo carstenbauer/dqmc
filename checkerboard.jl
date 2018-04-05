@@ -4,6 +4,8 @@ if !isdefined(:HoppingType)
   println("HoppingType = ", HoppingType)
 end
 
+const DQMC_CBTrue = DQMC{C} where C<:CBTrue
+
 """
 Checkerboard initialization: Assaad four site version for square lattice
 """
@@ -23,7 +25,9 @@ function find_four_site_hopping_corners(l::Lattice)
   return A_corners, B_corners
 end
 
-function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
+function build_four_site_hopping_matrix_exp(mc::DQMC_CBTrue, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
+  const p = mc.p
+  const l = mc.l
 
   pc = Int(floor(l.sites/4))
   chkr_hop_4site = Array{SparseMatrixCSC, 3}(pc,2,2) # i, group (A, B), hopping flavor (tx, ty)
@@ -66,15 +70,17 @@ function build_four_site_hopping_matrix_exp(p::Parameters,l::Lattice, corners::T
   return chkr_hop_4site, chkr_hop_4site_inv
 end
 
-function init_checkerboard_matrices(p::Parameters, l::Lattice)
+function init_checkerboard_matrices(mc::DQMC_CBTrue)
+  const p = mc.p
+  const l = mc.l
 
   println("Initializing hopping exponentials (Checkerboard)")
   pc = Int(floor(l.sites/4))
 
   corners = find_four_site_hopping_corners(l)
 
-  chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp(p,l, corners, 0.5)
-  chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp(p,l, corners, 1.)
+  chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp(mc, corners, 0.5)
+  chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp(mc, corners, 1.)
 
   eTx_A_half = foldl(*,chkr_hop_4site_half[:,1,1])
   eTx_B_half = foldl(*,chkr_hop_4site_half[:,2,1])
@@ -136,7 +142,9 @@ end
 
 #### WITH ARTIFICIAL B-FIELD
 
-function build_four_site_hopping_matrix_Bfield(p::Parameters,l::Lattice, corner::Int,f::Int,s::Int)
+function build_four_site_hopping_matrix_Bfield(mc::DQMC_CBTrue, corner::Int,f::Int,s::Int)
+  const l = mc.l
+
   sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
   shift_sites_clockwise = circshift(sites_clockwise,-1)
 
@@ -160,7 +168,9 @@ end
 # helper to cutoff numerical zeros
 rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X,X)
 
-function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
+function build_four_site_hopping_matrix_exp_Bfield(mc::DQMC_CBTrue, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
+  const p = mc.p
+  const l = mc.l
 
   B = zeros(2,2) # rowidx = spin up,down, colidx = flavor
   if p.Bfield
@@ -181,8 +191,8 @@ function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, cor
 
           fac = -prefac * p.delta_tau
           
-          chkr_hop_4site[c,g,s,f] = sparse(rem_eff_zeros!(expm(fac * full(build_four_site_hopping_matrix_Bfield(p,l,corners[g][c],f,s)))))
-          chkr_hop_4site_inv[c,g,s,f] = sparse(rem_eff_zeros!(expm(-fac * full(build_four_site_hopping_matrix_Bfield(p,l,corners[g][c],f,s)))))
+          chkr_hop_4site[c,g,s,f] = sparse(rem_eff_zeros!(expm(fac * full(build_four_site_hopping_matrix_Bfield(mc,corners[g][c],f,s)))))
+          chkr_hop_4site_inv[c,g,s,f] = sparse(rem_eff_zeros!(expm(-fac * full(build_four_site_hopping_matrix_Bfield(mc,corners[g][c],f,s)))))
 
         end
       end
@@ -192,15 +202,17 @@ function build_four_site_hopping_matrix_exp_Bfield(p::Parameters,l::Lattice, cor
   return chkr_hop_4site, chkr_hop_4site_inv
 end
 
-function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
+function init_checkerboard_matrices_Bfield(mc::DQMC_CBTrue)
+  const p = mc.p
+  const l = mc.l
 
   println("Initializing hopping exponentials (Bfield, Checkerboard)")
   # pc = Int(floor(l.sites/4))
 
   corners = find_four_site_hopping_corners(l)
 
-  chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp_Bfield(p,l, corners, 0.5)
-  chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp_Bfield(p,l, corners, 1.)
+  chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp_Bfield(mc, corners, 0.5)
+  chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp_Bfield(mc, corners, 1.)
 
   eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2) # group (A, B), spin (up, down), flavor (x, y)
   eT_half_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
@@ -262,20 +274,22 @@ end
 """
 Slice matrix
 """
-function slice_matrix(s::Stack, p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
-  res = eye(HoppingType, p.flv*l.sites)
+function slice_matrix(mc::DQMC_CBTrue, slice::Int, power::Float64=1.)
+  res = eye(HoppingType, mc.p.flv*mc.l.sites)
   if power > 0
-    multiply_slice_matrix_left!(s,p, l, slice, res)
+    multiply_slice_matrix_left!(mc, slice, res)
   else
-    multiply_slice_matrix_inv_left!(s,p, l, slice, res)
+    multiply_slice_matrix_inv_left!(mc, slice, res)
   end
   return res
 end
 
 
-function multiply_slice_matrix_left!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_slice_matrix_left!(mc::DQMC_CBTrue, slice::Int, M::AbstractMatrix{T}) where T<:Number
+  const l = mc.l
+  const s = mc.s
 
-  interaction_matrix_exp!(s,p,l,slice,1.,s.eV)
+  interaction_matrix_exp!(mc,slice,1.,s.eV)
   M[:] = s.eV * M
   M[:] = l.chkr_mu * M
 
@@ -284,9 +298,11 @@ function multiply_slice_matrix_left!(s::Stack, p::Parameters, l::Lattice, slice:
   M[:] = l.chkr_hop_half[2] * M
 end
 
-function multiply_slice_matrix_right!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_slice_matrix_right!(mc::DQMC_CBTrue, slice::Int, M::AbstractMatrix{T}) where T<:Number
+  const l = mc.l
+  const s = mc.s
 
-  interaction_matrix_exp!(s,p,l,slice,1.,s.eV)
+  interaction_matrix_exp!(mc,slice,1.,s.eV)
   M[:] = M * l.chkr_hop_half[2]
   M[:] = M * l.chkr_hop[1]
   M[:] = M * l.chkr_hop_half[2]
@@ -295,9 +311,11 @@ function multiply_slice_matrix_right!(s::Stack, p::Parameters, l::Lattice, slice
   M[:] = M * s.eV
 end
 
-function multiply_slice_matrix_inv_left!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-
-  interaction_matrix_exp!(s,p, l, slice, -1., s.eV)
+function multiply_slice_matrix_inv_left!(mc::DQMC_CBTrue, slice::Int, M::AbstractMatrix{T}) where T<:Number
+  const l = mc.l
+  const s = mc.s
+  
+  interaction_matrix_exp!(mc, slice, -1., s.eV)
   M[:] = l.chkr_hop_half_inv[2] * M
   M[:] = l.chkr_hop_inv[1] * M
   M[:] = l.chkr_hop_half_inv[2] * M
@@ -306,9 +324,11 @@ function multiply_slice_matrix_inv_left!(s::Stack, p::Parameters, l::Lattice, sl
   M[:] = s.eV * M
 end
 
-function multiply_slice_matrix_inv_right!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-
-  interaction_matrix_exp!(s,p, l, slice, -1., s.eV)
+function multiply_slice_matrix_inv_right!(mc::DQMC_CBTrue, slice::Int, M::AbstractMatrix{T}) where T<:Number
+  const l = mc.l
+  const s = mc.s
+  
+  interaction_matrix_exp!(mc, slice, -1., s.eV)
   M[:] = M * s.eV
   M[:] = M * l.chkr_mu_inv
 
@@ -317,9 +337,11 @@ function multiply_slice_matrix_inv_right!(s::Stack, p::Parameters, l::Lattice, s
   M[:] = M * l.chkr_hop_half_inv[2]
 end
 
-function multiply_daggered_slice_matrix_left!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-
-  interaction_matrix_exp!(s,p, l, slice, 1., s.eV)
+function multiply_daggered_slice_matrix_left!(mc::DQMC_CBTrue, slice::Int, M::AbstractMatrix{T}) where T<:Number
+  const l = mc.l
+  const s = mc.s
+  
+  interaction_matrix_exp!(mc, slice, 1., s.eV)
   M[:] = l.chkr_hop_half_dagger[2] * M
   M[:] = l.chkr_hop_dagger[1] * M
   M[:] = l.chkr_hop_half_dagger[2] * M
@@ -331,26 +353,26 @@ function multiply_daggered_slice_matrix_left!(s::Stack, p::Parameters, l::Lattic
 end
 
 
-function multiply_slice_matrix_left(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_slice_matrix_left(mc::DQMC_CBTrue, slice::Int, M::AbstractMatrix{T}) where T<:Number
   X = copy(M)
-  multiply_slice_matrix_left!(s,p, l, slice, X)
+  multiply_slice_matrix_left!(mc, slice, X)
   return X
 end
 
-function multiply_slice_matrix_right(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_slice_matrix_right(mc::DQMC_CBTrue, slice::Int, M::AbstractMatrix{T}) where T<:Number
   X = copy(M)
-  multiply_slice_matrix_right!(s,p, l, slice, X)
+  multiply_slice_matrix_right!(mc, slice, X)
   return X
 end
 
-function multiply_slice_matrix_inv_left(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_slice_matrix_inv_left(mc::DQMC_CBTrue, slice::Int, M::AbstractMatrix{T}) where T<:Number
   X = copy(M)
-  multiply_slice_matrix_inv_left!(s,p, l, slice, X)
+  multiply_slice_matrix_inv_left!(mc, slice, X)
   return X
 end
 
-function multiply_slice_matrix_inv_right(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_slice_matrix_inv_right(mc::DQMC_CBTrue, slice::Int, M::AbstractMatrix{T}) where T<:Number
   X = copy(M)
-  multiply_slice_matrix_inv_right!(s,p, l, slice, X)
+  multiply_slice_matrix_inv_right!(mc, slice, X)
   return X
 end
