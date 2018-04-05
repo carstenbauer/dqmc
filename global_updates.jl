@@ -1,4 +1,4 @@
-function global_update_backup_swap!(mc::DQMC)
+function global_update_backup_swap!(mc::AbstractDQMC)
   # swap current stack and greens to backup stack and greens (more efficient than copying)
   mc.s.gb_u_stack, mc.s.u_stack = mc.s.u_stack, mc.s.gb_u_stack
   mc.s.gb_d_stack, mc.s.d_stack = mc.s.d_stack, mc.s.gb_d_stack
@@ -7,7 +7,7 @@ function global_update_backup_swap!(mc::DQMC)
   mc.s.gb_log_det, mc.s.log_det = mc.s.log_det, mc.s.gb_log_det # this is logdet of greens at time slice == p.slices + 1
 end
 
-@inline function global_update_perform_shift!(mc::DQMC)
+@inline function global_update_perform_shift!(mc::AbstractDQMC)
     @inbounds @views begin
       @simd for k in 1:mc.p.opdim
         mc.p.hsfield[k,:,:] .+= rand(mc.p.box_global)
@@ -15,7 +15,7 @@ end
     end
 end
 
-function global_update(mc::DQMC)
+function global_update(mc::AbstractDQMC)
   const p = mc.p
   const s = mc.s
 

@@ -58,8 +58,9 @@ mutable struct Stack
 end
 
 
-function initialize_stack(mc::DQMC)
+function initialize_stack(mc::AbstractDQMC)
   const p = mc.p
+  const l = mc.l
   const s = mc.s
 
   s.n_elements = convert(Int, p.slices / p.safe_mult) + 1
@@ -110,7 +111,7 @@ function initialize_stack(mc::DQMC)
 end
 
 
-function build_stack(mc::DQMC)
+function build_stack(mc::AbstractDQMC)
   const p = mc.p
   const s = mc.s
 
@@ -132,7 +133,7 @@ end
 """
 Updates stack[idx+1] based on stack[idx]
 """
-function add_slice_sequence_left(mc::DQMC, idx::Int)
+function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
   const s = mc.s
 
   copy!(s.curr_U, s.u_stack[:, :, idx])
@@ -155,7 +156,7 @@ end
 """
 Updates stack[idx] based on stack[idx+1]
 """
-function add_slice_sequence_right(mc::DQMC, idx::Int)
+function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
   const s = mc.s
 
   copy!(s.curr_U, s.u_stack[:, :, idx + 1])
@@ -174,7 +175,7 @@ function add_slice_sequence_right(mc::DQMC, idx::Int)
 end
 
 
-@inline function wrap_greens_chkr!(mc::DQMC{C}, gf::Matrix{GreensType}, curr_slice::Int,direction::Int) where C<:CBTrue
+@inline function wrap_greens_chkr!(mc::AbstractDQMC{C}, gf::Matrix{GreensType}, curr_slice::Int,direction::Int) where C<:CBTrue
   if direction == -1
     multiply_slice_matrix_inv_left!(mc, curr_slice - 1, gf)
     multiply_slice_matrix_right!(mc, curr_slice - 1, gf)
@@ -184,14 +185,14 @@ end
   end
 end
 
-function wrap_greens_chkr(mc::DQMC{C}, gf::Matrix{GreensType},slice::Int,direction::Int) where C<:CBTrue
+function wrap_greens_chkr(mc::AbstractDQMC{C}, gf::Matrix{GreensType},slice::Int,direction::Int) where C<:CBTrue
   temp = copy(gf)
   wrap_greens_chkr!(mc, temp, slice, direction)
   return temp
 end
 
 
-function wrap_greens_no_chkr!(mc::DQMC{C}, gf::Matrix{GreensType}, curr_slice::Int,direction::Int) where C<:CBFalse
+function wrap_greens_no_chkr!(mc::AbstractDQMC{C}, gf::Matrix{GreensType}, curr_slice::Int,direction::Int) where C<:CBFalse
   if direction == -1
     gf[:] = slice_matrix_no_chkr(mc, curr_slice - 1, -1.) * gf
     gf[:] = gf * slice_matrix_no_chkr(mc, curr_slice - 1, 1.)
@@ -201,17 +202,31 @@ function wrap_greens_no_chkr!(mc::DQMC{C}, gf::Matrix{GreensType}, curr_slice::I
   end
 end
 
-function wrap_greens_no_chkr(mc::DQMC{C}, gf::Matrix{GreensType},slice::Int,direction::Int) where C<:CBFalse
+function wrap_greens_no_chkr(mc::AbstractDQMC{C}, gf::Matrix{GreensType},slice::Int,direction::Int) where C<:CBFalse
   temp = copy(gf)
   wrap_greens_no_chkr!(mc, temp, slice, direction)
   return temp
 end
 
 
+# Beff(slice) = exp(−1/2∆τT)exp(−1/2∆τT)exp(−∆τV(slice))
+function slice_matrix_no_chkr(mc::AbstractDQMC{C}, slice::Int, power::Float64=1.) where C<:CBFalse
+  const eT = mc.l.hopping_matrix_exp
+  const eTinv = mc.l.hopping_matrix_exp_inv
+  const eV = interaction_matrix_exp(mc, slice, power)
+
+  if power > 0
+    return eT * eT * eV
+  else
+    return eV * eTinv * eTinv
+  end
+end
+
+
 """
 Calculates G(slice) using s.Ur,s.Dr,s.Tr=B(slice)' ... B(M)' and s.Ul,s.Dl,s.Tl=B(slice-1) ... B(1)
 """
-function calculate_greens(mc::DQMC)
+function calculate_greens(mc::AbstractDQMC)
   const s = mc.s
 
   tmp = s.Tl * ctranspose(s.Tr)
@@ -233,7 +248,7 @@ end
 """
 Only reasonable immediately after calculate_greens()!
 """
-function calculate_logdet(mc::DQMC)
+function calculate_logdet(mc::AbstractDQMC)
   const s = mc.s
 
   if mc.p.opdim == 1
@@ -247,7 +262,7 @@ end
 ################################################################################
 # Propagation
 ################################################################################
-function propagate(mc::DQMC)
+function propagate(mc::AbstractDQMC)
   const s = mc.s
   const p = mc.p
 

@@ -5,14 +5,14 @@ if !isdefined(:GreensType)
 end
 
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
-function interaction_matrix_exp(mc::DQMC, slice::Int, power::Float64=1.)
+function interaction_matrix_exp(mc::AbstractDQMC, slice::Int, power::Float64=1.)
   eV = zeros(GreensType, mc.p.flv * mc.l.sites, mc.p.flv * mc.l.sites)
   interaction_matrix_exp!(mc, slice, power, eV)
   return eV
 end
 
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
-function interaction_matrix_exp!(mc::DQMC, slice::Int, power::Float64=1., eV::Matrix{GreensType}=mc.s.eV)
+function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1., eV::Matrix{GreensType}=mc.s.eV)
   const p = mc.p
   const l = mc.l
 
@@ -60,14 +60,14 @@ end
 end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
-function interaction_matrix_exp_op(mc::DQMC, op::Vector{Float64}, power::Float64=1.)
+function interaction_matrix_exp_op(mc::AbstractDQMC, op::Vector{Float64}, power::Float64=1.)
   eVop = Matrix{GreensType}(mc.p.flv,mc.p.flv)
   interaction_matrix_exp_op!(mc,op,power,eVop)
   return eVop
 end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
-function interaction_matrix_exp_op!(mc::DQMC, op::Vector{Float64}, power::Float64=1., eVop::Matrix{GreensType}=mc.s.eVop1)
+function interaction_matrix_exp_op!(mc::AbstractDQMC, op::Vector{Float64}, power::Float64=1., eVop::Matrix{GreensType}=mc.s.eVop1)
   n = norm(op)
   sh = power * sinh(mc.p.lambda * mc.p.delta_tau*n)/n
   Cii = cosh(mc.p.lambda * mc.p.delta_tau*n)

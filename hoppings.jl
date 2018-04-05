@@ -4,22 +4,22 @@ if !isdefined(:HoppingType)
   println("HoppingType = ", HoppingType)
 end
 
-function init_hopping_matrices(mc::DQMC)
+function init_hopping_matrices(mc::AbstractDQMC)
   const p = mc.p
   const l = mc.l
 
   if p.Bfield
     init_peirls_phases(mc)
     init_hopping_matrix_exp_Bfield(mc)
-    init_checkerboard_matrices_Bfield(mc)
+    p.chkr && init_checkerboard_matrices_Bfield(mc)
   else
     init_hopping_matrix_exp(mc)
-    init_checkerboard_matrices(mc)
+    p.chkr && init_checkerboard_matrices(mc)
   end
   nothing
 end
 
-function init_hopping_matrix_exp(mc::DQMC)::Void
+function init_hopping_matrix_exp(mc::AbstractDQMC)::Void
   const p = mc.p
   const l = mc.l
 
@@ -64,7 +64,7 @@ function init_hopping_matrix_exp(mc::DQMC)::Void
   return nothing
 end
 
-function init_peirls_phases(mc::DQMC)
+function init_peirls_phases(mc::AbstractDQMC)
   const p = mc.p
   const l = mc.l
 
@@ -105,7 +105,7 @@ function init_peirls_phases(mc::DQMC)
   end
 end
 
-function init_hopping_matrix_exp_Bfield(mc::DQMC)::Void  
+function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)::Void  
   const p = mc.p
   const l = mc.l
 

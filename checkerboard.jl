@@ -4,7 +4,7 @@ if !isdefined(:HoppingType)
   println("HoppingType = ", HoppingType)
 end
 
-const DQMC_CBTrue = DQMC{C} where C<:CBTrue
+const DQMC_CBTrue = AbstractDQMC{C} where C<:CBTrue
 
 """
 Checkerboard initialization: Assaad four site version for square lattice

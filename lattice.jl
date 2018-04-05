@@ -45,13 +45,13 @@ mutable struct Lattice
   Lattice() = new()
 end
 
-function load_lattice(p::Parameters, l::Lattice)
-  l.L = p.L
-  l.t = reshape([parse(Float64, f) for f in split(p.hoppings, ',')],(2,2))
-  init_lattice_from_filename(p.lattice_file, l)
-  init_neighbors_table(p,l)
-  init_time_neighbors_table(p,l)
-  init_hopping_matrices(p,l)
+function load_lattice(mc::AbstractDQMC)
+  mc.l.L = mc.p.L
+  mc.l.t = reshape([parse(Float64, f) for f in split(mc.p.hoppings, ',')],(2,2))
+  init_lattice_from_filename(mc.p.lattice_file, mc.l)
+  init_neighbors_table(mc)
+  init_time_neighbors_table(mc)
+  init_hopping_matrices(mc)
 end
 
 function init_lattice_from_filename(filename::String, l::Lattice)
@@ -90,7 +90,9 @@ function init_lattice_from_filename(filename::String, l::Lattice)
   l.n_neighbors = count(x->x==1, l.bonds[:, 1]) + count(x->x==1, l.bonds[:, 2]) # neighbors of site 1
 end
 
-function init_neighbors_table(p::Parameters,l::Lattice)
+function init_neighbors_table(mc::AbstractDQMC)
+  const l = mc.l
+
   println("Initializing neighbor-tables")
   sql = reshape(1:l.sites, l.L, l.L)
 
@@ -108,7 +110,10 @@ end
 """
 Periodic boundary conditions in imaginary time
 """
-function init_time_neighbors_table(p::Parameters,l::Lattice)
+function init_time_neighbors_table(mc::AbstractDQMC)
+  const l = mc.l
+  const p = mc.p
+
   l.time_neighbors = zeros(Int64, 2, p.slices)
   for s in 1:p.slices
     l.time_neighbors[1,s] = s==p.slices?1:s+1

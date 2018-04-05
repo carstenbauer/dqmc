@@ -1,4 +1,4 @@
-function local_updates(mc::DQMC)
+function local_updates(mc::AbstractDQMC)
   const p = mc.p
   const s = mc.s
   const l = mc.l
@@ -38,7 +38,7 @@ function local_updates(mc::DQMC)
 end
 
 
-@inline function calculate_detratio(mc::DQMC, i::Int, new_op::Vector{Float64})
+@inline function calculate_detratio(mc::AbstractDQMC, i::Int, new_op::Vector{Float64})
   const p = mc.p
   const s = mc.s
   const l = mc.l
@@ -50,7 +50,7 @@ end
   return det(s.M)
 end
 
-@inline function update_greens!(mc::DQMC, i::Int)
+@inline function update_greens!(mc::AbstractDQMC, i::Int)
   const p = mc.p
   const s = mc.s
   const l = mc.l

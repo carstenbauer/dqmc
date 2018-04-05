@@ -89,10 +89,30 @@ end
 println("HoppingType = ", HoppingType)
 println("GreensType = ", GreensType)
 
+abstract type Checkerboard end
+abstract type CBTrue <: Checkerboard end
+abstract type CBFalse <: Checkerboard end
+abstract type CBGeneric <: CBTrue end
+abstract type CBAssaad <: CBTrue end
 
+abstract type AbstractDQMC{C<:Checkerboard} end
 
 include("lattice.jl")
 include("stack.jl")
+include("linalg.jl")
+include("hoppings.jl")
+if iseven(p.L)
+  include("checkerboard.jl")
+else
+  include("checkerboard_generic.jl")
+end
+include("interactions.jl")
+include("action.jl")
+include("local_updates.jl")
+include("global_updates.jl")
+include("observable.jl")
+include("boson_measurements.jl")
+include("fermion_measurements.jl")
 
 mutable struct Analysis
     acc_rate::Float64
@@ -103,13 +123,7 @@ mutable struct Analysis
     Analysis() = new()
 end
 
-abstract type Checkerboard end
-abstract type CBTrue <: Checkerboard end
-abstract type CBFalse <: Checkerboard end
-abstract type CBGeneric <: CBTrue end
-abstract type CBAssaad <: CBTrue end
-
-mutable struct DQMC{C<:Checkerboard}
+mutable struct DQMC{C<:Checkerboard} <: AbstractDQMC{C}
   p::Parameters
   l::Lattice
   s::Stack
@@ -136,21 +150,6 @@ function Base.show(io::IO, mc::DQMC{C}) where C<:Checkerboard
     print(io, "B-field: ", mc.p.Bfield)
 end
 Base.show(io::IO, m::MIME"text/plain", mc::DQMC) = print(io, mc)
-
-include("linalg.jl")
-include("hoppings.jl")
-if iseven(p.L)
-  include("checkerboard.jl")
-else
-  include("checkerboard_generic.jl")
-end
-include("interactions.jl")
-include("action.jl")
-include("local_updates.jl")
-include("global_updates.jl")
-include("observable.jl")
-include("boson_measurements.jl")
-include("fermion_measurements.jl")
 
 function init!(mc::DQMC)
     srand(mc.p.seed); # init RNG
@@ -384,16 +383,16 @@ function update(mc::DQMC, i::Int)
     const l = mc.l
     const a = mc.a
 
-    propagate(s, p, l)
+    propagate(mc)
 
     if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
       a.prop_global += 1
-      b = global_update(s, p, l)
+      b = global_update(mc)
       a.acc_rate_global += b
       a.acc_global += b
     end
 
-    a.acc_rate += local_updates(s, p, l)
+    a.acc_rate += local_updates(mc)
     nothing
 end
 
