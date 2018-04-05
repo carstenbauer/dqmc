@@ -116,47 +116,79 @@ mutable struct Analysis
     Analysis() = new()
 end
 
-l = Lattice()
-load_lattice(p,l)
-s = Stack()
-a = Analysis()
+abstract type Checkerboard end
+abstract type CBTrue <: Checkerboard end
+abstract type CBFalse <: Checkerboard end
+abstract type CBGeneric <: CBTrue end
+abstract type CBAssaad <: CBTrue end
 
-@printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000./60.)
+mutable struct DQMC{C<:Checkerboard}
+  p::Parameters
+  l::Lattice
+  s::Stack
+  a::Analysis
+end
 
-function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
-    
-    srand(p.seed); # init RNG
+DQMC(p::Parameters) = begin
+  CB = CBFalse
+  p.chkr && (CB = iseven(p.L) ? CBGeneric : CBAssaad)
+  mc = DQMC{CB}(p, Lattice(), Stack(), Analysis())
+  load_lattice(mc.p,mc.l)
+  mc
+end
+
+# cosmetics
+import Base.summary
+import Base.show
+Base.summary(mc::DQMC) = "DQMC"
+function Base.show(io::IO, mc::DQMC{C}) where C<:Checkerboard
+    print(io, "DQMC of O($(mc.p.opdim)) model\n")
+    print(io, "r = ", mc.p.r, ", λ = ", mc.p.lambda, ", c = ", mc.p.c, ", u = ", mc.p.u, "\n")
+    print(io, "Beta: ", mc.p.beta, " (T ≈ $(round(1/mc.p.beta, 3)))", "\n")
+    print(io, "Checkerboard: ", C, "\n")
+    print(io, "B-field: ", mc.p.Bfield)
+end
+Base.show(io::IO, m::MIME"text/plain", mc::DQMC) = print(io, mc)
+
+function init!(mc::DQMC)
+    srand(mc.p.seed); # init RNG
 
     # Init hsfield
     println("\nInitializing HS field")
-    p.hsfield = rand(p.opdim,l.sites,p.slices)
+    mc.p.hsfield = rand(mc.p.opdim,mc.l.sites,mc.p.slices)
     println("Initializing boson action\n")
-    p.boson_action = calculate_boson_action(p,l)
+    mc.p.boson_action = calculate_boson_action(mc.p,mc.l)
 
-    global const eye_flv = eye(p.flv,p.flv)
-    global const eye_full = eye(p.flv*l.sites,p.flv*l.sites)
-    global const ones_vec = ones(p.flv*l.sites)
+    global const eye_flv = eye(mc.p.flv,mc.p.flv)
+    global const eye_full = eye(mc.p.flv*mc.l.sites,mc.p.flv*mc.l.sites)
+    global const ones_vec = ones(mc.p.flv*mc.l.sites)
 
-    ### MONTE CARLO
-    println("\n\nMC Thermalize - ", p.thermalization)
+    # stack init and test
+    initialize_stack(mc.s, mc.p, mc.l)
+    println("Building stack")
+    build_stack(mc.s, mc.p, mc.l)
+    println("Initial propagate: ", mc.s.current_slice, " ", mc.s.direction)
+    propagate(mc.s, mc.p, mc.l)
+end
+
+function run!(mc::DQMC)
+    println("\n\nMC Thermalize - ", mc.p.thermalization)
     flush(STDOUT)
-    MC_thermalize(s, p, l, a)
+    thermalize!(mc)
 
-    h5open(p.output_file, "r+") do f
-      write(f, "resume/box", p.box.b)
-      write(f, "resume/box_global", p.box_global.b)
+    h5open(mc.p.output_file, "r+") do f
+      write(f, "resume/box", mc.p.box.b)
+      write(f, "resume/box_global", mc.p.box_global.b)
     end
 
-    println("\n\nMC Measure - ", p.measurements)
+    println("\n\nMC Measure - ", mc.p.measurements)
     flush(STDOUT)
-    MC_measure(s, p, l, a)
-
+    measure!(mc)
     nothing
 end
 
 
-function MC_resume(s::Stack, p::Parameters, l::Lattice, a::Analysis)
-    
+function resume!(mc::DQMC)
     # Init hsfield
     println("\nLoading last HS field")
     p.hsfield = deepcopy(lastconf)
@@ -177,45 +209,15 @@ function MC_resume(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     ### MONTE CARLO
     println("\n\nMC Measure (resuming) - ", p.measurements, " (total $(p.measurements + prevmeasurements))")
     flush(STDOUT)
-    MC_measure(s, p, l, a)
+    measure!(mc)
 
     nothing
 end
 
 
-function MC_update(s::Stack, p::Parameters, l::Lattice, i::Int, a::Analysis)
-
-    propagate(s, p, l)
-
-    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
-      # attempt global update after every fifth down-up sweep
-      # println("Attempting global update...")
-      a.prop_global += 1
-      b = global_update(s, p, l)
-      a.acc_rate_global += b
-      a.acc_global += b
-      # println("Accepted: ", b)
-    end
-
-    # println("Before local")
-    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
-    a.acc_rate += local_updates(s, p, l)
-    # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
-    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
-    # println("")
-
-    nothing
-end
-
-
-function MC_thermalize(s::Stack, p::Parameters, l::Lattice, a::Analysis)
-
-    # stack init and test
-    initialize_stack(s, p, l)
-    println("Building stack")
-    build_stack(s, p, l)
-    println("Initial propagate: ", s.current_slice, " ", s.direction)
-    propagate(s, p, l)
+function thermalize!(mc::DQMC)
+    const a = mc.a
+    const p = mc.p
 
     a.acc_rate = 0.0
     a.acc_rate_global = 0.0
@@ -224,7 +226,7 @@ function MC_thermalize(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     tic()
     for i in 1:p.thermalization
       for u in 1:2 * p.slices
-        MC_update(s, p, l, i, a)
+        update(mc, i)
       end
 
       if mod(i, 10) == 0
@@ -270,7 +272,11 @@ function MC_thermalize(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 end
 
 
-function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
+function measure!(mc::DQMC)
+    const a = mc.a
+    const l = mc.l
+    const p = mc.p
+    const s = mc.s
 
     initialize_stack(s, p, l)
     println("Renewing stack")
@@ -302,7 +308,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     tic()
     for i in i_start:i_end
       for u in 1:2 * p.slices
-        MC_update(s, p, l, i, a)
+        update(mc, i)
 
         if s.current_slice == p.slices && s.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
           # println("\t\tMeasuring")
@@ -370,10 +376,45 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
     nothing
 end
 
-if !p.resume
-  MC_run(s,p,l,a)
+function update(mc::DQMC, i::Int)
+    const p = mc.p
+    const s = mc.s
+    const l = mc.l
+    const a = mc.a
+
+    propagate(s, p, l)
+
+    if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
+      # attempt global update after every fifth down-up sweep
+      # println("Attempting global update...")
+      a.prop_global += 1
+      b = global_update(s, p, l)
+      a.acc_rate_global += b
+      a.acc_global += b
+      # println("Accepted: ", b)
+    end
+
+    # println("Before local")
+    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
+    a.acc_rate += local_updates(s, p, l)
+    # println("Slice: ", s.current_slice, ", direction: ", s.direction, ", After local")
+    # compare(s.greens, calculate_greens_udv_chkr(p,l,s.current_slice))
+    # println("")
+
+    nothing
+end
+
+# main
+
+mc = DQMC(p)
+
+@printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000./60.)
+
+if !mc.p.resume
+  init!(mc)
+  run!(mc)
 else
-  MC_resume(s,p,l,a)
+  resume!(mc)
 end
 
 h5open(output_file, "r+") do f
