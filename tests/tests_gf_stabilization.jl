@@ -7,8 +7,8 @@ using PyCall
 """
 Singular values stabilization
 """
-function plot_svs_of_slice_matrix_chain(p::Parameters, l::Lattice)
-  T = calculate_slice_matrix_chain_naive(p,l,1,p.slices)
+function plot_svs_of_slice_matrix_chain(s::Stack, p::Parameters, l::Lattice)
+  T = calculate_slice_matrix_chain_naive(s,p,l,1,p.slices)
   svs = T[2]
   fig = figure(figsize=(20,7))
   b = fig[:add_subplot](131)
@@ -18,7 +18,7 @@ function plot_svs_of_slice_matrix_chain(p::Parameters, l::Lattice)
   b[:set_ylabel]("log singular values of \$B(\\beta,0)\$")
   b[:set_title]("Naive")
 
-  T = calculate_slice_matrix_chain_qr(p,l,1,p.slices,1)
+  T = calculate_slice_matrix_chain_qr(s,p,l,1,p.slices,1)
   svs = T[4]
   a = fig[:add_subplot](132, sharey=b, sharex=b)
   a[:plot](svs[:,:]')
@@ -26,7 +26,7 @@ function plot_svs_of_slice_matrix_chain(p::Parameters, l::Lattice)
   a[:set_xlabel]("Inverse temperature \$\\beta\$")
   a[:set_title]("Stabilize, no chkr")
 
-  T = calculate_slice_matrix_chain_chkr_qr(p,l,1,p.slices,1)
+  T = calculate_slice_matrix_chain_chkr_qr(s,p,l,1,p.slices,1)
   svs = T[4]
   c = fig[:add_subplot](133, sharey=b, sharex=b)
   c[:plot](svs[:,:]')

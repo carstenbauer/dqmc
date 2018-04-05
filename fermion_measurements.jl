@@ -63,6 +63,12 @@ function effective_greens2greens_no_chkr!(p::Parameters, l::Lattice, greens::Abs
   nothing
 end
 
+function effective_greens2greens_no_chkr!(p::Parameters, l::Lattice, U::AbstractArray{GreensType, 2}, T::AbstractArray{GreensType, 2})
+  T .= T * l.hopping_matrix_exp
+  U .= l.hopping_matrix_exp_inv * U
+  nothing
+end
+
 function greens2effective_greens_no_chkr!(p::Parameters, l::Lattice, greens::AbstractArray{GreensType, 2})
   greens .= greens * l.hopping_matrix_exp_inv
   greens .= l.hopping_matrix_exp * greens
@@ -362,7 +368,7 @@ function calculate_greens_and_logdet(s::Stack, p::Parameters, l::Lattice, slice:
   U = ctranspose(U)
   d = 1./d
 
-  ldet = real(logdet(U) + sum(log.(d)) + logdet(T))
+  ldet = real(log(complex(det(U))) + sum(log.(d)) + log(complex(det(T))))
 
   return T * spdiagm(d) * U, ldet
 end
@@ -393,7 +399,67 @@ function calculate_greens_and_logdet_chkr(s::Stack, p::Parameters, l::Lattice, s
   U = ctranspose(U)
   d = 1./d
 
-  ldet = real(logdet(U) + sum(log.(d)) + logdet(T))
+  ldet = real(log(complex(det(U))) + sum(log.(d)) + log(complex(det(T))))
 
   return T * spdiagm(d) * U, ldet
+end
+
+
+# Calculate "G(tau, 0)", i.e. G(slice,1) naively
+function calculate_tdgf_naive(s::Stack, p::Parameters, l::Lattice, slice::Int)
+  G, = calculate_greens_and_logdet(s,p,l,1,2*p.slices)
+  Ul, Dl, Tl = calculate_slice_matrix_chain_qr(s,p,l,1,slice,2*p.slices)
+  B12 = Ul * spdiagm(Dl) * Tl
+  return B12 * G
+end
+
+# Calculate "G(tau, 0)", i.e. G(slice,1)
+function calculate_tdgf(s::Stack, p::Parameters, l::Lattice, slice::Int, safe_mult::Int=p.safe_mult)
+  # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
+  Ur, Dr, Tr = calculate_slice_matrix_chain_qr_dagger(s,p,l,slice,p.slices, safe_mult)
+
+  # Calculate Ul,Dl,Tl=B(slice-1) ... B(1)
+  if slice-1 >= 1
+    Ul, Dl, Tl = calculate_slice_matrix_chain_qr(s,p,l,1,slice-1, safe_mult)
+  else
+    Ul = eye(GreensType, p.flv * l.sites)
+    Dl = ones(Float64, p.flv * l.sites)
+    Tl = eye(GreensType, p.flv * l.sites)
+  end
+
+  tmp = Tl * ctranspose(Tr)
+  U, D, T = decompose_udt(spdiagm(Dl) * tmp * spdiagm(Dr))
+  U = Ul * U
+  T *= ctranspose(Ur)
+
+  u, d, t = decompose_udt(ctranspose(U) * inv(T) + spdiagm(D))
+
+  T = inv(t * T)
+  U *= u
+  U = ctranspose(U)
+  d = 1./d
+
+  # time displace
+  Ul, Dl, Tl = calculate_slice_matrix_chain_qr(s,p,l,1,slice, safe_mult)
+  # effective -> actual
+  # doesn't seem to change result at all
+  effective_greens2greens_no_chkr!(p,l,Ul,Tl)
+
+  # effective -> actual (ultra safe)
+  # doesn't seem to change result at all (1e-13)
+  # UT, DT, TT = decompose_udt(l.hopping_matrix_exp)
+  # UTi, DTi, TTi = decompose_udt(l.hopping_matrix_exp_inv)
+  # Ul, Dl, Tl = multiply_safely(Ul, Dl, Tl, UT, DT, TT)
+  # Ul, Dl, Tl = multiply_safely(UTi, DTi, TTi, Ul, Dl, Tl)
+
+  U, D, T = multiply_safely(Ul, Dl, Tl, T, d, U)
+
+  return U*spdiagm(D)*T
+end
+
+function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
+  mat = Tl * Ur
+  mat = spdiagm(Dl)*mat*spdiagm(Dr)
+  U, D, T = decompose_udt(mat)
+  return Ul*U, D, T*Tr
 end

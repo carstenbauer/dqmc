@@ -3,7 +3,7 @@ Calculate slice matrix chain
 """
 # Calculate B(stop) ... B(start) naively (without stabilization)
 # Returns: tuple of result (matrix) and log singular values of the intermediate products
-function calculate_slice_matrix_chain_naive(p::Parameters, l::Lattice, start::Int, stop::Int)
+function calculate_slice_matrix_chain_naive(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int)
   assert(0 < start <= p.slices)
   assert(0 < stop <= p.slices)
   assert(start <= stop)
@@ -16,9 +16,9 @@ function calculate_slice_matrix_chain_naive(p::Parameters, l::Lattice, start::In
   svs = zeros(p.flv*l.sites,length(start:stop))
   svc = 1
   for k in start:stop
-    R = slice_matrix_no_chkr(p,l,k) * R
-    U, D, Vt = decompose_udv(R)
-    svs[:,svc] = log.(D)
+    R = slice_matrix_no_chkr(s,p,l,k) * R
+    U, D, Vt = decompose_udt(R)
+    svs[:,svc] = log.(real(D))
     svc += 1
   end
   return (R, svs)
