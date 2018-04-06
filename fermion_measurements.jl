@@ -77,7 +77,7 @@ function calculate_slice_matrix_chain_udv(mc::AbstractDQMC, start::Int, stop::In
     if mod(k,safe_mult) == 0
       multiply_slice_matrix_left!(mc,k,U)
       U *= spdiagm(D)
-      U, D, Vtnew = decompose_udv(U)
+      U, D, Vtnew = decompose_udv!(U)
       Vt =  Vtnew * Vt
       svs[:,svc] = log.(D)
       svc += 1

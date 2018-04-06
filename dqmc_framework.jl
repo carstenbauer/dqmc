@@ -9,14 +9,15 @@ abstract type CBAssaad <: CBTrue end
 
 abstract type AbstractDQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number} end
 
-const DQMC_CBTrue = AbstractDQMC{C} where C<:CBTrue
-const DQMC_CBFalse = AbstractDQMC{C} where C<:CBFalse
+isdefined(:DQMC_CBTrue) || (global const DQMC_CBTrue = AbstractDQMC{C} where C<:CBTrue)
+isdefined(:DQMC_CBFalse) || (global const DQMC_CBFalse = AbstractDQMC{C} where C<:CBFalse)
 
 
 
 # -------------------------------------------------------
 #                    Includes
 # -------------------------------------------------------
+using Helpers
 include("parameters.jl")
 include("lattice.jl")
 include("stack.jl")
