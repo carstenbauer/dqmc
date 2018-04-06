@@ -1,18 +1,14 @@
-if !isdefined(:GreensType)
-  global const GreensType = Complex128; # assume O(2) or O(3)
-  warn("GreensType wasn't set on loading interactions.jl")
-  println("GreensType = ", GreensType)
-end
-
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
 function interaction_matrix_exp(mc::AbstractDQMC, slice::Int, power::Float64=1.)
-  eV = zeros(GreensType, mc.p.flv * mc.l.sites, mc.p.flv * mc.l.sites)
+  const G = geltype(mc)
+
+  eV = zeros(G, mc.p.flv * mc.l.sites, mc.p.flv * mc.l.sites)
   interaction_matrix_exp!(mc, slice, power, eV)
   return eV
 end
 
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
-function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1., eV::Matrix{GreensType}=mc.s.eV)
+function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1., eV::Matrix=mc.s.eV)
   const p = mc.p
   const l = mc.l
 
@@ -61,13 +57,13 @@ end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
 function interaction_matrix_exp_op(mc::AbstractDQMC, op::Vector{Float64}, power::Float64=1.)
-  eVop = Matrix{GreensType}(mc.p.flv,mc.p.flv)
+  eVop = Matrix{geltype(mc)}(mc.p.flv,mc.p.flv)
   interaction_matrix_exp_op!(mc,op,power,eVop)
   return eVop
 end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
-function interaction_matrix_exp_op!(mc::AbstractDQMC, op::Vector{Float64}, power::Float64=1., eVop::Matrix{GreensType}=mc.s.eVop1)
+function interaction_matrix_exp_op!(mc::AbstractDQMC{C,G}, op::Vector{Float64}, power::Float64=1., eVop::Matrix{G}=mc.s.eVop1) where {C,G}
   n = norm(op)
   sh = power * sinh(mc.p.lambda * mc.p.delta_tau*n)/n
   Cii = cosh(mc.p.lambda * mc.p.delta_tau*n)
@@ -86,19 +82,19 @@ function interaction_matrix_exp_op!(mc::AbstractDQMC, op::Vector{Float64}, power
   eVop[2,2] = Cii
 
   if p.opdim == 3
-    eVop[1,3] = zero(GreensType)
+    eVop[1,3] = zero(G)
     eVop[1,4] = Rii
 
     eVop[2,3] = -Rii
-    eVop[2,4] = zero(GreensType)
+    eVop[2,4] = zero(G)
     
-    eVop[3,1] = zero(GreensType)
+    eVop[3,1] = zero(G)
     eVop[3,2] = -Rii
     eVop[3,3] = Cii
     eVop[3,4] = conj(Sii)
     
     eVop[4,1] = Rii
-    eVop[4,2] = zero(GreensType)
+    eVop[4,2] = zero(G)
     eVop[4,3] = Sii
     eVop[4,4] = Cii
   end

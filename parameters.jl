@@ -150,16 +150,6 @@ Assumes that `p` has been loaded from XML or HDF5 and sets remaining (dependent)
 function deduce_remaining_parameters(p::Parameters)
   p.beta = p.slices * p.delta_tau
   p.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
-
-  ### SET DATATYPES
-  if p.Bfield
-    global const HoppingType = Complex128;
-    global const GreensType = Complex128;
-  else
-    global const HoppingType = Float64;
-    global const GreensType = p.opdim > 1 ? Complex128 : Float64; # O(1) -> real GF
-  end
-
   p.hsfield = zeros(p.opdim, 1, p.slices) # just to initialize it somehow
   nothing
 end

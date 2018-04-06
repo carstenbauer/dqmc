@@ -1,9 +1,3 @@
-if !isdefined(:HoppingType)
-  global const HoppingType = Complex128; # assume O(2) or O(3)
-  warn("HoppingType wasn't set on loading checkerboard.jl")
-  println("HoppingType = ", HoppingType)
-end
-
 """
 Checkerboard initialization: Assaad four site version for square lattice
 """
@@ -142,6 +136,7 @@ end
 
 function build_four_site_hopping_matrix_Bfield(mc::DQMC_CBTrue, corner::Int,f::Int,s::Int)
   const l = mc.l
+  const H = heltype(mc)
 
   sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
   shift_sites_clockwise = circshift(sites_clockwise,-1)
@@ -149,7 +144,7 @@ function build_four_site_hopping_matrix_Bfield(mc::DQMC_CBTrue, corner::Int,f::I
   h = l.t[1,f]
   v = l.t[2,f]
 
-  hop = -1 * repeat(HoppingType[v, h, v, h], outer=2)
+  hop = -1 * repeat(H[v, h, v, h], outer=2)
 
   @inbounds for k in 1:4
     i = sites_clockwise[k]
@@ -169,6 +164,7 @@ rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X,X)
 function build_four_site_hopping_matrix_exp_Bfield(mc::DQMC_CBTrue, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
   const p = mc.p
   const l = mc.l
+  const H = heltype(mc)
 
   B = zeros(2,2) # rowidx = spin up,down, colidx = flavor
   if p.Bfield
@@ -178,8 +174,8 @@ function build_four_site_hopping_matrix_exp_Bfield(mc::DQMC_CBTrue, corners::Tup
 
   pc = Int(floor(l.sites/4))
 
-  chkr_hop_4site = Array{SparseMatrixCSC{HoppingType, Int}, 4}(pc,2,2,2) # i, group (A, B), spin (up, down), flavor (x, y)
-  chkr_hop_4site_inv = Array{SparseMatrixCSC{HoppingType, Int}, 4}(pc,2,2,2)
+  chkr_hop_4site = Array{SparseMatrixCSC{H, Int}, 4}(pc,2,2,2) # i, group (A, B), spin (up, down), flavor (x, y)
+  chkr_hop_4site_inv = Array{SparseMatrixCSC{H, Int}, 4}(pc,2,2,2)
 
   # build numerically (due to mag field)
   for f in 1:2
@@ -203,6 +199,7 @@ end
 function init_checkerboard_matrices_Bfield(mc::DQMC_CBTrue)
   const p = mc.p
   const l = mc.l
+  const H = heltype(mc)
 
   println("Initializing hopping exponentials (Bfield, Checkerboard)")
   # pc = Int(floor(l.sites/4))
@@ -212,10 +209,10 @@ function init_checkerboard_matrices_Bfield(mc::DQMC_CBTrue)
   chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp_Bfield(mc, corners, 0.5)
   chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp_Bfield(mc, corners, 1.)
 
-  eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2) # group (A, B), spin (up, down), flavor (x, y)
-  eT_half_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
-  eT = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
-  eT_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(2,2,2)
+  eT_half = Array{SparseMatrixCSC{H, Int}, 3}(2,2,2) # group (A, B), spin (up, down), flavor (x, y)
+  eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(2,2,2)
+  eT = Array{SparseMatrixCSC{H, Int}, 3}(2,2,2)
+  eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(2,2,2)
 
   for g in 1:2
     for f in 1:2

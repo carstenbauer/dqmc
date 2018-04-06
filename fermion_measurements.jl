@@ -1,9 +1,3 @@
-if !isdefined(:GreensType)
-  global const GreensType = Complex128; # assume O(2) or O(3)
-  warn("GreensType wasn't set on loading fermion_measurements.jl")
-  println("GreensType = ", GreensType)
-end
-
 # -------------------------------------------------------
 #         Measurements
 # -------------------------------------------------------
@@ -20,7 +14,7 @@ end
 #         Postprocessing/Analysis
 # -------------------------------------------------------
 # Go from xup, ydown, xdown, yup -> xup, yup, xdown, ydown
-function permute_greens(greens::AbstractArray{GreensType, 2})
+function permute_greens(greens::AbstractMatrix)
   const perm = [1,4,3,2] # flv*spin: xup, ydown, xdown, yup -> xup, yup, xdown, ydown
   const N = Int(sqrt(length(greens))/4)
   return reshape(reshape(greens, (N,4,N,4))[:,perm,:,perm], (4*N,4*N)); # rfs1, rfs2
@@ -29,7 +23,7 @@ end
 # Assuming translational invariance go to momentum space Greens function (k, fs1, fs2)
 using PyCall
 @pyimport numpy as np
-function fft_greens(greens::AbstractArray{GreensType})
+function fft_greens(greens::AbstractMatrix)
   const L = Int(sqrt(sqrt(length(greens))/4))
   g = reshape(greens, (L,L,4,L,L,4)); # y1, x1, fs1, y2, x2, fs2
   g = fft(g, (1,2))*1/L; # ky1, kx1, fs1, y2, x2, fs2
@@ -66,15 +60,16 @@ function calculate_slice_matrix_chain_udv(mc::AbstractDQMC, start::Int, stop::In
   const flv = mc.p.flv
   const slices = mc.p.slices
   const N = mc.l.sites
+  const G = geltype(mc)
 
   @assert 0 < start <= slices
   @assert 0 < stop <= slices
   @assert start <= stop
 
-  U = eye(GreensType, flv*N, flv*N)
+  U = eye(G, flv*N, flv*N)
   D = ones(Float64, flv*N)
-  Vt = eye(GreensType, flv*N, flv*N)
-  Vtnew = eye(GreensType, flv*N, flv*N)
+  Vt = eye(G, flv*N, flv*N)
+  Vtnew = eye(G, flv*N, flv*N)
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
@@ -97,6 +92,7 @@ end
 function calculate_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   const flv = mc.p.flv
   const N = mc.l.sites
+  const G = geltype(mc)
 
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(mc,slice,mc.p.slices,safe_mult)
@@ -105,9 +101,9 @@ function calculate_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult
   if slice-1 >= 1
     Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(mc,1,slice-1,safe_mult)
   else
-    Ul = eye(GreensType, flv*N)
+    Ul = eye(G, flv*N)
     Dl = ones(Float64, flv*N)
-    Vtl = eye(GreensType, flv*N)
+    Vtl = eye(G, flv*N)
   end
 
   # Calculate Greens function
@@ -128,15 +124,16 @@ QR DECOMPOSITION: Calculate effective(!) Green's function (direct, i.e. without 
 function calculate_slice_matrix_chain_qr(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
   const flv = mc.p.flv
   const N = mc.l.sites
+  const G = geltype(mc)
 
   @assert 0 < start <= mc.p.slices
   @assert 0 < stop <= mc.p.slices
   @assert start <= stop
 
-  U = eye(GreensType, flv*N, flv*N)
+  U = eye(G, flv*N, flv*N)
   D = ones(Float64, flv*N)
-  T = eye(GreensType, flv*N, flv*N)
-  Tnew = eye(GreensType, flv*N, flv*N)
+  T = eye(G, flv*N, flv*N)
+  Tnew = eye(G, flv*N, flv*N)
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
@@ -159,15 +156,16 @@ end
 function calculate_slice_matrix_chain_qr_dagger(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
   const flv = mc.p.flv
   const N = mc.l.sites
+  const G = geltype(mc)
 
   @assert 0 < start <= mc.p.slices
   @assert 0 < stop <= mc.p.slices
   @assert start <= stop
 
-  U = eye(GreensType, flv*N, flv*N)
+  U = eye(G, flv*N, flv*N)
   D = ones(Float64, flv*N)
-  T = eye(GreensType, flv*N, flv*N)
-  Tnew = eye(GreensType, flv*N, flv*N)
+  T = eye(G, flv*N, flv*N)
+  Tnew = eye(G, flv*N, flv*N)
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
@@ -190,6 +188,7 @@ end
 function calculate_greens_and_logdet(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   const flv = mc.p.flv
   const N = mc.l.sites
+  const G = geltype(mc)
 
   # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
   Ur, Dr, Tr = calculate_slice_matrix_chain_qr_dagger(mc,slice,mc.p.slices, safe_mult)
@@ -198,9 +197,9 @@ function calculate_greens_and_logdet(mc::AbstractDQMC, slice::Int, safe_mult::In
   if slice-1 >= 1
     Ul, Dl, Tl = calculate_slice_matrix_chain_qr(mc,1,slice-1, safe_mult)
   else
-    Ul = eye(GreensType, flv*N)
+    Ul = eye(G, flv*N)
     Dl = ones(Float64, flv*N)
-    Tl = eye(GreensType, flv*N)
+    Tl = eye(G, flv*N)
   end
 
   tmp = Tl * ctranspose(Tr)
@@ -224,7 +223,7 @@ end
 # -------------------------------------------------------
 #    Effective Green's function -> Green's function
 # -------------------------------------------------------
-function effective_greens2greens!(mc::DQMC_CBTrue, greens::AbstractArray{GreensType, 2})
+function effective_greens2greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   const chkr_hop_half_minus = mc.l.chkr_hop_half
   const chkr_hop_half_plus = mc.l.chkr_hop_half_inv
   const n_groups = mc.l.n_groups
@@ -239,7 +238,7 @@ function effective_greens2greens!(mc::DQMC_CBTrue, greens::AbstractArray{GreensT
   end
   nothing
 end
-function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractArray{GreensType, 2})
+function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   const chkr_hop_half_minus = mc.l.chkr_hop_half
   const chkr_hop_half_plus = mc.l.chkr_hop_half_inv
   const n_groups = mc.l.n_groups
@@ -254,7 +253,7 @@ function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractArray{GreensT
   end
   nothing
 end
-function effective_greens2greens!(mc::DQMC_CBFalse, greens::AbstractArray{GreensType, 2})
+function effective_greens2greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
   const eTminus = mc.l.hopping_matrix_exp
   const eTplus = mc.l.hopping_matrix_exp_inv
 
@@ -262,7 +261,7 @@ function effective_greens2greens!(mc::DQMC_CBFalse, greens::AbstractArray{Greens
   greens .= eTplus * greens
   nothing
 end
-function effective_greens2greens!(mc::DQMC_CBFalse, U::AbstractArray{GreensType, 2}, T::AbstractArray{GreensType, 2})
+function effective_greens2greens!(mc::DQMC_CBFalse, U::AbstractMatrix, T::AbstractMatrix)
   const eTminus = mc.l.hopping_matrix_exp
   const eTplus = mc.l.hopping_matrix_exp_inv
 
@@ -270,7 +269,7 @@ function effective_greens2greens!(mc::DQMC_CBFalse, U::AbstractArray{GreensType,
   U .= eTplus * U
   nothing
 end
-function greens2effective_greens!(mc::DQMC_CBFalse, greens::AbstractArray{GreensType, 2})
+function greens2effective_greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
   const eTminus = mc.l.hopping_matrix_exp
   const eTplus = mc.l.hopping_matrix_exp_inv
 
@@ -278,7 +277,7 @@ function greens2effective_greens!(mc::DQMC_CBFalse, greens::AbstractArray{Greens
   greens .= eTminus * greens
   nothing
 end
-function effective_greens2greens(mc::AbstractDQMC, greens::AbstractArray{GreensType, 2})
+function effective_greens2greens(mc::AbstractDQMC, greens::AbstractMatrix)
   g = copy(greens)
   effective_greens2greens!(mc, g)
   return g
@@ -301,6 +300,7 @@ end
 function calculate_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   const flv = mc.p.flv
   const N = mc.l.sites
+  const G = geltype(mc)
 
   # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
   Ur, Dr, Tr = calculate_slice_matrix_chain_qr_dagger(s,p,l,slice,mc.p.slices, safe_mult)
@@ -309,9 +309,9 @@ function calculate_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_m
   if slice-1 >= 1
     Ul, Dl, Tl = calculate_slice_matrix_chain_qr(s,p,l,1,slice-1, safe_mult)
   else
-    Ul = eye(GreensType, flv*N)
+    Ul = eye(G, flv*N)
     Dl = ones(Float64, flv*N)
-    Tl = eye(GreensType, flv*N)
+    Tl = eye(G, flv*N)
   end
 
   tmp = Tl * ctranspose(Tr)

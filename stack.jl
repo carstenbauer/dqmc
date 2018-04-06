@@ -4,32 +4,32 @@ if !isdefined(:GreensType)
   println("GreensType = ", GreensType)
 end
 
-mutable struct Stack
-  u_stack::Array{GreensType, 3}
+mutable struct Stack{G<:Number} # G = GreensEltype
+  u_stack::Array{G, 3}
   d_stack::Matrix{Float64}
-  t_stack::Array{GreensType, 3}
+  t_stack::Array{G, 3}
 
-  Ul::Matrix{GreensType}
-  Ur::Matrix{GreensType}
+  Ul::Matrix{G}
+  Ur::Matrix{G}
   Dl::Vector{Float64}
   Dr::Vector{Float64}
-  Tl::Matrix{GreensType}
-  Tr::Matrix{GreensType}
+  Tl::Matrix{G}
+  Tr::Matrix{G}
 
-  greens::Matrix{GreensType}
-  greens_temp::Matrix{GreensType}
+  greens::Matrix{G}
+  greens_temp::Matrix{G}
   log_det::Float64 # contains logdet of greens_{p.slices+1} === greens_1
                             # after we calculated a fresh greens in propagate()
 
-  U::Matrix{GreensType}
+  U::Matrix{G}
   D::Vector{Float64}
-  T::Matrix{GreensType}
-  u::Matrix{GreensType}
+  T::Matrix{G}
+  u::Matrix{G}
   d::Vector{Float64}
-  t::Matrix{GreensType}
+  t::Matrix{G}
 
-  delta_i::Matrix{GreensType}
-  M::Matrix{GreensType}
+  delta_i::Matrix{G}
+  M::Matrix{G}
 
   ranges::Array{UnitRange, 1}
   n_elements::Int
@@ -37,11 +37,11 @@ mutable struct Stack
   direction::Int
 
   # -------- Global update backup
-  gb_u_stack::Array{GreensType, 3}
+  gb_u_stack::Array{G, 3}
   gb_d_stack::Matrix{Float64}
-  gb_t_stack::Array{GreensType, 3}
+  gb_t_stack::Array{G, 3}
 
-  gb_greens::Matrix{GreensType}
+  gb_greens::Matrix{G}
   gb_log_det::Float64
 
   gb_hsfield::Array{Float64, 3}
@@ -49,45 +49,47 @@ mutable struct Stack
 
 
   #### Array allocations
-  curr_U::Matrix{GreensType}
-  eV::Matrix{GreensType}
-  eVop1::Matrix{GreensType}
-  eVop2::Matrix{GreensType}
+  curr_U::Matrix{G}
+  eV::Matrix{G}
+  eVop1::Matrix{G}
+  eVop2::Matrix{G}
 
   Stack() = new()
 end
 
 
 function initialize_stack(mc::AbstractDQMC)
-  const p = mc.p
-  const l = mc.l
   const s = mc.s
+  const safe_mult = mc.p.safe_mult
+  const N = mc.l.sites
+  const flv = mc.p.flv
+  const G = geltype(mc)
 
-  s.n_elements = convert(Int, p.slices / p.safe_mult) + 1
+  s.n_elements = convert(Int, mc.p.slices / safe_mult) + 1
 
-  s.u_stack = zeros(GreensType, p.flv*l.sites, p.flv*l.sites, s.n_elements)
-  s.d_stack = zeros(Float64, p.flv*l.sites, s.n_elements)
-  s.t_stack = zeros(GreensType, p.flv*l.sites, p.flv*l.sites, s.n_elements)
+  s.u_stack = zeros(G, flv*N, flv*N, s.n_elements)
+  s.d_stack = zeros(Float64, flv*N, s.n_elements)
+  s.t_stack = zeros(G, flv*N, flv*N, s.n_elements)
 
-  s.greens = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
-  s.greens_temp = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
+  s.greens = zeros(G, flv*N, flv*N)
+  s.greens_temp = zeros(G, flv*N, flv*N)
 
-  s.Ul = eye(GreensType, p.flv*l.sites, p.flv*l.sites)
-  s.Ur = eye(GreensType, p.flv*l.sites, p.flv*l.sites)
-  s.Tl = eye(GreensType, p.flv*l.sites, p.flv*l.sites)
-  s.Tr = eye(GreensType, p.flv*l.sites, p.flv*l.sites)
-  s.Dl = ones(Float64, p.flv*l.sites)
-  s.Dr = ones(Float64, p.flv*l.sites)
+  s.Ul = eye(G, flv*N, flv*N)
+  s.Ur = eye(G, flv*N, flv*N)
+  s.Tl = eye(G, flv*N, flv*N)
+  s.Tr = eye(G, flv*N, flv*N)
+  s.Dl = ones(Float64, flv*N)
+  s.Dr = ones(Float64, flv*N)
 
-  s.U = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
-  s.D = zeros(Float64, p.flv*l.sites)
-  s.T = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
-  s.u = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
-  s.d = zeros(Float64, p.flv*l.sites)
-  s.t = zeros(GreensType, p.flv*l.sites, p.flv*l.sites)
+  s.U = zeros(G, flv*N, flv*N)
+  s.D = zeros(Float64, flv*N)
+  s.T = zeros(G, flv*N, flv*N)
+  s.u = zeros(G, flv*N, flv*N)
+  s.d = zeros(Float64, flv*N)
+  s.t = zeros(G, flv*N, flv*N)
 
-  s.delta_i = zeros(GreensType, p.flv, p.flv)
-  s.M = zeros(GreensType, p.flv, p.flv)
+  s.delta_i = zeros(G, flv, flv)
+  s.M = zeros(G, flv, flv)
 
   # Global update backup
   s.gb_u_stack = zero(s.u_stack)
@@ -95,19 +97,19 @@ function initialize_stack(mc::AbstractDQMC)
   s.gb_t_stack = zero(s.t_stack)
   s.gb_greens = zero(s.greens)
   s.gb_log_det = 0. 
-  s.gb_hsfield = zero(p.hsfield)
+  s.gb_hsfield = zero(mc.p.hsfield)
 
   s.ranges = UnitRange[]
 
   for i in 1:s.n_elements - 1
-    push!(s.ranges, 1 + (i - 1) * p.safe_mult:i * p.safe_mult)
+    push!(s.ranges, 1 + (i - 1) * safe_mult:i * safe_mult)
   end
 
   s.curr_U = zero(s.U)
-  s.eV = zeros(GreensType, p.flv * l.sites, p.flv * l.sites)
-  s.eVop1 = zeros(GreensType, p.flv, p.flv)
-  s.eVop2 = zeros(GreensType, p.flv, p.flv)
-
+  s.eV = zeros(G, flv*N, flv*N)
+  s.eVop1 = zeros(G, flv, flv)
+  s.eVop2 = zeros(G, flv, flv)
+  nothing
 end
 
 
@@ -167,7 +169,7 @@ function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
 end
 
 
-function wrap_greens!(mc::AbstractDQMC, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
+function wrap_greens!(mc::AbstractDQMC, gf::Matrix, curr_slice::Int,direction::Int)
   if direction == -1
     multiply_slice_matrix_inv_left!(mc, curr_slice - 1, gf)
     multiply_slice_matrix_right!(mc, curr_slice - 1, gf)
@@ -178,7 +180,7 @@ function wrap_greens!(mc::AbstractDQMC, gf::Matrix{GreensType}, curr_slice::Int,
 end
 
 
-function wrap_greens(mc::AbstractDQMC, gf::Matrix{GreensType},slice::Int,direction::Int)
+function wrap_greens(mc::AbstractDQMC, gf::Matrix,slice::Int,direction::Int)
   temp = copy(gf)
   wrap_greens!(mc, temp, slice, direction)
   return temp

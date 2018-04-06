@@ -1,10 +1,3 @@
-if !isdefined(:HoppingType)
-  global const HoppingType = Complex128; # assume O(2) or O(3)
-  warn("HoppingType wasn't set on loading checkerboard.jl")
-  println("HoppingType = ", HoppingType)
-end
-
-
 function build_checkerboard(mc::AbstractDQMC)
   const l = mc.l
 
@@ -44,16 +37,17 @@ rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X,X)
 function init_checkerboard_matrices(mc::AbstractDQMC)
   const l = mc.l
   const p = mc.p
+  const H = heltype(mc)
 
   println("Initializing hopping exponentials (Checkerboard, generic)")
 
   build_checkerboard(mc)
 
   const n_groups = l.n_groups
-  eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
-  eT_half_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2)
-  eT = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2)
-  eT_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2)
+  eT_half = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
+  eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
+  eT = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
+  eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
 
   const VER = [0.0, 1.0]
   const HOR = [1.0, 0.0]
@@ -62,7 +56,7 @@ function init_checkerboard_matrices(mc::AbstractDQMC)
     for s in 1:2
       for (g, gr) in enumerate(l.groups)
         # Build hopping matrix of individual chkr group
-        T = zeros(HoppingType, l.sites, l.sites)
+        T = zeros(H, l.sites, l.sites)
 
         for i in gr
           src = l.checkerboard[1,i]
@@ -118,16 +112,17 @@ end
 function init_checkerboard_matrices_Bfield(mc::AbstractDQMC)
   const l = mc.l
   const p = mc.p
+  const H = heltype(mc)
 
   println("Initializing hopping exponentials (Bfield, Checkerboard, generic)")
 
   build_checkerboard(mc)
 
   const n_groups = l.n_groups
-  eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
-  eT_half_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2)
-  eT = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2)
-  eT_inv = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2)
+  eT_half = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
+  eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
+  eT = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
+  eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
 
   B = zeros(2,2) # rowidx = spin up,down, colidx = flavor
   if p.Bfield
@@ -142,7 +137,7 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC)
     for s in 1:2
       for (g, gr) in enumerate(l.groups)
         # Build hopping matrix of individual chkr group
-        T = zeros(HoppingType, l.sites, l.sites)
+        T = zeros(H, l.sites, l.sites)
 
         for i in gr
           src = l.checkerboard[1,i]

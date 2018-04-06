@@ -1,14 +1,8 @@
-if !isdefined(:HoppingType)
-  global const HoppingType = Complex128; # assume worst case
-  warn("HoppingType wasn't set on loading lattice.jl")
-  println("HoppingType = ", HoppingType)
-end
-
 using LightXML
 using Helpers
 
 # define lattice type
-mutable struct Lattice
+mutable struct Lattice{H<:Number} # H = HoppingEltype
   dim::Int
   sites::Int
   L::Int
@@ -23,19 +17,19 @@ mutable struct Lattice
 
   peirls::Matrix{Matrix{Float64}} # phis and NOT exp(im*phi); cols = flavor, row = spin; each inner matrix: trg, src (linidx)
 
-  hopping_matrix_exp::Matrix{HoppingType} # mu included
-  hopping_matrix_exp_inv::Matrix{HoppingType}
+  hopping_matrix_exp::Matrix{H} # mu included
+  hopping_matrix_exp_inv::Matrix{H}
 
-  chkr_hop_half::Vector{SparseMatrixCSC{HoppingType, Int64}}
-  chkr_hop_half_inv::Vector{SparseMatrixCSC{HoppingType, Int64}}
-  chkr_hop_half_dagger::Vector{SparseMatrixCSC{HoppingType, Int64}}
-  chkr_hop::Vector{SparseMatrixCSC{HoppingType, Int64}} # without prefactor 0.5 in matrix exponentials
-  chkr_hop_inv::Vector{SparseMatrixCSC{HoppingType, Int64}}
-  chkr_hop_dagger::Vector{SparseMatrixCSC{HoppingType, Int64}}
-  chkr_mu_half::SparseMatrixCSC{HoppingType, Int64}
-  chkr_mu_half_inv::SparseMatrixCSC{HoppingType, Int64}
-  chkr_mu::SparseMatrixCSC{HoppingType, Int64}
-  chkr_mu_inv::SparseMatrixCSC{HoppingType, Int64}
+  chkr_hop_half::Vector{SparseMatrixCSC{H, Int64}}
+  chkr_hop_half_inv::Vector{SparseMatrixCSC{H, Int64}}
+  chkr_hop_half_dagger::Vector{SparseMatrixCSC{H, Int64}}
+  chkr_hop::Vector{SparseMatrixCSC{H, Int64}} # without prefactor 0.5 in matrix exponentials
+  chkr_hop_inv::Vector{SparseMatrixCSC{H, Int64}}
+  chkr_hop_dagger::Vector{SparseMatrixCSC{H, Int64}}
+  chkr_mu_half::SparseMatrixCSC{H, Int64}
+  chkr_mu_half_inv::SparseMatrixCSC{H, Int64}
+  chkr_mu::SparseMatrixCSC{H, Int64}
+  chkr_mu_inv::SparseMatrixCSC{H, Int64}
 
   # Currently NOT used in checkerboard.jl (but generic chkr)
   checkerboard::Matrix{Int} # src, trg, bondid

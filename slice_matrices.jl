@@ -41,7 +41,7 @@ end
 #  				For all checkerboard variants
 # -------------------------------------------------------
 function slice_matrix(mc::DQMC_CBTrue, slice::Int, power::Float64=1.)
-  res = eye(HoppingType, mc.p.flv*mc.l.sites)
+  res = eye(heltype(mc), mc.p.flv*mc.l.sites)
   if power > 0
     multiply_slice_matrix_left!(mc, slice, res)
   else

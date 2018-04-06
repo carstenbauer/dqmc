@@ -86,16 +86,13 @@ else
                               im*h5read(output_file, "obs/greens/timeseries_imag", (:,:,prevcount)), 3)
 end
 
-println("HoppingType = ", HoppingType)
-println("GreensType = ", GreensType)
-
 abstract type Checkerboard end
 abstract type CBTrue <: Checkerboard end
 abstract type CBFalse <: Checkerboard end
 abstract type CBGeneric <: CBTrue end
 abstract type CBAssaad <: CBTrue end
 
-abstract type AbstractDQMC{C<:Checkerboard} end
+abstract type AbstractDQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number} end
 
 const DQMC_CBTrue = AbstractDQMC{C} where C<:CBTrue
 const DQMC_CBFalse = AbstractDQMC{C} where C<:CBFalse
@@ -127,20 +124,34 @@ mutable struct Analysis
     Analysis() = new()
 end
 
-mutable struct DQMC{C<:Checkerboard} <: AbstractDQMC{C}
+mutable struct DQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number} <: AbstractDQMC{C, GreensEltype, HoppingEltype}
   p::Parameters
   l::Lattice
-  s::Stack
+  s::Stack{GreensEltype}
   a::Analysis
 end
 
 DQMC(p::Parameters) = begin
   CB = CBFalse
   p.chkr && (CB = iseven(p.L) ? CBGeneric : CBAssaad)
-  mc = DQMC{CB}(p, Lattice(), Stack(), Analysis())
+
+  ### SET DATATYPES
+  G = Complex128
+  H = Complex128
+  if !p.Bfield
+    H = Float64;
+    G = p.opdim > 1 ? Complex128 : Float64; # O(1) -> real GF
+  end
+
+  mc = DQMC{CB,G,H}(p, Lattice{H}(), Stack{G}(), Analysis())
   load_lattice(mc)
   mc
 end
+
+# type helpers
+@inline geltype(mc::DQMC{CB, G, H}) where {CB, G, H} = G
+@inline heltype(mc::DQMC{CB, G, H}) where {CB, G, H} = H
+@inline cbtype(mc::DQMC{CB, G, H}) where {CB, G, H} = CB
 
 # cosmetics
 import Base.summary
@@ -292,7 +303,7 @@ function measure!(mc::DQMC)
     cs = min(p.measurements, 100)
 
     configurations = Observable{Float64}("configurations", size(p.hsfield), cs)
-    greens = Observable{GreensType}("greens", size(s.greens), cs)
+    greens = Observable{geltype(mc)}("greens", size(s.greens), cs)
 
     boson_action = Observable{Float64}("boson_action", cs)
     mean_abs_op = Observable{Float64}("mean_abs_op", cs)
@@ -399,6 +410,9 @@ end
 # main
 
 mc = DQMC(p)
+
+println("HoppingEltype = ", heltype(mc))
+println("GreensEltype = ", geltype(mc))
 
 @printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000./60.)
 

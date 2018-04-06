@@ -1,9 +1,3 @@
-if !isdefined(:HoppingType)
-  global const HoppingType = Complex128; # assume worst case
-  warn("HoppingType wasn't set on loading hoppings.jl")
-  println("HoppingType = ", HoppingType)
-end
-
 function init_hopping_matrices(mc::AbstractDQMC)
   const p = mc.p
   const l = mc.l
@@ -108,13 +102,14 @@ end
 function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)::Void  
   const p = mc.p
   const l = mc.l
+  const H = heltype(mc)
 
   println("Initializing hopping exponentials (Bfield)")
   p.Bfield || warn("You should be using `init_hopping_matrix_exp()` or set p.Bfield = true!")
 
-  T = Matrix{Matrix{HoppingType}}(2,2) # colidx = flavor, rowidx = spin up,down
+  T = Matrix{Matrix{H}}(2,2) # colidx = flavor, rowidx = spin up,down
   for i in 1:4
-    T[i] = convert(Matrix{HoppingType}, diagm(fill(-p.mu,l.sites)))
+    T[i] = convert(Matrix{H}, diagm(fill(-p.mu,l.sites)))
   end
 
   hor_nb = [2,4]
