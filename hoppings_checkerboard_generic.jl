@@ -5,7 +5,9 @@ if !isdefined(:HoppingType)
 end
 
 
-function build_checkerboard(p::Parameters, l::Lattice)
+function build_checkerboard(mc::AbstractDQMC)
+  const l = mc.l
+
   l.groups = UnitRange[]
   edges_used = zeros(Int64, l.n_bonds)
   l.checkerboard = zeros(3, l.n_bonds)
@@ -39,10 +41,13 @@ end
 # helper to cutoff numerical zeros
 rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X,X)
 
-function init_checkerboard_matrices(p::Parameters, l::Lattice)
+function init_checkerboard_matrices(mc::AbstractDQMC)
+  const l = mc.l
+  const p = mc.p
+
   println("Initializing hopping exponentials (Checkerboard, generic)")
 
-  build_checkerboard(p,l)
+  build_checkerboard(mc)
 
   const n_groups = l.n_groups
   eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
@@ -110,10 +115,13 @@ end
 
 #### WITH ARTIFICIAL B-FIELD
 
-function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
+function init_checkerboard_matrices_Bfield(mc::AbstractDQMC)
+  const l = mc.l
+  const p = mc.p
+
   println("Initializing hopping exponentials (Bfield, Checkerboard, generic)")
 
-  build_checkerboard(p,l)
+  build_checkerboard(mc)
 
   const n_groups = l.n_groups
   eT_half = Array{SparseMatrixCSC{HoppingType, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
@@ -185,131 +193,4 @@ function init_checkerboard_matrices_Bfield(p::Parameters, l::Lattice)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
   r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
   println("Checkerboard (Bfield, generic) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
-end
-
-"""
-Slice matrix
-"""
-function slice_matrix(s::Stack, p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
-  res = eye(HoppingType, p.flv*l.sites)
-  if power > 0
-    multiply_slice_matrix_left!(s,p, l, slice, res)
-  else
-    multiply_slice_matrix_inv_left!(s,p, l, slice, res)
-  end
-  return res
-end
-
-
-function multiply_slice_matrix_left!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-
-  interaction_matrix_exp!(s,p,l,slice,1.,s.eV)
-  M[:] = s.eV * M
-  M[:] = l.chkr_mu * M
-
-  @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      M[:] = l.chkr_hop_half[i] * M
-    end
-    M[:] = l.chkr_hop[1] * M
-    for i in 2:l.n_groups
-      M[:] = l.chkr_hop_half[i] * M
-    end
-  end
-end
-
-function multiply_slice_matrix_right!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-
-  @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      M[:] = M * l.chkr_hop_half[i]
-    end
-    M[:] = M * l.chkr_hop[1]
-    for i in 2:l.n_groups
-      M[:] = M * l.chkr_hop_half[i]
-    end
-  end
-
-  interaction_matrix_exp!(s,p,l,slice,1.,s.eV)
-  M[:] = M * l.chkr_mu
-  M[:] = M * s.eV
-end
-
-function multiply_slice_matrix_inv_left!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-
-  @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      M[:] = l.chkr_hop_half_inv[i] * M
-    end
-    M[:] = l.chkr_hop_inv[1] * M
-    for i in 2:l.n_groups
-      M[:] = l.chkr_hop_half_inv[i] * M
-    end
-  end
-
-  interaction_matrix_exp!(s,p, l, slice, -1., s.eV)
-  M[:] = l.chkr_mu_inv * M
-  M[:] = s.eV * M
-end
-
-function multiply_slice_matrix_inv_right!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-
-  interaction_matrix_exp!(s,p, l, slice, -1., s.eV)
-  M[:] = M * s.eV
-  M[:] = M * l.chkr_mu_inv
-
-  @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      M[:] = M * l.chkr_hop_half_inv[i]
-    end
-    M[:] = M * l.chkr_hop_inv[1]
-    for i in 2:l.n_groups
-      M[:] = M * l.chkr_hop_half_inv[i]
-    end
-  end
-end
-
-function multiply_daggered_slice_matrix_left!(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-
-  
-  @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      M[:] = l.chkr_hop_half_dagger[i] * M
-    end
-    M[:] = l.chkr_hop_dagger[1] * M
-    for i in 2:l.n_groups
-      M[:] = l.chkr_hop_half_dagger[i] * M
-    end
-  end
-
-  interaction_matrix_exp!(s,p, l, slice, 1., s.eV)
-  # s.eV == ctranspose(s.eV) and l.chkr_mu == ctranspose(s.chkr_mu)
-  M[:] = l.chkr_mu * M
-  M[:] = s.eV * M
-
-end
-
-
-function multiply_slice_matrix_left(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  X = copy(M)
-  multiply_slice_matrix_left!(s,p, l, slice, X)
-  return X
-end
-
-function multiply_slice_matrix_right(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  X = copy(M)
-  multiply_slice_matrix_right!(s,p, l, slice, X)
-  return X
-end
-
-function multiply_slice_matrix_inv_left(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  X = copy(M)
-  multiply_slice_matrix_inv_left!(s,p, l, slice, X)
-  return X
-end
-
-function multiply_slice_matrix_inv_right(s::Stack, p::Parameters, l::Lattice, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  X = copy(M)
-  multiply_slice_matrix_inv_right!(s,p, l, slice, X)
-  return X
 end

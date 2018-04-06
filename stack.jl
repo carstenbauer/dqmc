@@ -140,11 +140,7 @@ function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
 
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
-    if mc.p.chkr
-      multiply_slice_matrix_left!(mc, slice, s.curr_U)
-    else
-      s.curr_U = slice_matrix_no_chkr(mc, slice) * s.curr_U
-    end
+    multiply_slice_matrix_left!(mc, slice, s.curr_U)
   end
 
   s.curr_U *= spdiagm(s.d_stack[:, idx])
@@ -162,11 +158,7 @@ function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
   copy!(s.curr_U, s.u_stack[:, :, idx + 1])
 
   for slice in reverse(s.ranges[idx])
-    if mc.p.chkr
-      multiply_daggered_slice_matrix_left!(mc, slice, s.curr_U)
-    else
-      s.curr_U = ctranspose(slice_matrix_no_chkr(mc, slice)) * s.curr_U
-    end
+    multiply_daggered_slice_matrix_left!(mc, slice, s.curr_U)
   end
 
   s.curr_U *=  spdiagm(s.d_stack[:, idx + 1])
@@ -175,7 +167,7 @@ function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
 end
 
 
-@inline function wrap_greens_chkr!(mc::AbstractDQMC{C}, gf::Matrix{GreensType}, curr_slice::Int,direction::Int) where C<:CBTrue
+function wrap_greens!(mc::AbstractDQMC, gf::Matrix{GreensType}, curr_slice::Int,direction::Int)
   if direction == -1
     multiply_slice_matrix_inv_left!(mc, curr_slice - 1, gf)
     multiply_slice_matrix_right!(mc, curr_slice - 1, gf)
@@ -185,41 +177,11 @@ end
   end
 end
 
-function wrap_greens_chkr(mc::AbstractDQMC{C}, gf::Matrix{GreensType},slice::Int,direction::Int) where C<:CBTrue
+
+function wrap_greens(mc::AbstractDQMC, gf::Matrix{GreensType},slice::Int,direction::Int)
   temp = copy(gf)
-  wrap_greens_chkr!(mc, temp, slice, direction)
+  wrap_greens!(mc, temp, slice, direction)
   return temp
-end
-
-
-function wrap_greens_no_chkr!(mc::AbstractDQMC{C}, gf::Matrix{GreensType}, curr_slice::Int,direction::Int) where C<:CBFalse
-  if direction == -1
-    gf[:] = slice_matrix_no_chkr(mc, curr_slice - 1, -1.) * gf
-    gf[:] = gf * slice_matrix_no_chkr(mc, curr_slice - 1, 1.)
-  else
-    gf[:] = slice_matrix_no_chkr(mc, curr_slice, 1.) * gf
-    gf[:] = gf * slice_matrix_no_chkr(mc, curr_slice, -1.)
-  end
-end
-
-function wrap_greens_no_chkr(mc::AbstractDQMC{C}, gf::Matrix{GreensType},slice::Int,direction::Int) where C<:CBFalse
-  temp = copy(gf)
-  wrap_greens_no_chkr!(mc, temp, slice, direction)
-  return temp
-end
-
-
-# Beff(slice) = exp(−1/2∆τT)exp(−1/2∆τT)exp(−∆τV(slice))
-function slice_matrix_no_chkr(mc::AbstractDQMC{C}, slice::Int, power::Float64=1.) where C<:CBFalse
-  const eT = mc.l.hopping_matrix_exp
-  const eTinv = mc.l.hopping_matrix_exp_inv
-  const eV = interaction_matrix_exp(mc, slice, power)
-
-  if power > 0
-    return eT * eT * eV
-  else
-    return eV * eTinv * eTinv
-  end
 end
 
 
@@ -290,11 +252,7 @@ function propagate(mc::AbstractDQMC)
           s.greens_temp = copy(s.greens)
         end
 
-        if p.chkr
-          wrap_greens_chkr!(mc, s.greens_temp, s.current_slice - 1, 1)
-        else
-          wrap_greens_no_chkr!(mc, s.greens_temp, s.current_slice - 1, 1)
-        end
+        wrap_greens!(mc, s.greens_temp, s.current_slice - 1, 1)
 
         calculate_greens(mc) # greens_{slice we are propagating to}
 
@@ -315,11 +273,8 @@ function propagate(mc::AbstractDQMC)
 
     else
       # Wrapping
-      if p.chkr
-        wrap_greens_chkr!(mc, s.greens, s.current_slice, 1)
-      else
-        wrap_greens_no_chkr!(mc, s.greens, s.current_slice, 1)
-      end
+      wrap_greens!(mc, s.greens, s.current_slice, 1)
+
       s.current_slice += 1
     end
 
@@ -337,11 +292,7 @@ function propagate(mc::AbstractDQMC)
         calculate_logdet(mc) # calculate logdet for potential global update
 
         # wrap to greens_{p.slices}
-        if p.chkr
-          wrap_greens_chkr!(mc, s.greens, s.current_slice + 1, -1)
-        else
-          wrap_greens_no_chkr!(mc, s.greens, s.current_slice + 1, -1)
-        end
+        wrap_greens!(mc, s.greens, s.current_slice + 1, -1)
 
       elseif 0 < s.current_slice < p.slices
         idx = Int(s.current_slice / p.safe_mult) + 1
@@ -362,11 +313,7 @@ function propagate(mc::AbstractDQMC)
           end
         end
 
-        if p.chkr
-          wrap_greens_chkr!(mc, s.greens, s.current_slice + 1, -1)
-        else
-          wrap_greens_no_chkr!(mc, s.greens, s.current_slice + 1, -1)
-        end
+        wrap_greens!(mc, s.greens, s.current_slice + 1, -1)
 
       else # we are going to 0
         idx = 1
@@ -378,11 +325,7 @@ function propagate(mc::AbstractDQMC)
 
     else
       # Wrapping
-      if p.chkr
-        wrap_greens_chkr!(mc, s.greens, s.current_slice, -1)
-      else
-        wrap_greens_no_chkr!(mc, s.greens, s.current_slice, -1)
-      end
+      wrap_greens!(mc, s.greens, s.current_slice, -1)
       s.current_slice -= 1
     end
   end

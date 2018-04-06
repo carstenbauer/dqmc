@@ -97,14 +97,18 @@ abstract type CBAssaad <: CBTrue end
 
 abstract type AbstractDQMC{C<:Checkerboard} end
 
+const DQMC_CBTrue = AbstractDQMC{C} where C<:CBTrue
+const DQMC_CBFalse = AbstractDQMC{C} where C<:CBFalse
+
 include("lattice.jl")
 include("stack.jl")
+include("slice_matrices.jl")
 include("linalg.jl")
 include("hoppings.jl")
 if iseven(p.L)
-  include("checkerboard.jl")
+  include("hoppings_checkerboard.jl")
 else
-  include("checkerboard_generic.jl")
+  include("hoppings_checkerboard_generic.jl")
 end
 include("interactions.jl")
 include("action.jl")
