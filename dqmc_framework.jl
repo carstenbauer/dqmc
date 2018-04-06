@@ -114,16 +114,14 @@ function run!(mc::DQMC)
   nothing
 end
 
-function resume!(mc::DQMC)
+function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
+  const p = mc.p
+
   # Init hsfield
   println("\nLoading last HS field")
   p.hsfield = deepcopy(lastconf)
   println("Initializing boson action\n")
   p.boson_action = calculate_boson_action(mc)
-
-  global const eye_flv = eye(p.flv,p.flv)
-  global const eye_full = eye(p.flv*l.sites,p.flv*l.sites)
-  global const ones_vec = ones(p.flv*l.sites)
 
   h5open(p.output_file, "r") do f
     box = read(f, "resume/box")
@@ -132,10 +130,9 @@ function resume!(mc::DQMC)
     p.box_global = Uniform(-box_global, box_global)
   end
 
-  ### MONTE CARLO
   println("\n\nMC Measure (resuming) - ", p.measurements, " (total $(p.measurements + prevmeasurements))")
   flush(STDOUT)
-  measure!(mc)
+  measure!(mc, prevmeasurements)
 
   nothing
 end
@@ -196,7 +193,7 @@ function thermalize!(mc::DQMC)
   nothing
 end
 
-function measure!(mc::DQMC)
+function measure!(mc::DQMC, prevmeasurements=0)
   const a = mc.a
   const l = mc.l
   const p = mc.p

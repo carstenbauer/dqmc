@@ -14,7 +14,6 @@ include("dqmc_framework.jl")
 # -------------------------------------------------------
 #             Input/Output file preparation
 # -------------------------------------------------------
-### PROGRAM ARGUMENTS
 if length(ARGS) == 1
   # ARGS = ["whatever.in.xml"]
   input_xml = ARGS[1]
@@ -36,13 +35,13 @@ end
 # hdf5 write test/ dump git commit
 branch = Git.branch(dir=dirname(@__FILE__)).string[1:end-1]
 if branch != "master"
-  warn("Not on branch master but \"$(branch)\"!!!")
+  println("!!!Not on branch master but \"$(branch)\"!!!")
   flush(STDOUT)
 end
 
 
 # -------------------------------------------------------
-#             Parse input parameters
+#      Parse input parameters + check for resuming
 # -------------------------------------------------------
 p = Parameters()
 p.output_file = output_file
@@ -82,24 +81,22 @@ else
     f["RESUME"] = 1
   end
 
-  global const prevcount = h5read(output_file, "count")
+  prevcount = h5read(output_file, "count")
   println("Found $(prevcount) configurations.")
   println()
   lastmeasurements = h5read(output_file, "params/measurements")
-  global const prevmeasurements = prevcount * p.write_every_nth
+  global prevmeasurements = prevcount * p.write_every_nth
   if prevmeasurements < lastmeasurements
     println("Finishing last run (i.e. overriding p.measurements)")
     p.measurements = lastmeasurements - prevmeasurements
   end
-  global const lastconf = squeeze(h5read(output_file, "configurations", (:,:,:,prevcount)), 4)
-  global const lastgreens = squeeze(h5read(output_file, "obs/greens/timeseries_real", (:,:,prevcount)) + 
-                              im*h5read(output_file, "obs/greens/timeseries_imag", (:,:,prevcount)), 3)
+  global lastconf = squeeze(h5read(output_file, "configurations", (:,:,:,prevcount)), 4)
 end
 
 
 
 # -------------------------------------------------------
-#                       Main
+#                      Simulation
 # -------------------------------------------------------
 mc = DQMC(p)
 
@@ -107,14 +104,13 @@ println()
 println("HoppingEltype = ", heltype(mc))
 println("GreensEltype = ", geltype(mc))
 println()
-
 @printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000./60.)
 
 if !mc.p.resume
   init!(mc)
   run!(mc)
 else
-  resume!(mc)
+  resume!(mc, lastconf, prevmeasurements)
 end
 
 h5open(output_file, "r+") do f
