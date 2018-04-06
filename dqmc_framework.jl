@@ -56,7 +56,7 @@ end
 
 DQMC(p::Parameters) = begin
   CB = CBFalse
-  p.chkr && (CB = iseven(p.L) ? CBGeneric : CBAssaad)
+  p.chkr && (CB = iseven(p.L) ? CBAssaad : CBGeneric)
 
   ### SET DATATYPES
   G = Complex128
