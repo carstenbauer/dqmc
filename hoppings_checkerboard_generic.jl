@@ -1,4 +1,4 @@
-function build_checkerboard(mc::AbstractDQMC)
+function build_checkerboard(mc::AbstractDQMC{CBGeneric})
   const l = mc.l
 
   l.groups = UnitRange[]
@@ -34,7 +34,7 @@ end
 # helper to cutoff numerical zeros
 rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X,X)
 
-function init_checkerboard_matrices(mc::AbstractDQMC)
+function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
   const l = mc.l
   const p = mc.p
   const H = heltype(mc)
@@ -109,7 +109,7 @@ end
 
 #### WITH ARTIFICIAL B-FIELD
 
-function init_checkerboard_matrices_Bfield(mc::AbstractDQMC)
+function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
   const l = mc.l
   const p = mc.p
   const H = heltype(mc)

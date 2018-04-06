@@ -17,7 +17,7 @@ function find_four_site_hopping_corners(l::Lattice)
   return A_corners, B_corners
 end
 
-function build_four_site_hopping_matrix_exp(mc::DQMC_CBTrue, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
+function build_four_site_hopping_matrix_exp(mc::AbstractDQMC{CBAssaad}, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
   const p = mc.p
   const l = mc.l
 
@@ -62,7 +62,7 @@ function build_four_site_hopping_matrix_exp(mc::DQMC_CBTrue, corners::Tuple{Arra
   return chkr_hop_4site, chkr_hop_4site_inv
 end
 
-function init_checkerboard_matrices(mc::DQMC_CBTrue)
+function init_checkerboard_matrices(mc::AbstractDQMC{CBAssaad})
   const p = mc.p
   const l = mc.l
 
@@ -134,7 +134,7 @@ end
 
 #### WITH ARTIFICIAL B-FIELD
 
-function build_four_site_hopping_matrix_Bfield(mc::DQMC_CBTrue, corner::Int,f::Int,s::Int)
+function build_four_site_hopping_matrix_Bfield(mc::AbstractDQMC{CBAssaad}, corner::Int,f::Int,s::Int)
   const l = mc.l
   const H = heltype(mc)
 
@@ -158,10 +158,7 @@ function build_four_site_hopping_matrix_Bfield(mc::DQMC_CBTrue, corner::Int,f::I
   return sparse([sites_clockwise; shift_sites_clockwise],[shift_sites_clockwise; sites_clockwise],hop,l.sites,l.sites)
 end
 
-# helper to cutoff numerical zeros
-rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X,X)
-
-function build_four_site_hopping_matrix_exp_Bfield(mc::DQMC_CBTrue, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
+function build_four_site_hopping_matrix_exp_Bfield(mc::AbstractDQMC{CBAssaad}, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
   const p = mc.p
   const l = mc.l
   const H = heltype(mc)
@@ -196,7 +193,7 @@ function build_four_site_hopping_matrix_exp_Bfield(mc::DQMC_CBTrue, corners::Tup
   return chkr_hop_4site, chkr_hop_4site_inv
 end
 
-function init_checkerboard_matrices_Bfield(mc::DQMC_CBTrue)
+function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBAssaad})
   const p = mc.p
   const l = mc.l
   const H = heltype(mc)

@@ -36,7 +36,7 @@ mutable struct Lattice{H<:Number} # H = HoppingEltype
   groups::Vector{UnitRange}
   n_groups::Int
 
-  Lattice() = new()
+  Lattice{H}() where H = new{H}()
 end
 
 function load_lattice(mc::AbstractDQMC)

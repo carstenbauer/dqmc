@@ -1,9 +1,3 @@
-if !isdefined(:GreensType)
-  global const GreensType = Complex128; # assume O(2) or O(3)
-  warn("GreensType wasn't set on loading stack.jl")
-  println("GreensType = ", GreensType)
-end
-
 mutable struct Stack{G<:Number} # G = GreensEltype
   u_stack::Array{G, 3}
   d_stack::Matrix{Float64}
@@ -54,7 +48,7 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   eVop1::Matrix{G}
   eVop2::Matrix{G}
 
-  Stack() = new()
+  Stack{G}() where G = new{G}()
 end
 
 
