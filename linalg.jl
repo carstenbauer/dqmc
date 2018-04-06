@@ -35,3 +35,10 @@ function lu_det(M)
     L, U, p = lu(M)
     return prod(diag(L)) * prod(diag(U))
 end
+
+function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
+  mat = Tl * Ur
+  mat = spdiagm(Dl)*mat*spdiagm(Dr)
+  U, D, T = decompose_udt(mat)
+  return Ul*U, D, T*Tr
+end

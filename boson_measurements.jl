@@ -1,30 +1,6 @@
-function measure_op(conf::AbstractArray{Float64, 3})
-  mean_abs_op = mean(abs.(conf))
-  mean_op = vec(mean(conf,[2,3]))
-  return mean_abs_op, mean_op
-end
-
-FFTW.set_num_threads(1) # we normally have one cpu. can't use Sys.CPU_CORES because this != slurm allocated cores
-# bosonic correlation function C(qy,qx,iw), not normalized
-function measure_phi_correlations(conf::AbstractArray{Float64, 3})
-  opdim, sites, slices = size(conf)
-  L = Int(sqrt(sites))
-  phiFT = rfft(reshape(conf,opdim,L,L,slices),[2,3,4])
-  phiFT .*= conj(phiFT)
-  n = floor(Int, L/2+1)
-  nt = floor(Int, slices/2+1)
-  return real(sum(phiFT,1))[1,:,1:n,1:nt] # sum over op components
-end
-
-import DSP.rfftfreq
-# returns qys, qxs and ωs corresponding to output of measure_phi_correlations etc.
-function get_momenta_and_frequencies(L::Int, M::Int, Δτ::Float64=0.1)
-  # https://juliadsp.github.io/DSP.jl/latest/util.html#DSP.Util.rfftfreq
-  qs = 2*pi*rfftfreq(L) # 2*pi because rfftfreq returns linear momenta
-  ωs = 2*pi*rfftfreq(M, 1/Δτ)
-  return qs, qs, ωs
-end
-get_momenta_and_frequencies(C::AbstractArray{Float64, 3}, Δτ::Float64=0.1) = get_momenta_and_frequencies(size(C,2,3)..., Δτ)
+# -------------------------------------------------------
+#         Measurements
+# -------------------------------------------------------
 
 # χ(qy,qx,iw) = C(qy, qx, iw) * Δτ/(N*M)
 function measure_chi_dynamic(conf::AbstractArray{Float64, 3}; Δτ::Float64=0.1)
@@ -54,3 +30,37 @@ function measure_binder_factors(conf::AbstractArray{Float64, 3})
   m2 = dot(m,m)
   return (m2, m2*m2)
 end
+
+function measure_op(conf::AbstractArray{Float64, 3})
+  mean_abs_op = mean(abs.(conf))
+  mean_op = vec(mean(conf,[2,3]))
+  return mean_abs_op, mean_op
+end
+
+FFTW.set_num_threads(1) # we normally have one cpu. can't use Sys.CPU_CORES because this != slurm allocated cores
+# bosonic correlation function C(qy,qx,iw), not normalized
+function measure_phi_correlations(conf::AbstractArray{Float64, 3})
+  opdim, sites, slices = size(conf)
+  L = Int(sqrt(sites))
+  phiFT = rfft(reshape(conf,opdim,L,L,slices),[2,3,4])
+  phiFT .*= conj(phiFT)
+  n = floor(Int, L/2+1)
+  nt = floor(Int, slices/2+1)
+  return real(sum(phiFT,1))[1,:,1:n,1:nt] # sum over op components
+end
+
+
+
+# -------------------------------------------------------
+#         Postprocessing/Analysis
+# -------------------------------------------------------
+
+import DSP.rfftfreq
+# returns qys, qxs and ωs corresponding to output of measure_phi_correlations etc.
+function get_momenta_and_frequencies(L::Int, M::Int, Δτ::Float64=0.1)
+  # https://juliadsp.github.io/DSP.jl/latest/util.html#DSP.Util.rfftfreq
+  qs = 2*pi*rfftfreq(L) # 2*pi because rfftfreq returns linear momenta
+  ωs = 2*pi*rfftfreq(M, 1/Δτ)
+  return qs, qs, ωs
+end
+get_momenta_and_frequencies(C::AbstractArray{Float64, 3}, Δτ::Float64=0.1) = get_momenta_and_frequencies(size(C,2,3)..., Δτ)

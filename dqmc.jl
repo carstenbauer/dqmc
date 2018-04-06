@@ -326,11 +326,7 @@ function measure!(mc::DQMC)
           add_element(configurations, p.hsfield)
           add_element(greens, s.greens)
           
-          if p.chkr
-            effective_greens2greens!(p, l, greens.timeseries[:,:,greens.count])
-          else
-            effective_greens2greens_no_chkr!(p, l, greens.timeseries[:,:,greens.count])
-          end
+          effective_greens2greens!(mc, greens.timeseries[:,:,greens.count])
 
           # compare(greens.timeseries[:,:,greens.count], measure_greens_and_logdet(s, p, l, p.safe_mult)[1])
 
