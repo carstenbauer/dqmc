@@ -47,6 +47,9 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   eV::Matrix{G}
   eVop1::Matrix{G}
   eVop2::Matrix{G}
+  eye_flv::Matrix{Float64}
+  eye_full::Matrix{Float64}
+  ones_vec::Vector{Float64}
 
   Stack{G}() where G = new{G}()
 end
@@ -60,6 +63,10 @@ function initialize_stack(mc::AbstractDQMC)
   const G = geltype(mc)
 
   s.n_elements = convert(Int, mc.p.slices / safe_mult) + 1
+
+  s.eye_flv = eye(flv,flv)
+  s.eye_full = eye(flv*N,flv*N)
+  s.ones_vec = ones(flv*N)
 
   s.u_stack = zeros(G, flv*N, flv*N, s.n_elements)
   s.d_stack = zeros(Float64, flv*N, s.n_elements)
@@ -111,9 +118,9 @@ function build_stack(mc::AbstractDQMC)
   const p = mc.p
   const s = mc.s
 
-  s.u_stack[:, :, 1] = eye_full
-  s.d_stack[:, 1] = ones_vec
-  s.t_stack[:, :, 1] = eye_full
+  s.u_stack[:, :, 1] = s.eye_full
+  s.d_stack[:, 1] = s.ones_vec
+  s.t_stack[:, :, 1] = s.eye_full
 
   @inbounds for i in 1:length(s.ranges)
     add_slice_sequence_left(mc, i)
@@ -229,9 +236,9 @@ function propagate(mc::AbstractDQMC)
       s.current_slice +=1 # slice we are going to
       if s.current_slice == 1
         s.Ur[:, :], s.Dr[:], s.Tr[:, :] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
-        s.u_stack[:, :, 1] = eye_full
-        s.d_stack[:, 1] = ones_vec
-        s.t_stack[:, :, 1] = eye_full
+        s.u_stack[:, :, 1] = s.eye_full
+        s.d_stack[:, 1] = s.ones_vec
+        s.t_stack[:, :, 1] = s.eye_full
         s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
 
         calculate_greens(mc) # greens_1 ( === greens_{m+1} )
@@ -279,9 +286,9 @@ function propagate(mc::AbstractDQMC)
       s.current_slice -= 1 # slice we are going to
       if s.current_slice == p.slices
         s.Ul[:, :], s.Dl[:], s.Tl[:, :] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
-        s.u_stack[:, :, end] = eye_full
-        s.d_stack[:, end] = ones_vec
-        s.t_stack[:, :, end] = eye_full
+        s.u_stack[:, :, end] = s.eye_full
+        s.d_stack[:, end] = s.ones_vec
+        s.t_stack[:, :, end] = s.eye_full
         s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
 
         calculate_greens(mc) # greens_{p.slices+1} === greens_1

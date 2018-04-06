@@ -90,10 +90,6 @@ function init!(mc::DQMC)
   println("Initializing boson action\n")
   mc.p.boson_action = calculate_boson_action(mc)
 
-  global const eye_flv = eye(mc.p.flv,mc.p.flv)
-  global const eye_full = eye(mc.p.flv*mc.l.sites,mc.p.flv*mc.l.sites)
-  global const ones_vec = ones(mc.p.flv*mc.l.sites)
-
   # stack init and test
   initialize_stack(mc)
   println("Building stack")

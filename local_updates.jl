@@ -45,8 +45,8 @@ end
 
   interaction_matrix_exp_op!(mc,p.hsfield[:,i,s.current_slice],-1.,s.eVop1) #V1i
   interaction_matrix_exp_op!(mc,new_op,1.,s.eVop2) #V2i
-  s.delta_i = s.eVop1 * s.eVop2  - eye_flv
-  s.M = eye_flv + s.delta_i * (eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
+  s.delta_i = s.eVop1 * s.eVop2  - s.eye_flv
+  s.M = s.eye_flv + s.delta_i * (s.eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
   return det(s.M)
 end
 

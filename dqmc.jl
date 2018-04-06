@@ -99,12 +99,14 @@ end
 
 
 # -------------------------------------------------------
-#             Main
+#                       Main
 # -------------------------------------------------------
 mc = DQMC(p)
 
+println()
 println("HoppingEltype = ", heltype(mc))
 println("GreensEltype = ", geltype(mc))
+println()
 
 @printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000./60.)
 
