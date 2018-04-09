@@ -84,20 +84,6 @@ function multiply_slice_matrix_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::
   const s = mc.s
 
   interaction_matrix_exp!(mc,slice,1.,s.eV)
-  M[:] = s.eV * M
-  M[:] = l.chkr_mu * M
-
-  M[:] = l.chkr_hop_half[2] * M
-  M[:] = l.chkr_hop[1] * M
-  M[:] = l.chkr_hop_half[2] * M
-  nothing
-end
-
-function multiply_slice_matrix_left2!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const s = mc.s
-
-  interaction_matrix_exp!(mc,slice,1.,s.eV)
   A_mul_B!(s.tmp, s.eV, M)
   M .= s.tmp
   A_mul_B!(s.tmp, l.chkr_mu, M)

@@ -172,6 +172,7 @@ function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
   s.curr_U *= spdiagm(s.d_stack[:, idx])
   s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], T = decompose_udt(s.curr_U)
   s.t_stack[:, :, idx + 1] =  T * s.t_stack[:, :, idx]
+  nothing
 end
 
 
@@ -190,6 +191,7 @@ function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
   s.curr_U *=  spdiagm(s.d_stack[:, idx + 1])
   s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(s.curr_U)
   s.t_stack[:, :, idx] = T * s.t_stack[:, :, idx + 1]
+  nothing
 end
 
 
@@ -201,6 +203,7 @@ function wrap_greens!(mc::AbstractDQMC, gf::Matrix, curr_slice::Int,direction::I
     multiply_slice_matrix_left!(mc, curr_slice, gf)
     multiply_slice_matrix_inv_right!(mc, curr_slice, gf)
   end
+  nothing
 end
 
 

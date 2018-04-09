@@ -1,6 +1,6 @@
 isdefined(:input) || error("Variable 'input' != path to input.in.xml")
 
-using Revise
+# using Revise
 include("dqmc_framework.jl")
 using BenchmarkTools
 
@@ -10,3 +10,7 @@ xml2parameters!(p, input)
 
 mc = DQMC(p)
 init!(mc)
+
+const l = mc.l;
+const s = mc.s;
+nothing
