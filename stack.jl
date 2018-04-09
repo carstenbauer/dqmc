@@ -51,6 +51,15 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   eye_full::Matrix{Float64}
   ones_vec::Vector{Float64}
 
+  A::Matrix{G}
+  B::Matrix{G}
+  AB::Matrix{G}
+  eVop1eVop2::Matrix{G}
+  Mtmp::Matrix{G}
+  Mtmp2::Matrix{G}
+  tmp::Matrix{G}
+
+
   Stack{G}() where G = new{G}()
 end
 
@@ -110,6 +119,20 @@ function initialize_stack(mc::AbstractDQMC)
   s.eV = zeros(G, flv*N, flv*N)
   s.eVop1 = zeros(G, flv, flv)
   s.eVop2 = zeros(G, flv, flv)
+
+  # non-allocating multiplications
+  ## update_greens
+  s.A = s.greens[:,1:N:end]
+  s.B = zeros(G, size(s.eye_flv))
+  s.AB = s.A * s.B
+  ## calculate_detratio
+  s.Mtmp = s.eye_flv - s.greens[1:N:end,1:N:end]
+  s.delta_i = zeros(G, size(s.eye_flv))
+  s.Mtmp2 = zeros(G, size(s.eye_flv))
+  s.eVop1eVop2 = zeros(G, size(s.eye_flv))
+  ## multiply_slice_matrix
+  s.tmp = zeros(G, flv*N, flv*N)
+
   nothing
 end
 

@@ -93,17 +93,41 @@ function multiply_slice_matrix_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::
   nothing
 end
 
+function multiply_slice_matrix_left2!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+  const l = mc.l
+  const s = mc.s
+
+  interaction_matrix_exp!(mc,slice,1.,s.eV)
+  A_mul_B!(s.tmp, s.eV, M)
+  M .= s.tmp
+  A_mul_B!(s.tmp, l.chkr_mu, M)
+  M .= s.tmp
+
+  A_mul_B!(s.tmp, l.chkr_hop_half[2], M)
+  M .= s.tmp
+  A_mul_B!(s.tmp, l.chkr_hop[1], M)
+  M .= s.tmp
+  A_mul_B!(s.tmp, l.chkr_hop_half[2], M)
+  M .= s.tmp
+  nothing
+end
+
 function multiply_slice_matrix_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const s = mc.s
 
   interaction_matrix_exp!(mc,slice,1.,s.eV)
-  M[:] = M * l.chkr_hop_half[2]
-  M[:] = M * l.chkr_hop[1]
-  M[:] = M * l.chkr_hop_half[2]
+  A_mul_B!(s.tmp, M, l.chkr_hop_half[2])
+  M .= s.tmp
+  A_mul_B!(s.tmp, M, l.chkr_hop[1])
+  M .= s.tmp
+  A_mul_B!(s.tmp, M, l.chkr_hop_half[2])
+  M .= s.tmp
 
-  M[:] = M * l.chkr_mu
-  M[:] = M * s.eV
+  A_mul_B!(s.tmp, M, l.chkr_mu)
+  M .= s.tmp
+  A_mul_B!(s.tmp, M, s.eV)
+  M .= s.tmp
   nothing
 end
 
@@ -112,12 +136,17 @@ function multiply_slice_matrix_inv_left!(mc::AbstractDQMC{CBAssaad}, slice::Int,
   const s = mc.s
   
   interaction_matrix_exp!(mc, slice, -1., s.eV)
-  M[:] = l.chkr_hop_half_inv[2] * M
-  M[:] = l.chkr_hop_inv[1] * M
-  M[:] = l.chkr_hop_half_inv[2] * M
+  A_mul_B!(s.tmp, l.chkr_hop_half_inv[2], M)
+  M .= s.tmp
+  A_mul_B!(s.tmp, l.chkr_hop_inv[1], M)
+  M .= s.tmp
+  A_mul_B!(s.tmp, l.chkr_hop_half_inv[2], M)
+  M .= s.tmp
 
-  M[:] = l.chkr_mu_inv * M
-  M[:] = s.eV * M
+  A_mul_B!(s.tmp, l.chkr_mu_inv, M)
+  M .= s.tmp
+  A_mul_B!(s.tmp, s.eV, M)
+  M .= s.tmp
   nothing
 end
 
@@ -126,12 +155,17 @@ function multiply_slice_matrix_inv_right!(mc::AbstractDQMC{CBAssaad}, slice::Int
   const s = mc.s
   
   interaction_matrix_exp!(mc, slice, -1., s.eV)
-  M[:] = M * s.eV
-  M[:] = M * l.chkr_mu_inv
+  A_mul_B!(s.tmp, M, s.eV)
+  M .= s.tmp
+  A_mul_B!(s.tmp, M, l.chkr_mu_inv)
+  M .= s.tmp
 
-  M[:] = M * l.chkr_hop_half_inv[2]
-  M[:] = M * l.chkr_hop_inv[1]
-  M[:] = M * l.chkr_hop_half_inv[2]
+  A_mul_B!(s.tmp, M, l.chkr_hop_half_inv[2])
+  M .= s.tmp
+  A_mul_B!(s.tmp, M, l.chkr_hop_inv[1])
+  M .= s.tmp
+  A_mul_B!(s.tmp, M, l.chkr_hop_half_inv[2])
+  M .= s.tmp
   nothing
 end
 
@@ -140,13 +174,18 @@ function multiply_daggered_slice_matrix_left!(mc::AbstractDQMC{CBAssaad}, slice:
   const s = mc.s
   
   interaction_matrix_exp!(mc, slice, 1., s.eV)
-  M[:] = l.chkr_hop_half_dagger[2] * M
-  M[:] = l.chkr_hop_dagger[1] * M
-  M[:] = l.chkr_hop_half_dagger[2] * M
+  A_mul_B!(s.tmp, l.chkr_hop_half_dagger[2], M)
+  M .= s.tmp
+  A_mul_B!(s.tmp, l.chkr_hop_dagger[1], M)
+  M .= s.tmp
+  A_mul_B!(s.tmp, l.chkr_hop_half_dagger[2], M)
+  M .= s.tmp
 
   # s.eV == ctranspose(s.eV) and l.chkr_mu == ctranspose(s.chkr_mu)
-  M[:] = l.chkr_mu * M
-  M[:] = s.eV * M
+  A_mul_B!(s.tmp, l.chkr_mu, M)
+  M .= s.tmp
+  A_mul_B!(s.tmp, s.eV, M)
+  M .= s.tmp
   nothing
 end
 

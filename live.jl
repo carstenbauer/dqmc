@@ -1,6 +1,8 @@
 isdefined(:input) || error("Variable 'input' != path to input.in.xml")
 
+using Revise
 include("dqmc_framework.jl")
+using BenchmarkTools
 
 p = Parameters()
 p.output_file = "live.out.h5.running"

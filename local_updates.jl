@@ -45,8 +45,11 @@ end
 
   interaction_matrix_exp_op!(mc,p.hsfield[:,i,s.current_slice],-1.,s.eVop1) #V1i
   interaction_matrix_exp_op!(mc,new_op,1.,s.eVop2) #V2i
-  s.delta_i = s.eVop1 * s.eVop2  - s.eye_flv
-  s.M = s.eye_flv + s.delta_i * (s.eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
+  A_mul_B!(s.eVop1eVop2, s.eVop1, s.eVop2)
+  s.delta_i .= s.eVop1eVop2 .- s.eye_flv
+  s.Mtmp .= s.eye_flv .- s.greens[i:l.sites:end,i:l.sites:end]
+  A_mul_B!(s.Mtmp2, s.delta_i, s.Mtmp)
+  s.M .= s.eye_flv .+ s.Mtmp2
   return det(s.M)
 end
 
@@ -55,19 +58,20 @@ end
   const s = mc.s
   const l = mc.l
 
-  A = s.greens[:,i:l.sites:end]
+  s.A = s.greens[:,i:l.sites:end]
   
   if p.opdim == 3
     @simd for k in 0:3
-        A[i+k*l.sites,k+1] -= 1.
+        s.A[i+k*l.sites,k+1] -= 1.
     end
   else
     @simd for k in 0:1
-        A[i+k*l.sites,k+1] -= 1.
+        s.A[i+k*l.sites,k+1] -= 1.
     end
   end
 
-  A *= inv(s.M)
-  B = s.delta_i * s.greens[i:l.sites:end,:]
-  s.greens .+= A * B
+  s.A *= inv(s.M)
+  A_mul_B!(s.B, s.delta_i, s.greens[i:l.sites:end,:])
+  A_mul_B!(s.AB, s.A, s.B)
+  s.greens .+= s.AB
 end
