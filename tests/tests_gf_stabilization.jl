@@ -7,7 +7,7 @@ using PyCall
 """
 Singular values stabilization
 """
-function plot_svs_of_slice_matrix_chain(s::Stack, p::Parameters, l::Lattice)
+function plot_svs_of_slice_matrix_chain(s::Stack, p::Params, l::Lattice)
   T = calculate_slice_matrix_chain_naive(s,p,l,1,p.slices)
   svs = T[2]
   fig = figure(figsize=(20,7))
@@ -48,7 +48,7 @@ end
 Safe_mult
 """
 # Direct "safe_mult" test
-function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Parameters, l::Lattice)
+function plot_lowest_sv_of_slice_matrix_chain_vs_safe_mult(p::Params, l::Lattice)
 
   svs = Vector{Float64}(50)
   for safe_mult in 1:50
@@ -78,7 +78,7 @@ end
 
 
 # p.safe_mult test (as part of stack logic)
-function test_gf_safe_mult(s::Stack, p::Parameters, l::Lattice)
+function test_gf_safe_mult(s::Stack, p::Params, l::Lattice)
   p.slices = 200
   p.safe_mult = p.slices
   p.hsfield = rand(3,l.sites,p.slices)
@@ -109,7 +109,7 @@ end
 """
 Time slice wrapping
 """
-function wrap_greens(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+function wrap_greens(p::Params, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
   if direction == -1
     A = slice_matrix_no_chkr(p, l, slice - 1, -1.)
     temp = A * gf
@@ -123,7 +123,7 @@ function wrap_greens(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},sl
   end
 end
 
-function wrap_greens2(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+function wrap_greens2(p::Params, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
   if direction == -1
     B = slice_matrix_no_chkr(p, l, slice - 1)
     temp = inv(B) * gf
@@ -150,7 +150,7 @@ end
 # Worked! Found mistake in slice_matrix_no_chkr in stack.jl
 
 
-function test_gf_wrapping(p::Parameters, l::Lattice)
+function test_gf_wrapping(p::Params, l::Lattice)
   slice = rand(3:p.slices-2)
   println("Slice: ", slice)
   # slice = 3
@@ -185,7 +185,7 @@ function test_gf_wrapping(p::Parameters, l::Lattice)
   nothing
 end
 
-function test_gf_wrapping_slice_dependency(p::Parameters, l::Lattice)
+function test_gf_wrapping_slice_dependency(p::Params, l::Lattice)
   for slice in [1; 2; 3; convert(Array{Int},floor.(linspace(4, p.slices-4, 10))); p.slices-3; p.slices-2; p.slices-1 ]
     println("Slice: ", slice)
     # slice = 3
@@ -206,7 +206,7 @@ function test_gf_wrapping_slice_dependency(p::Parameters, l::Lattice)
 end
 
 using PyPlot
-function plot_gf_wrapping_slice_dependency(p::Parameters, l::Lattice)
+function plot_gf_wrapping_slice_dependency(p::Params, l::Lattice)
   gmaxabs = Float64[]
   gmaxrel = Float64[]
   slices = [1; 2; 3; convert(Array{Int},floor.(linspace(4, p.slices-4, 5))); p.slices-3; p.slices-2; p.slices-1 ]
@@ -243,7 +243,7 @@ function plot_gf_wrapping_slice_dependency(p::Parameters, l::Lattice)
   nothing
 end
 
-function plot_gf_maxmeanabs_slice_dependency(p::Parameters, l::Lattice)
+function plot_gf_maxmeanabs_slice_dependency(p::Params, l::Lattice)
   gmaxabs = Float64[]
   gmeanabs = Float64[]
   slices = [1; 2; 3; convert(Array{Int},floor.(linspace(4, p.slices-4, 10))); p.slices-3; p.slices-2; p.slices-1 ]
@@ -276,7 +276,7 @@ function plot_gf_maxmeanabs_slice_dependency(p::Parameters, l::Lattice)
   nothing
 end
 
-function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
+function test_gf_wrapping_chkr(p::Params, l::Lattice)
   slice = rand(3:p.slices-2)
   # slice = 10
   gf = calculate_greens_qr_chkr(p,l,slice)
@@ -310,7 +310,7 @@ function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
   nothing
 end
 
-function test_gf_wrapping_chkr_naive(p::Parameters, l::Lattice)
+function test_gf_wrapping_chkr_naive(p::Params, l::Lattice)
   slice = rand(3:p.slices-2)
   # slice = 10
   gf = calculate_greens_qr_chkr(p,l,slice)

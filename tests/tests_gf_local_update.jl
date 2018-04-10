@@ -29,7 +29,7 @@ end
 """
 Green's function update after spatial lattice sweep
 """
-function delta_naive(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
+function delta_naive(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
   V1 = interaction_matrix_exp(p,l,s.current_slice,-1.0)
   bkp = copy(p.hsfield[:,i,s.current_slice])
   p.hsfield[:,i,s.current_slice] = new_op[:]
@@ -38,7 +38,7 @@ function delta_naive(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector
   return (V1 * V2 - eye(p.flv*l.sites,p.flv*l.sites))
 end
 
-function delta_i_naive(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
+function delta_i_naive(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
   return delta_naive(s,p,l,i,new_op)[i:l.sites:end,i:l.sites:end]
 end
 
@@ -63,7 +63,7 @@ function test_delta_i_consistency(s,p,l)
 end
 # Worked
 
-function test_local_update_gf(s::Stack, p::Parameters, l::Lattice)
+function test_local_update_gf(s::Stack, p::Params, l::Lattice)
   p.hsfield = rand(3,l.sites,p.slices)
   s.current_slice = rand(1:p.slices)
 
@@ -89,7 +89,7 @@ end
 # What about max rel dev (order 1)? Max abs dev around 1e-3 to 1e-2
 
 
-function delta_naive_full_no_chkr(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
+function delta_naive_full_no_chkr(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
   V1 = interaction_matrix_exp(p,l,s.current_slice,-1.0)
   bkp = copy(p.hsfield[:,i,s.current_slice])
   p.hsfield[:,i,s.current_slice] = new_op[:]
@@ -99,12 +99,12 @@ function delta_naive_full_no_chkr(s::Stack, p::Parameters, l::Lattice, i::Int, n
   return ( l.hopping_matrix_exp_inv * V1 * V2 * l.hopping_matrix_exp  - eye(p.flv*l.sites,p.flv*l.sites))
 end
 
-function delta_i_naive_full_no_chkr(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
+function delta_i_naive_full_no_chkr(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
   return delta_naive_full(s,p,l,i,new_op)[i:l.sites:end,i:l.sites:end]
 end
 
 
-function delta_naive_full(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
+function delta_naive_full(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
   Blinv = slice_matrix(p,l,s.current_slice,-1.)
   bkp = copy(p.hsfield[:,i,s.current_slice])
   p.hsfield[:,i,s.current_slice] = new_op[:]
@@ -114,7 +114,7 @@ function delta_naive_full(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::V
   return ( Blinv * Blprime - eye(p.flv*l.sites,p.flv*l.sites))
 end
 
-function delta_i_naive_full(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
+function delta_i_naive_full(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
   return delta_naive_full(s,p,l,i,new_op)[i:l.sites:end,i:l.sites:end]
 end
 
@@ -220,13 +220,13 @@ function plot_delta_full_error(s,p,l)
 end
 
 
-function calculate_detratio_full(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
+function calculate_detratio_full(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
   s.delta_i = delta_i_naive_full(s,p,l,i,new_op)
   s.M = eye_flv + s.delta_i * (eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
   return det(s.M)
 end
 
-function test_local_update_gf_full_delta(s::Stack, p::Parameters, l::Lattice)
+function test_local_update_gf_full_delta(s::Stack, p::Params, l::Lattice)
   p.hsfield = rand(3,l.sites,p.slices)
   s.current_slice = rand(1:p.slices)
 
@@ -250,21 +250,21 @@ function test_local_update_gf_full_delta(s::Stack, p::Parameters, l::Lattice)
   nothing
 end
 
-function update_greens_naive(s::Stack, p::Parameters, l::Lattice, i::Int, new_op::Vector{Float64})
+function update_greens_naive(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
   firstfactor = (eye_full - s.greens)
   secondfactor = (delta_naive_full(s,p,l,i,new_op) - s.greens)
   # return inv(eye_full + firstfactor * secondfactor) * s.greens
   return \(eye_full + firstfactor * secondfactor, s.greens)
 end
 
-function update_greens(s::Stack, p::Parameters, l::Lattice, i::Int)
+function update_greens(s::Stack, p::Params, l::Lattice, i::Int)
   # first_term = (s.greens - eye_full)[:,i:l.sites:end] * inv(s.M)
   first_term = /((s.greens - eye_full)[:,i:l.sites:end], s.M)
   second_term = s.delta_i * s.greens[i:l.sites:end,:]
   return s.greens + first_term * second_term
 end
 
-function test_single_local_update_gf_naive(s::Stack, p::Parameters, l::Lattice)
+function test_single_local_update_gf_naive(s::Stack, p::Params, l::Lattice)
   p.hsfield = rand(3,l.sites,p.slices)
   s.current_slice = rand(1:p.slices)
   site = rand(1:l.sites)

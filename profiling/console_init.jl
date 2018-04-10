@@ -41,7 +41,7 @@ end
 
 
 ### PARAMETERS
-p = Parameters()
+p = Params()
 p.output_file = output_file
 xml2parameters!(p, input_xml)
 parameters2hdf5(p, p.output_file)

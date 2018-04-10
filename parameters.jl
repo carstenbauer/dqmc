@@ -1,7 +1,7 @@
 using FFTW # v.0.6 naming bug
 using Distributions
 
-mutable struct Parameters
+mutable struct Params
   lattice_file::String
   hoppings::String
   beta::Float64
@@ -42,7 +42,7 @@ mutable struct Parameters
 
   resume::Bool
 
-  function Parameters()
+  function Params()
     p = new()
     p.global_updates = true
     p.chkr = true
@@ -61,12 +61,12 @@ mutable struct Parameters
 end
 
 """
-    set_parameters(p::Parameters, params::Dict)
+    set_parameters(p::Params, params::Dict)
 
-params::Dict -> p::Parameters (mandatory and optional).
+params::Dict -> p::Params (mandatory and optional).
 Also triggers `deduce_remaining_parameters()` to e.g. calculate p.beta and set global DataTypes.
 """
-function set_parameters(p::Parameters, params::Dict)
+function set_parameters(p::Params, params::Dict)
   ### PARSE MANDATORY PARAMS
   if haskey(params, "WARMUP")
     p.thermalization = parse(Int, params["WARMUP"])/2
@@ -143,11 +143,11 @@ function set_parameters(p::Parameters, params::Dict)
 end
 
 """
-    deduce_remaining_parameters(p::Parameters)
+    deduce_remaining_parameters(p::Params)
     
 Assumes that `p` has been loaded from XML or HDF5 and sets remaining (dependent) fields in `p`.
 """
-function deduce_remaining_parameters(p::Parameters)
+function deduce_remaining_parameters(p::Params)
   p.beta = p.slices * p.delta_tau
   p.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
   p.hsfield = zeros(p.opdim, 1, p.slices) # just to initialize it somehow

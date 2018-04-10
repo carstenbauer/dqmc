@@ -111,7 +111,7 @@ close(f)
 
 ######### All set. Let's get going ##########
 
-p = Parameters()
+p = Params()
 #hdf52parameters!_old(p, output_file)
 hdf52parameters!(p, output_file)
 
@@ -136,7 +136,7 @@ initialize_stack(s, p, l)
 println("")
 dump(m)
 
-function Measure(m::Measurements, s::Stack, p::Parameters, l::Lattice, confs::Array{Float64, 4})
+function Measure(m::Measurements, s::Stack, p::Params, l::Lattice, confs::Array{Float64, 4})
 
   m.safe_mult = (m.safe_mult == -1) ? p.safe_mult : m.safe_mult
 

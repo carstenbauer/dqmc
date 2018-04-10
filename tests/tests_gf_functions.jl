@@ -3,7 +3,7 @@ Calculate slice matrix chain
 """
 # Calculate B(stop) ... B(start) naively (without stabilization)
 # Returns: tuple of result (matrix) and log singular values of the intermediate products
-function calculate_slice_matrix_chain_naive(s::Stack, p::Parameters, l::Lattice, start::Int, stop::Int)
+function calculate_slice_matrix_chain_naive(s::Stack, p::Params, l::Lattice, start::Int, stop::Int)
   assert(0 < start <= p.slices)
   assert(0 < stop <= p.slices)
   assert(start <= stop)
@@ -27,7 +27,7 @@ end
 
 # # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
 # # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
-# function calculate_slice_matrix_chain_udv(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+# function calculate_slice_matrix_chain_udv(p::Params, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
 #   # assert(0 < start <= p.slices)
 #   # assert(0 < stop <= p.slices)
 #   # assert(start <= stop)
@@ -54,7 +54,7 @@ end
 # end
 
 
-# function calculate_slice_matrix_chain_udv_chkr(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+# function calculate_slice_matrix_chain_udv_chkr(p::Params, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
 #   assert(0 < start <= p.slices)
 #   assert(0 < stop <= p.slices)
 #   assert(start <= stop)
@@ -81,7 +81,7 @@ end
 # end
 
 # # Calculate Ul, Dl, Tl =B(stop) ... B(start)
-# function calculate_slice_matrix_chain_qr(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+# function calculate_slice_matrix_chain_qr(p::Params, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
 #   assert(0 < start <= p.slices)
 #   assert(0 < stop <= p.slices)
 #   assert(start <= stop)
@@ -108,7 +108,7 @@ end
 # end
 
 # # Calculate (Ur, Dr, Tr)' = B(stop) ... B(start)  => Ur,Dr, Tr = B(start)' ... B(stop)'
-# function calculate_slice_matrix_chain_qr_dagger(p::Parameters, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
+# function calculate_slice_matrix_chain_qr_dagger(p::Params, l::Lattice, start::Int, stop::Int, safe_mult::Int=1)
 #   assert(0 < start <= p.slices)
 #   assert(0 < stop <= p.slices)
 #   assert(start <= stop)
@@ -140,7 +140,7 @@ end
 # """
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) using
 # udv decompositions for (!)every slice matrix multiplication
-# function calculate_greens_udv(p::Parameters, l::Lattice, slice::Int)
+# function calculate_greens_udv(p::Params, l::Lattice, slice::Int)
 #   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
 #   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(p,l,slice,p.slices)
 
@@ -160,7 +160,7 @@ end
 #   return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
 # end
 
-# function calculate_greens_udv_chkr(p::Parameters, l::Lattice, slice::Int)
+# function calculate_greens_udv_chkr(p::Params, l::Lattice, slice::Int)
 #   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
 #   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv_chkr(p,l,slice,p.slices)
 
@@ -180,7 +180,7 @@ end
 #   return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
 # end
 
-# function calculate_greens_2udv(p::Parameters, l::Lattice, slice::Int)
+# function calculate_greens_2udv(p::Params, l::Lattice, slice::Int)
 #   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
 #   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(p,l,slice,p.slices)
 
@@ -209,7 +209,7 @@ end
 # # equivalent to version above with only one SVD decomp. up to max absdiff of ~1e-10
 
 
-# function calculate_greens_naive(p::Parameters, l::Lattice, slice::Int)
+# function calculate_greens_naive(p::Params, l::Lattice, slice::Int)
 #   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
 #   Br = calculate_slice_matrix_chain_naive(p,l,slice,p.slices)[1]
 
@@ -226,7 +226,7 @@ end
 # end
 
 
-# function calculate_greens_naive_udvinv(p::Parameters, l::Lattice, slice::Int)
+# function calculate_greens_naive_udvinv(p::Params, l::Lattice, slice::Int)
 #   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
 #   Br = calculate_slice_matrix_chain_naive(p,l,slice,p.slices)[1]
 #   Ur, Dr, Vtr = decompose_udv!(Br)
@@ -246,7 +246,7 @@ end
 #   return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
 # end
 
-# function calculate_greens_qr(p::Parameters, l::Lattice, slice::Int)
+# function calculate_greens_qr(p::Params, l::Lattice, slice::Int)
 #   # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
 #   Ur, Dr, Tr = calculate_slice_matrix_chain_qr_dagger(p,l,slice,p.slices)
 

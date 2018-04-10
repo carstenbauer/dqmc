@@ -1,14 +1,14 @@
 using HDF5
 
 """
-    parameters2hdf5(p::Parameters, filename)
+    parameters2hdf5(p::Params, filename)
     
 Save `p` to HDF5 file (e.g. `.out.h5`).
 """
-function parameters2hdf5(p::Parameters, filename::String)
+function parameters2hdf5(p::Params, filename::String)
   isfile(filename)?f = h5open(filename, "r+"):f = h5open(filename, "w")
-  for i in 1:nfields(Parameters)
-    field = fieldname(Parameters, i)
+  for i in 1:nfields(Params)
+    field = fieldname(Params, i)
     field_name = string(field)
     field_value = getfield(p, field)
     field_type = typeof(field_value)
@@ -38,12 +38,12 @@ function parameters2hdf5(p::Parameters, filename::String)
 end
 
 """
-    hdf52parameters!(p::Parameters, input_h5)
+    hdf52parameters!(p::Params, input_h5)
     
 Load `p` from HDF5 file (e.g. `.out.h5`).
 """
-function hdf52parameters!(p::Parameters, input_h5::String)
-  fields = fieldnames(Parameters)
+function hdf52parameters!(p::Params, input_h5::String)
+  fields = fieldnames(Params)
   HDF5.h5open(input_h5, "r") do f
     try
       for field_name in names(f["params"])
@@ -60,11 +60,11 @@ function hdf52parameters!(p::Parameters, input_h5::String)
           setfield!(p, field, value)
 
         else
-          warn("HDF5 contains \"params/$(field_name)\" which is not a field of type Parameters! Maybe old file? Try `hdf52parameters!_old`.")
+          warn("HDF5 contains \"params/$(field_name)\" which is not a field of type Params! Maybe old file? Try `hdf52parameters!_old`.")
         end
       end
     catch e
-      error("Error in loading Parameters object from HDF5: ", e)
+      error("Error in loading Params object from HDF5: ", e)
     end
   end
 
@@ -75,13 +75,13 @@ end
 
 
 """
-    hdf52parameters!_old(p::Parameters, filename)
+    hdf52parameters!_old(p::Params, filename)
     
 Deprecated version of `hdf52parameters!`. Use it only for old data (created before 28.11.2017).
 """
-function hdf52parameters!_old(p::Parameters, input_h5::String)
+function hdf52parameters!_old(p::Params, input_h5::String)
   warn("DEPRECATED: Only use for old data (where we dumped `params::Dict`). Should now use `hdf52parameters!` instead.")
-  # READ Parameters from h5 file
+  # READ Params from h5 file
   if input_h5[end-2:end] == "jld"
     f = jldopen(input_h5, "r")
   else

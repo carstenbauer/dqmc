@@ -49,13 +49,13 @@ mutable struct Analysis
 end
 
 mutable struct DQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number} <: AbstractDQMC{C, GreensEltype, HoppingEltype}
-  p::Parameters
+  p::Params
   l::Lattice{HoppingEltype}
   s::Stack{GreensEltype}
   a::Analysis
 end
 
-DQMC(p::Parameters) = begin
+DQMC(p::Params) = begin
   CB = CBFalse
   p.chkr && (CB = iseven(p.L) ? CBAssaad : CBGeneric)
 

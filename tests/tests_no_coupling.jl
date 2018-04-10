@@ -3,7 +3,7 @@ include("tests_gf_functions.jl")
 """
 Free fermion system tests
 """
-function test_interactions_are_zero(s::Stack,p::Parameters,l::Lattice)
+function test_interactions_are_zero(s::Stack,p::Params,l::Lattice)
     assert(p.lambda == 0)
     eV = interaction_matrix_exp(p,l,1)
     if eV != eye(eltype(eV),size(eV)...)
@@ -21,7 +21,7 @@ function test_interactions_are_zero(s::Stack,p::Parameters,l::Lattice)
 end
 
 
-function test_local_updates_dont_change_gf(s::Stack,p::Parameters,l::Lattice)
+function test_local_updates_dont_change_gf(s::Stack,p::Params,l::Lattice)
     assert(p.lambda == 0)
     g = copy(s.greens)
     local_updates(s,p,l)
@@ -32,7 +32,7 @@ function test_local_updates_dont_change_gf(s::Stack,p::Parameters,l::Lattice)
 end
 
 
-function test_gf_is_correct(s::Stack,p::Parameters,l::Lattice)
+function test_gf_is_correct(s::Stack,p::Params,l::Lattice)
     assert(p.lambda == 0)
 
     initialize_stack(s,p,l)

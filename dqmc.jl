@@ -43,7 +43,7 @@ end
 # -------------------------------------------------------
 #      Parse input parameters + check for resuming
 # -------------------------------------------------------
-p = Parameters()
+p = Params()
 p.output_file = output_file
 xml2parameters!(p, input_xml)
 

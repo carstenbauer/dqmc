@@ -4,7 +4,7 @@ using PyPlot
 """
 Slice matrix
 """
-function plot_slice_matrix_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
+function plot_slice_matrix_chkr_error_delta_tau_scaling(p::Params, l::Lattice)
 
   delta_tau_prev = p.delta_tau
   delta_tau_range = [.1, .01, .001, .0001]
@@ -40,7 +40,7 @@ function plot_slice_matrix_chkr_error_delta_tau_scaling(p::Parameters, l::Lattic
 end
 # plot_slice_matrix_chkr_error_delta_tau_scaling(p,l)
 
-function test_slice_matrix_chkr_speed(p::Parameters, l::Lattice, samples::Int=100)
+function test_slice_matrix_chkr_speed(p::Params, l::Lattice, samples::Int=100)
 
   println("Sample size: ", samples)
   t = 0.
@@ -67,7 +67,7 @@ end
 """
 Green's function
 """
-function plot_greens_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
+function plot_greens_chkr_error_delta_tau_scaling(p::Params, l::Lattice)
 
   delta_tau_prev = p.delta_tau
   delta_tau_range = [.1, .01, .001, .0001]
@@ -115,7 +115,7 @@ function plot_greens_chkr_error_delta_tau_scaling(p::Parameters, l::Lattice)
 end
 
 
-function test_greens_chkr_speed(p::Parameters, l::Lattice, samples::Int=10)
+function test_greens_chkr_speed(p::Params, l::Lattice, samples::Int=10)
 
   println("Sample size: ", samples)
   t = 0.
@@ -141,7 +141,7 @@ end
 """
 Time slice wrapping
 """
-function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int,n::Int)
+function wrap_greens_chkr(p::Params, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int,n::Int)
   current_slice = slice
   g = gf
   assert(abs.(direction) == 1)
@@ -154,7 +154,7 @@ function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},
   return g
 end
 
-function test_gf_wrapping_chkr(p::Parameters, l::Lattice)
+function test_gf_wrapping_chkr(p::Params, l::Lattice)
   slice = rand(10:p.slices)
   gf = calculate_greens_udv_chkr(p,l,slice)
 

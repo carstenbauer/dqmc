@@ -2,15 +2,15 @@ using LightXML
 using Iterators
 
 """
-    xml2parameters!(p::Parameters, input_xml)
+    xml2parameters!(p::Params, input_xml)
     
 Load `p` from XML file (e.g. `.in.xml`).
 """
-function xml2parameters!(p::Parameters, input_xml::String)
+function xml2parameters!(p::Params, input_xml::String)
   # READ INPUT XML
   params = Dict{Any, Any}()
   try
-    params = xml2params(input_xml)
+    params = xml2dict(input_xml)
 
   catch e
     println(e)
@@ -21,7 +21,7 @@ function xml2parameters!(p::Parameters, input_xml::String)
   params
 end
 
-function xml2params(fname::String)
+function xml2dict(fname::String)
   params = Dict{Any, Any}()
   xdoc = parse_file(fname)
   xroot = LightXML.root(xdoc)

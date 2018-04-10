@@ -48,7 +48,7 @@ catch e
 end
 
 
-p = Parameters()
+p = Params()
 p.thermalization = parse(Int, params["THERMALIZATION"])
 p.measurements = parse(Int, params["MEASUREMENTS"])
 p.slices = parse(Int, params["SLICES"])

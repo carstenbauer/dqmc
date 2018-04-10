@@ -24,7 +24,7 @@ close(f)
 
 
 ### PARAMETERS
-p = Parameters()
+p = Params()
 p.output_file = output_file
 params = parse_inputxml(p, input_xml)
 
@@ -78,7 +78,7 @@ a = Analysis()
 
 preallocate_arrays(p,l.sites)
 
-function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
+function MC_run(s::Stack, p::Params, l::Lattice, a::Analysis)
     
     # Init hsfield
     println("\nInitializing HS field")
@@ -131,7 +131,7 @@ function MC_run(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 end
 
 
-function MC_thermalize(s::Stack, p::Parameters, l::Lattice, a::Analysis)
+function MC_thermalize(s::Stack, p::Params, l::Lattice, a::Analysis)
 
     # stack init and test
     initialize_stack(s, p, l)
@@ -193,7 +193,7 @@ function MC_thermalize(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 end
 
 
-function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
+function MC_measure(s::Stack, p::Params, l::Lattice, a::Analysis)
 
     initialize_stack(s, p, l)
     println("Renewing stack")
@@ -281,7 +281,7 @@ function MC_measure(s::Stack, p::Parameters, l::Lattice, a::Analysis)
 end
 
 
-function MC_update(s::Stack, p::Parameters, l::Lattice, i::Int, a::Analysis)
+function MC_update(s::Stack, p::Params, l::Lattice, i::Int, a::Analysis)
 
     propagate(s, p, l)
 

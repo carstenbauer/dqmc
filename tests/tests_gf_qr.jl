@@ -1,4 +1,4 @@
-function test_slice_matrix_chain_svd_vs_qr(p::Parameters, l::Lattice)
+function test_slice_matrix_chain_svd_vs_qr(p::Params, l::Lattice)
   start = rand(1:Int(floor(p.slices/2)))
   stop = rand(start+1:p.slices)
   println("B(",stop,",",start,")")
@@ -26,7 +26,7 @@ end
 # Worked
 
 
-function test_greens_svd_vs_qr(p::Parameters, l::Lattice, slice::Int=-1)
+function test_greens_svd_vs_qr(p::Params, l::Lattice, slice::Int=-1)
   if slice == -1
     slice = rand(1:p.slices-1)
   end
@@ -54,7 +54,7 @@ end
 
 
 using PyPlot
-function plot_svs_of_slice_matrix_chain_qr(p::Parameters, l::Lattice)
+function plot_svs_of_slice_matrix_chain_qr(p::Params, l::Lattice)
   T = calculate_slice_matrix_chain_naive(p,l,1,p.slices)
   svs = T[2]
   fig = figure(figsize=(20,7))

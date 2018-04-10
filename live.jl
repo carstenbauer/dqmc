@@ -4,7 +4,7 @@ isdefined(:input) || error("Variable 'input' != path to input.in.xml")
 include("dqmc_framework.jl")
 using BenchmarkTools
 
-p = Parameters()
+p = Params()
 p.output_file = "live.out.h5.running"
 xml2parameters!(p, input)
 

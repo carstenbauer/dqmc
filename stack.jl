@@ -124,7 +124,7 @@ function initialize_stack(mc::AbstractDQMC)
   # non-allocating multiplications
   ## update_greens
   s.A = s.greens[:,1:N:end]
-  s.B = zeros(G, size(s.eye_flv))
+  s.B = s.greens[1:N:end,:]
   s.AB = s.A * s.B
   ## calculate_detratio
   s.Mtmp = s.eye_flv - s.greens[1:N:end,1:N:end]

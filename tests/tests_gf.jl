@@ -3,7 +3,7 @@ include("tests_gf_functions.jl")
 """
 Inversion in greens calculation
 """
-function test_greens_udv_vs_naive_vs_naiveudvinv(p::Parameters, l::Lattice)
+function test_greens_udv_vs_naive_vs_naiveudvinv(p::Params, l::Lattice)
   # slice = rand(1:p.slices)
   slice = 15
   gfudv = calculate_greens_udv(p,l,slice)
@@ -24,7 +24,7 @@ using PyPlot
 """
 Stack logic consistency
 """
-function plot_gf_error_propagation(s::Stack, p::Parameters, l::Lattice)
+function plot_gf_error_propagation(s::Stack, p::Params, l::Lattice)
   initialize_stack(s,p,l)
   build_stack(s,p,l)
   propagate(s,p,l)
@@ -92,7 +92,7 @@ end
 """
 Green's function singular values (full determinant calculation)
 """
-function calculate_greens_and_det_and_svs_udv(p::Parameters, l::Lattice, slice::Int)
+function calculate_greens_and_det_and_svs_udv(p::Params, l::Lattice, slice::Int)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(p,l,slice,p.slices)
 
@@ -110,7 +110,7 @@ function calculate_greens_and_det_and_svs_udv(p::Parameters, l::Lattice, slice::
 end
 
 
-function test_greens_det(s::Stack, p::Parameters, l::Lattice)
+function test_greens_det(s::Stack, p::Params, l::Lattice)
   greens, ldet = calculate_greens_and_logdet_chkr(p,l,s.current_slice)
   # greens, ldet = measure_greens_and_logdet(p,l)
   greens_udv, ldet_udv = calculate_greens_and_logdet_chkr_udv(p,l,s.current_slice)
@@ -125,7 +125,7 @@ function test_greens_det(s::Stack, p::Parameters, l::Lattice)
 end
 
 
-function test_calculate_greens_symmetry(s::Stack, p::Parameters, l::Lattice)
+function test_calculate_greens_symmetry(s::Stack, p::Params, l::Lattice)
   U, D, Vt = decompose_udv!(rand(Complex128, p.flv*l.sites, p.flv*l.sites))
 
   # U,D,Vt right = eye

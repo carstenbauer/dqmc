@@ -44,7 +44,7 @@ mutable struct Stack
 end
 
 
-function initialize_stack(s::Stack, p::Parameters, l::Lattice)
+function initialize_stack(s::Stack, p::Params, l::Lattice)
   s.n_elements = convert(Int, p.slices / p.safe_mult) + 1
 
   s.ranges = UnitRange[]
@@ -91,7 +91,7 @@ function initialize_stack(s::Stack, p::Parameters, l::Lattice)
 end
 
 
-function build_stack(s::Stack, p::Parameters, l::Lattice)
+function build_stack(s::Stack, p::Params, l::Lattice)
   s.u_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
   s.d_stack[:, 1] = ones(p.flv*l.sites)
   s.vt_stack[:, :, 1] = eye(Complex{Float64}, p.flv*l.sites, p.flv*l.sites)
@@ -110,7 +110,7 @@ end
 """
 Updates stack[idx+1] based on stack[idx]
 """
-function add_slice_sequence_left(s::Stack, p::Parameters, l::Lattice, idx::Int)
+function add_slice_sequence_left(s::Stack, p::Params, l::Lattice, idx::Int)
   curr_U = copy(s.u_stack[:, :, idx])
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
@@ -127,7 +127,7 @@ end
 """
 Updates stack[idx] based on stack[idx+1]
 """
-function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
+function add_slice_sequence_right(s::Stack, p::Params, l::Lattice, idx::Int)
   curr_Vt = copy(s.vt_stack[:, :, idx + 1])
 
   for slice in reverse(s.ranges[idx])
@@ -140,7 +140,7 @@ function add_slice_sequence_right(s::Stack, p::Parameters, l::Lattice, idx::Int)
 end
 
 # Beff(slice) = exp(−1/2∆τT)exp(−1/2∆τT)exp(−∆τV(slice))
-function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Float64=1.)
+function slice_matrix_no_chkr(p::Params, l::Lattice, slice::Int, power::Float64=1.)
   if power > 0
     return l.hopping_matrix_exp * l.hopping_matrix_exp * interaction_matrix_exp(p, l, slice, power)
   else
@@ -149,7 +149,7 @@ function slice_matrix_no_chkr(p::Parameters, l::Lattice, slice::Int, power::Floa
 end
 
 
-function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2}, curr_slice::Int,direction::Int)
+function wrap_greens_chkr!(p::Params, l::Lattice, gf::Array{Complex{Float64},2}, curr_slice::Int,direction::Int)
   if direction == -1
     multiply_slice_matrix_inv_left!(p, l, curr_slice - 1, gf)
     multiply_slice_matrix_right!(p, l, curr_slice - 1, gf)
@@ -159,14 +159,14 @@ function wrap_greens_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float64}
   end
 end
 
-function wrap_greens_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+function wrap_greens_chkr(p::Params, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
   temp = copy(gf)
   wrap_greens_chkr!(p, l, temp, slice, direction)
   return temp
 end
 
 
-function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2}, curr_slice::Int,direction::Int)
+function wrap_greens_no_chkr!(p::Params, l::Lattice, gf::Array{Complex{Float64},2}, curr_slice::Int,direction::Int)
   if direction == -1
     gf[:] = slice_matrix_no_chkr(p, l, curr_slice - 1, -1.) * gf
     gf[:] = gf * slice_matrix_no_chkr(p, l, curr_slice - 1, 1.)
@@ -176,7 +176,7 @@ function wrap_greens_no_chkr!(p::Parameters, l::Lattice, gf::Array{Complex{Float
   end
 end
 
-function wrap_greens_no_chkr(p::Parameters, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
+function wrap_greens_no_chkr(p::Params, l::Lattice, gf::Array{Complex{Float64},2},slice::Int,direction::Int)
   temp = copy(gf)
   wrap_greens_no_chkr!(p, l, temp, slice, direction)
   return temp
@@ -186,7 +186,7 @@ end
 """
 Calculates G(slice) using s.Ur,s.Dr,s.Vtr=B(M) ... B(slice) and s.Ul,s.Dl,s.Vtl=B(slice-1) ... B(1)
 """
-function calculate_greens(s::Stack, p::Parameters, l::Lattice)
+function calculate_greens(s::Stack, p::Params, l::Lattice)
   tmp = s.Vtl * s.Ur
   inner = ctranspose(s.Vtr * s.Ul) + spdiagm(s.Dl) * tmp * spdiagm(s.Dr)
   s.U, s.D, s.Vt = decompose_udv!(inner)
@@ -198,7 +198,7 @@ end
 ################################################################################
 # Propagation
 ################################################################################
-function propagate(s::Stack, p::Parameters, l::Lattice)
+function propagate(s::Stack, p::Params, l::Lattice)
   if s.direction == 1
     if mod(s.current_slice, p.safe_mult) == 0
       s.current_slice +=1 # slice we are going to
