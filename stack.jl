@@ -59,6 +59,7 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   Mtmp2::Matrix{G}
   tmp::Matrix{G}
   Bl::Matrix{G}
+  tmp2::Matrix{G}
 
 
   Stack{G}() where G = new{G}()
@@ -134,6 +135,8 @@ function initialize_stack(mc::AbstractDQMC)
   ## multiply_slice_matrix
   s.tmp = zeros(G, flv*N, flv*N)
   s.Bl = zeros(G, flv*N, flv*N)
+  ## calculate_greens
+  s.tmp2 = zeros(G, flv*N, flv*N)
 
   nothing
 end
@@ -173,7 +176,7 @@ function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
 
   s.curr_U *= spdiagm(s.d_stack[:, idx])
   s.u_stack[:, :, idx + 1], s.d_stack[:, idx + 1], T = decompose_udt(s.curr_U)
-  s.t_stack[:, :, idx + 1] =  T * s.t_stack[:, :, idx]
+  @views A_mul_B!(s.t_stack[:, :, idx + 1],  T, s.t_stack[:, :, idx])
   nothing
 end
 
@@ -192,7 +195,7 @@ function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
 
   s.curr_U *=  spdiagm(s.d_stack[:, idx + 1])
   s.u_stack[:, :, idx], s.d_stack[:, idx], T = decompose_udt(s.curr_U)
-  s.t_stack[:, :, idx] = T * s.t_stack[:, :, idx + 1]
+  @views A_mul_B!(s.t_stack[:, :, idx], T, s.t_stack[:, :, idx + 1])
   nothing
 end
 
@@ -221,21 +224,54 @@ Calculates G(slice) using s.Ur,s.Dr,s.Tr=B(slice)' ... B(M)' and s.Ul,s.Dl,s.Tl=
 """
 function calculate_greens(mc::AbstractDQMC)
   const s = mc.s
+  const tmp = mc.s.tmp
+  const tmp2 = mc.s.tmp2
 
-  tmp = s.Tl * ctranspose(s.Tr)
-  s.U, s.D, s.T = decompose_udt(spdiagm(s.Dl) * tmp * spdiagm(s.Dr))
-  s.U = s.Ul * s.U
-  s.T *= ctranspose(s.Ur)
+  A_mul_Bc!(tmp, s.Tl, s.Tr)
 
-  s.u, s.d, s.t = decompose_udt(ctranspose(s.U) * inv(s.T) + spdiagm(s.D))
+  A_mul_B!(tmp2, tmp, spdiagm(s.Dr))
+  A_mul_B!(tmp, spdiagm(s.Dl), tmp2)
+  s.U, s.D, s.T = decompose_udt(tmp)
 
-  s.T = inv(s.t * s.T)
-  s.U *= s.u
-  s.U = ctranspose(s.U)
-  s.d = 1./s.d
+  A_mul_B!(tmp, s.Ul, s.U)
+  s.U .= tmp
 
-  s.greens = s.T * spdiagm(s.d) * s.U
+  A_mul_Bc!(tmp2, s.T, s.Ur)
+  s.T .= tmp2
+
+  Ac_mul_B!(tmp, s.U, inv(s.T))
+  tmp[diagind(tmp)] .+= s.D
+  s.u, s.d, s.t = decompose_udt(tmp)
+
+  A_mul_B!(tmp, s.t, s.T)
+  s.T = inv(tmp)
+  A_mul_B!(tmp, s.U, s.u)
+  s.U = ctranspose(tmp)
+  s.d .= 1./s.d
+
+  A_mul_B!(tmp2, spdiagm(s.d), s.U)
+  A_mul_B!(s.greens, s.T, tmp)
+  nothing
 end
+
+# function calculate_greens_old(mc::AbstractDQMC)
+#   const s = mc.s
+
+#   tmp = s.Tl * ctranspose(s.Tr)
+#   s.U, s.D, s.T = decompose_udt(spdiagm(s.Dl) * tmp * spdiagm(s.Dr))
+#   s.U = s.Ul * s.U
+#   s.T *= ctranspose(s.Ur)
+
+#   s.u, s.d, s.t = decompose_udt(ctranspose(s.U) * inv(s.T) + spdiagm(s.D))
+
+#   s.T = inv(s.t * s.T)
+#   s.U *= s.u
+#   s.U = ctranspose(s.U)
+#   s.d = 1./s.d
+
+#   s.greens = s.T * spdiagm(s.d) * s.U
+#   nothing
+# end
 
 
 """
