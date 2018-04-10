@@ -58,6 +58,7 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   Mtmp::Matrix{G}
   Mtmp2::Matrix{G}
   tmp::Matrix{G}
+  Bl::Matrix{G}
 
 
   Stack{G}() where G = new{G}()
@@ -132,6 +133,7 @@ function initialize_stack(mc::AbstractDQMC)
   s.eVop1eVop2 = zeros(G, size(s.eye_flv))
   ## multiply_slice_matrix
   s.tmp = zeros(G, flv*N, flv*N)
+  s.Bl = zeros(G, flv*N, flv*N)
 
   nothing
 end

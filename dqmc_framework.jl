@@ -50,7 +50,7 @@ end
 
 mutable struct DQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number} <: AbstractDQMC{C, GreensEltype, HoppingEltype}
   p::Parameters
-  l::Lattice
+  l::Lattice{HoppingEltype}
   s::Stack{GreensEltype}
   a::Analysis
 end

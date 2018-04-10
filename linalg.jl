@@ -42,3 +42,17 @@ function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
   U, D, T = decompose_udt(mat)
   return Ul*U, D, T*Tr
 end
+
+# See https://discourse.julialang.org/t/asymmetric-speed-of-in-place-sparse-dense-matrix-product/10256/3
+import Base.A_mul_B!
+function Base.A_mul_B!(Y::StridedMatrix{TY}, X::StridedMatrix{TX}, A::SparseMatrixCSC{TvA,TiA}) where {TY,TX,TvA,TiA}
+    mX, nX = size(X)
+    nX == A.m || throw(DimensionMismatch())
+    fill!(Y, 0) # can't assume that Y is initialized with zeros
+    rowval = A.rowval
+    nzval = A.nzval
+    @inbounds for multivec_row=1:mX, col = 1:A.n, k=A.colptr[col]:(A.colptr[col+1]-1)
+        Y[multivec_row, col] += X[multivec_row, rowval[k]] * nzval[k]
+    end
+    Y
+end
