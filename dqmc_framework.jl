@@ -243,7 +243,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
         add_element(configurations, p.hsfield)
         add_element(greens, s.greens)
         
-        effective_greens2greens!(mc, greens.timeseries[:,:,greens.count])
+        @views effective_greens2greens!(mc, greens.timeseries[:,:,greens.count])
 
         # compare(greens.timeseries[:,:,greens.count], measure_greens_and_logdet(s, p, l, p.safe_mult)[1])
 
