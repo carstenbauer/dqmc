@@ -78,6 +78,7 @@ function calculate_slice_matrix_chain_udv(mc::AbstractDQMC, start::Int, stop::In
       multiply_slice_matrix_left!(mc,k,U)
       U *= spdiagm(D)
       U, D, Vtnew = decompose_udv!(U)
+      # not yet in-place
       Vt =  Vtnew * Vt
       svs[:,svc] = log.(D)
       svc += 1
@@ -133,16 +134,16 @@ function calculate_slice_matrix_chain_qr(mc::AbstractDQMC, start::Int, stop::Int
   U = eye(G, flv*N, flv*N)
   D = ones(Float64, flv*N)
   T = eye(G, flv*N, flv*N)
-  Tnew = eye(G, flv*N, flv*N)
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
   for k in start:stop
     if mod(k,safe_mult) == 0
       multiply_slice_matrix_left!(mc,k,U)
-      U *= spdiagm(D)
-      U, D, Tnew = decompose_udt(U)
-      T =  Tnew * T
+      scale!(U, D)
+      U, Tnew = decompose_udt!(U, D)
+      A_mul_B!(mc.s.tmp, Tnew, T)
+      T .=  mc.s.tmp
       svs[:,svc] = log.(D)
       svc += 1
     else
@@ -165,16 +166,16 @@ function calculate_slice_matrix_chain_qr_dagger(mc::AbstractDQMC, start::Int, st
   U = eye(G, flv*N, flv*N)
   D = ones(Float64, flv*N)
   T = eye(G, flv*N, flv*N)
-  Tnew = eye(G, flv*N, flv*N)
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
   for k in reverse(start:stop)
     if mod(k,safe_mult) == 0
       multiply_daggered_slice_matrix_left!(mc,k,U)
-      U *= spdiagm(D)
-      U, D, Tnew = decompose_udt(U)
-      T =  Tnew * T
+      scale!(U, D)
+      U, Tnew = decompose_udt!(U, D)
+      A_mul_B!(mc.s.tmp, Tnew, T)
+      T .=  mc.s.tmp
       svs[:,svc] = log.(D)
       svc += 1
     else
@@ -202,23 +203,35 @@ function calculate_greens_and_logdet(mc::AbstractDQMC, slice::Int, safe_mult::In
     Tl = eye(G, flv*N)
   end
 
-  tmp = Tl * ctranspose(Tr)
-  U, D, T = decompose_udt(spdiagm(Dl) * tmp * spdiagm(Dr))
-  U = Ul * U
-  T *= ctranspose(Ur)
+  # calculate greens
+  const s = mc.s
+  const tmp = mc.s.tmp
+  const tmp2 = mc.s.tmp2
 
-  u, d, t = decompose_udt(ctranspose(U) * inv(T) + spdiagm(D))
+  A_mul_Bc!(tmp, s.Tl, s.Tr)
+  scale!(tmp, s.Dr)
+  scale!(s.Dl, tmp)
+  s.U, s.T = decompose_udt!(tmp, s.D)
 
-  T = inv(t * T)
-  U *= u
-  U = ctranspose(U)
-  d = 1./d
+  A_mul_B!(tmp, s.Ul, s.U)
+  s.U .= tmp
+  A_mul_Bc!(tmp2, s.T, s.Ur)
+  s.T .= tmp2
+  Ac_mul_B!(tmp, s.U, inv(s.T))
+  tmp[diagind(tmp)] .+= s.D
+  u, t = decompose_udt!(tmp, s.d)
 
-  ldet = real(log(complex(det(U))) + sum(log.(d)) + log(complex(det(T))))
+  A_mul_B!(tmp, t, s.T)
+  s.T = inv(tmp)
+  A_mul_B!(tmp, s.U, u)
+  s.U = ctranspose(tmp)
+  s.d .= 1./s.d
 
-  return T * spdiagm(d) * U, ldet
+  ldet = real(log(complex(det(s.U))) + sum(log.(s.d)) + log(complex(det(s.T))))
+
+  scale!(s.d, s.U)
+  return s.T * s.U, ldet
 end
-
 
 # -------------------------------------------------------
 #    Effective Green's function -> Green's function
@@ -227,13 +240,16 @@ function effective_greens2greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   const chkr_hop_half_minus = mc.l.chkr_hop_half
   const chkr_hop_half_plus = mc.l.chkr_hop_half_inv
   const n_groups = mc.l.n_groups
+  const tmp = mc.s.tmp
 
   @inbounds @views begin
       for i in reverse(1:n_groups)
-        greens .= greens * chkr_hop_half_minus[i]
+        A_mul_B!(tmp, greens, chkr_hop_half_minus[i])
+        greens .= tmp
       end
       for i in reverse(1:n_groups)
-        greens .= chkr_hop_half_plus[i] * greens
+        A_mul_B!(tmp, chkr_hop_half_plus[i], greens)
+        greens .= tmp
       end
   end
   nothing
@@ -245,10 +261,12 @@ function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
 
   @inbounds @views begin
       for i in 1:n_groups
-        greens .= greens * chkr_hop_half_plus[i]
+        A_mul_B!(tmp, greens, chkr_hop_half_plus[i])
+        greens .= tmp
       end
       for i in 1:n_groups
-        greens .= chkr_hop_half_minus[i] * greens
+        A_mul_B!(tmp, chkr_hop_half_minus[i], greens)
+        greens .= tmp
       end
   end
   nothing
@@ -256,9 +274,10 @@ end
 function effective_greens2greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
   const eTminus = mc.l.hopping_matrix_exp
   const eTplus = mc.l.hopping_matrix_exp_inv
+  const tmp = mc.s.tmp
 
-  greens .= greens * eTminus
-  greens .= eTplus * greens
+  A_mul_B!(tmp, greens, eTminus)
+  A_mul_B!(greens, eTplus, tmp)
   nothing
 end
 function effective_greens2greens!(mc::DQMC_CBFalse, U::AbstractMatrix, T::AbstractMatrix)
@@ -272,9 +291,10 @@ end
 function greens2effective_greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
   const eTminus = mc.l.hopping_matrix_exp
   const eTplus = mc.l.hopping_matrix_exp_inv
+  const tmp = mc.s.tmp
 
-  greens .= greens * eTplus
-  greens .= eTminus * greens
+  A_mul_B!(tmp, greens, eTplus)
+  A_mul_B!(greens, eTminus, tmp)
   nothing
 end
 function effective_greens2greens(mc::AbstractDQMC, greens::AbstractMatrix)
