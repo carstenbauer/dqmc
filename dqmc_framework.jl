@@ -116,6 +116,7 @@ function run!(mc::DQMC)
   nothing
 end
 
+# TODO resumeshort works, resumebroken not. Why?
 function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
   const p = mc.p
 
