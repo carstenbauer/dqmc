@@ -122,7 +122,7 @@ function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
 
   # Init hsfield
   println("\nLoading last HS field")
-  p.hsfield = deepcopy(lastconf)
+  p.hsfield = copy(lastconf)
   println("Initializing boson action\n")
   p.boson_action = calculate_boson_action(mc)
 
@@ -251,7 +251,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
         add!(configurations, p.hsfield)
         add!(greens, effective_greens2greens(mc, s.greens))
 
-        saverng(p.output_file; group="resume/rng")
+        dumping && saverng(p.output_file; group="resume/rng")
         dumping && println("Dumping block of $cs datapoints was a success")
         flush(STDOUT)
         # end
