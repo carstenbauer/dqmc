@@ -19,7 +19,7 @@ for (Li,L) in enumerate([2,3,4,5])
 	global g = copy(mc.s.greens)
 	M = copy(g)
 
-	tB = @belapsed multiply_slice_matrix_left!($mc, 1, $M) setup=(M=copy(g))
+	tB = @belapsed multiply_B_left!($mc, 1, $M) setup=(M=copy(g))
 	tgreens = @belapsed measure_greens($mc)
 	tstack = @belapsed build_stack($mc)
 

@@ -127,12 +127,12 @@ function initialize_stack(mc::AbstractDQMC)
   s.A = s.greens[:,1:N:end]
   s.B = s.greens[1:N:end,:]
   s.AB = s.A * s.B
-  ## calculate_detratio
+  ## calc_detratio
   s.Mtmp = s.eye_flv - s.greens[1:N:end,1:N:end]
   s.delta_i = zeros(G, size(s.eye_flv))
   s.Mtmp2 = zeros(G, size(s.eye_flv))
   s.eVop1eVop2 = zeros(G, size(s.eye_flv))
-  ## multiply_slice_matrix
+  ## multiply_B
   s.tmp = zeros(G, flv*N, flv*N)
   s.Bl = zeros(G, flv*N, flv*N)
   ## calculate_greens
@@ -174,7 +174,7 @@ function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
 
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
-    multiply_slice_matrix_left!(mc, slice, s.curr_U)
+    multiply_B_left!(mc, slice, s.curr_U)
   end
 
   @views scale!(s.curr_U, s.d_stack[:, idx])
@@ -193,7 +193,7 @@ function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
   copy!(s.curr_U, s.u_stack[:, :, idx + 1])
 
   for slice in reverse(s.ranges[idx])
-    multiply_daggered_slice_matrix_left!(mc, slice, s.curr_U)
+    multiply_daggered_B_left!(mc, slice, s.curr_U)
   end
 
   @views scale!(s.curr_U, s.d_stack[:, idx + 1])
@@ -203,19 +203,19 @@ function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
 end
 
 
-function wrap_greens!(mc::AbstractDQMC, gf::Matrix, curr_slice::Int,direction::Int)
+function wrap_greens!(mc::AbstractDQMC, gf::Matrix, curr_slice::Int=mc.s.current_slice, direction::Int=mc.s.direction)
   if direction == -1
-    multiply_slice_matrix_inv_left!(mc, curr_slice - 1, gf)
-    multiply_slice_matrix_right!(mc, curr_slice - 1, gf)
+    multiply_B_inv_left!(mc, curr_slice - 1, gf)
+    multiply_B_right!(mc, curr_slice - 1, gf)
   else
-    multiply_slice_matrix_left!(mc, curr_slice, gf)
-    multiply_slice_matrix_inv_right!(mc, curr_slice, gf)
+    multiply_B_left!(mc, curr_slice, gf)
+    multiply_B_inv_right!(mc, curr_slice, gf)
   end
   nothing
 end
 
 
-function wrap_greens(mc::AbstractDQMC, gf::Matrix,slice::Int,direction::Int)
+function wrap_greens(mc::AbstractDQMC, gf::Matrix,slice::Int=mc.s.current_slice,direction::Int=mc.s.direction)
   temp = copy(gf)
   wrap_greens!(mc, temp, slice, direction)
   return temp
@@ -299,6 +299,7 @@ function propagate(mc::AbstractDQMC)
   if s.direction == 1
     if mod(s.current_slice, p.safe_mult) == 0
       s.current_slice +=1 # slice we are going to
+      # println("we are going to $(s.current_slice) with a fresh gf.")
       if s.current_slice == 1
         s.Ur[:, :], s.Dr[:], s.Tr[:, :] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
         s.u_stack[:, :, 1] = s.eye_full
@@ -349,6 +350,7 @@ function propagate(mc::AbstractDQMC)
   else # s.direction == -1
     if mod(s.current_slice-1, p.safe_mult) == 0
       s.current_slice -= 1 # slice we are going to
+      # println("we are going to $(s.current_slice) with a fresh+wrapped gf.")
       if s.current_slice == p.slices
         s.Ul[:, :], s.Dl[:], s.Tl[:, :] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
         s.u_stack[:, :, end] = s.eye_full

@@ -90,7 +90,7 @@ function init!(mc::DQMC)
   println("\nInitializing HS field")
   mc.p.hsfield = rand(mc.p.opdim,mc.l.sites,mc.p.slices)
   println("Initializing boson action\n")
-  mc.p.boson_action = calculate_boson_action(mc)
+  mc.p.boson_action = calc_boson_action(mc)
 
   # stack init and test
   initialize_stack(mc)
@@ -124,7 +124,7 @@ function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
   println("\nLoading last HS field")
   p.hsfield = copy(lastconf)
   println("Initializing boson action\n")
-  p.boson_action = calculate_boson_action(mc)
+  p.boson_action = calc_boson_action(mc)
 
   h5open(p.output_file, "r") do f
     box = read(f, "resume/box")
@@ -212,7 +212,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
 
   configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/configurations")
   greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/greens")
-  # fermion density
+  occ = Observable(Float64, "Occupation") # TODO: measure
   chi_inv_dynamic = Observable(Array{Float64,3}, "chi inverse dynamic (qy, qx, iomega)"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv_dynamic")
   chi = Observable(Float64, "chi"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi")
   chi_inv = Observable(Float64, "chi inverse"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv")

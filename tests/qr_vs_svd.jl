@@ -15,8 +15,8 @@ for (l, L) in enumerate([2,4,6,8,10])
 		mc = DQMC(p)
 		init!(mc)
 
-		tqr = @belapsed calculate_greens_and_logdet($mc, 1, 1)
-		tsvd = @belapsed calculate_greens_and_logdet_udv($mc, 1, 1)
+		tqr = @belapsed calc_greens_and_logdet($mc, 1, 1)
+		tsvd = @belapsed calc_greens_and_logdet_udv($mc, 1, 1)
 
 		push!(df, [L, B, tqr, tsvd])
 	end

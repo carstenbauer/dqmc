@@ -94,10 +94,10 @@ Green's function singular values (full determinant calculation)
 """
 function calculate_greens_and_det_and_svs_udv(p::Params, l::Lattice, slice::Int)
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
-  Ur, Dr, Vtr = calculate_slice_matrix_chain_udv(p,l,slice,p.slices)
+  Ur, Dr, Vtr = calculate_Bchain_udv(p,l,slice,p.slices)
 
   # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
-  Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
+  Ul, Dl, Vtl = calculate_Bchain_udv(p,l,1,slice-1)
 
   # Calculate Greens function
   tmp = Vtl * Ur
