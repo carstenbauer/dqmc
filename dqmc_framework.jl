@@ -275,11 +275,14 @@ function measure!(mc::DQMC, prevmeasurements=0)
   end
 
   # finish measurements, i.e. calculate errors
+  println()
+  println("Calculating statistical errors...")
   MonteCarloObservable.export_error(greens)
   MonteCarloObservable.export_error(chi_inv_dynamic)
   MonteCarloObservable.export_error(chi_inv)
   MonteCarloObservable.export_error(chi)
   MonteCarloObservable.export_error(boson_action)
+  println("Done.")
 
   # export_result(boson_action, p.output_file, "obs/boson_action")
   # export_result(chi, p.output_file, "obs/chi")
