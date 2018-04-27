@@ -89,7 +89,12 @@ function set_parameters(p::Params, params::Dict)
     p.slices = parse(Int, params["SLICES"])
   end
   p.safe_mult = parse(Int, params["SAFE_MULT"])
-  p.lattice_file = params["LATTICE_FILE"]
+  p.lattice_file = ""
+  if haskey(params, "LATTICE_FILE")
+    p.lattice_file = params["LATTICE_FILE"]
+  else
+    p.L = parse(Int, params["L"])
+  end
   p.hoppings = params["HOPPINGS"]
   p.mu = parse(Float64, params["MU"])
   p.lambda = parse(Float64, params["LAMBDA"])
@@ -149,8 +154,23 @@ Assumes that `p` has been loaded from XML or HDF5 and sets remaining (dependent)
 """
 function deduce_remaining_parameters(p::Params)
   p.beta = p.slices * p.delta_tau
-  p.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
   p.hsfield = zeros(p.opdim, 1, p.slices) # just to initialize it somehow
+
+  if p.lattice_file != ""
+    p.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
+  else
+    hn = lowercase(gethostname())
+    lat = "square_L_$(p.L)_W_$(p.L).xml"
+    if contains(hn, "cheops")
+      p.lattice_file = "/projects/ag-trebst/bauer/lattices/"*lat
+    elseif contains(hn, "thp")
+      p.lattice_file = "/home/bauer/lattices/"*lat
+    elseif contains(hn, "thinkable")
+      p.lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/"*lat
+    else
+      error("Unrecognized host. Can't deduce lattice file path.")
+    end
+  end
   nothing
 end
 

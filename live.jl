@@ -11,6 +11,6 @@ xml2parameters!(p, input)
 mc = DQMC(p)
 init!(mc)
 
-const l = mc.l;
-const s = mc.s;
+# const l = mc.l;
+# const s = mc.s;
 nothing

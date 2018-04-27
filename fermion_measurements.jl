@@ -69,7 +69,7 @@ end
 QR DECOMPOSITION: Calculate effective(!) Green's function (direct, i.e. without stack)
 """
 # Calculate Ul, Dl, Tl =B(stop) ... B(start)
-function calc_Bchain_qr(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
+function calc_Bchain(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
   const flv = mc.p.flv
   const N = mc.l.sites
   const G = geltype(mc)
@@ -101,7 +101,7 @@ function calc_Bchain_qr(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=
 end
 
 # Calculate (Ur, Dr, Tr)' = B(stop) ... B(start)  => Ur,Dr, Tr = B(start)' ... B(stop)'
-function calc_Bchain_qr_dagger(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
+function calc_Bchain_dagger(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
   const flv = mc.p.flv
   const N = mc.l.sites
   const G = geltype(mc)
@@ -166,11 +166,11 @@ function calc_greens_helper(mc::AbstractDQMC, slice::Int, safe_mult::Int)
   const G = geltype(mc)
 
   # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
-  Ur, Dr, Tr = calc_Bchain_qr_dagger(mc,slice,mc.p.slices, safe_mult)
+  Ur, Dr, Tr = calc_Bchain_dagger(mc,slice,mc.p.slices, safe_mult)
 
   # Calculate Ul,Dl,Tl=B(slice-1) ... B(1)
   if slice-1 >= 1
-    Ul, Dl, Tl = calc_Bchain_qr(mc,1,slice-1, safe_mult)
+    Ul, Dl, Tl = calc_Bchain(mc,1,slice-1, safe_mult)
   else
     Ul = eye(G, flv*N)
     Dl = ones(Float64, flv*N)
@@ -293,6 +293,24 @@ function effective_greens2greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   end
   nothing
 end
+function effective_greens2greens!(mc::DQMC_CBTrue, U::AbstractMatrix, T::AbstractMatrix)
+  const chkr_hop_half_minus = mc.l.chkr_hop_half
+  const chkr_hop_half_plus = mc.l.chkr_hop_half_inv
+  const n_groups = mc.l.n_groups
+  const tmp = mc.s.tmp
+
+  @inbounds @views begin
+      for i in reverse(1:n_groups)
+        A_mul_B!(tmp, T, chkr_hop_half_minus[i])
+        T .= tmp
+      end
+      for i in reverse(1:n_groups)
+        A_mul_B!(tmp, chkr_hop_half_plus[i], U)
+        U .= tmp
+      end
+  end
+  nothing
+end
 function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   const chkr_hop_half_minus = mc.l.chkr_hop_half
   const chkr_hop_half_plus = mc.l.chkr_hop_half_inv
@@ -347,61 +365,29 @@ end
 # -------------------------------------------------------
 #         Time-displaced Green's function
 # -------------------------------------------------------
-# Calculate "G(tau, 0)", i.e. G(slice,1) naively
-function calc_tdgf_naive(mc::AbstractDQMC, slice::Int)
-  G, = calc_greens_and_logdet(mc,1,2*mc.p.slices)
-  Ul, Dl, Tl = calc_Bchain_qr(mc,1,slice,2*mc.p.slices)
-  B12 = Ul * spdiagm(Dl) * Tl
-  return B12 * G
-end
-
-# Calculate "G(tau, 0)", i.e. G(slice,1)
+# Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = B(slice,1)G(1)
 function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
-  const flv = mc.p.flv
-  const N = mc.l.sites
-  const G = geltype(mc)
+  U,D,T = calc_greens_udt(mc, 1, safe_mult)
 
-  # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
-  Ur, Dr, Tr = calc_Bchain_qr_dagger(s,p,l,slice,mc.p.slices, safe_mult)
-
-  # Calculate Ul,Dl,Tl=B(slice-1) ... B(1)
-  if slice-1 >= 1
-    Ul, Dl, Tl = calc_Bchain_qr(s,p,l,1,slice-1, safe_mult)
-  else
-    Ul = eye(G, flv*N)
-    Dl = ones(Float64, flv*N)
-    Tl = eye(G, flv*N)
-  end
-
-  tmp = Tl * ctranspose(Tr)
-  U, D, T = decompose_udt(spdiagm(Dl) * tmp * spdiagm(Dr))
-  U = Ul * U
-  T *= ctranspose(Ur)
-
-  u, d, t = decompose_udt(ctranspose(U) * inv(T) + spdiagm(D))
-
-  T = inv(t * T)
-  U *= u
-  U = ctranspose(U)
-  d = 1./d
-
-  # time displace
-  Ul, Dl, Tl = calc_Bchain_qr(mc,1,slice, safe_mult)
   # effective -> actual
   # doesn't seem to change result at all
-  effective_greens2greens!(mc,Ul,Tl)
+  effective_greens2greens!(mc, U, T)
 
-  # effective -> actual (ultra safe)
-  # doesn't seem to change result at all (1e-13)
-  # UT, DT, TT = decompose_udt(l.hopping_matrix_exp)
-  # UTi, DTi, TTi = decompose_udt(l.hopping_matrix_exp_inv)
-  # Ul, Dl, Tl = multiply_safely(Ul, Dl, Tl, UT, DT, TT)
-  # Ul, Dl, Tl = multiply_safely(UTi, DTi, TTi, Ul, Dl, Tl)
+  # time displace
+  Ul, Dl, Tl = calc_Bchain(mc, 1, slice, safe_mult)
+  U, D, T = multiply_safely(Ul, Dl, Tl, U, D, T)
 
-  U, D, T = multiply_safely(Ul, Dl, Tl, T, d, U)
-
-  return U*spdiagm(D)*T
+  scale!(U, D)
+  return U*T
 end
+# Calculate "G(tau, 0)", i.e. G(slice,1) naively
+# function calc_tdgf_naive(mc::AbstractDQMC, slice::Int)
+#   G, = calc_greens_and_logdet(mc,1,2*mc.p.slices)
+#   Ul, Dl, Tl = calc_Bchain(mc,1,slice,2*mc.p.slices)
+#   B12 = Ul * spdiagm(Dl) * Tl
+#   return B12 * G
+# end
+
 
 
 

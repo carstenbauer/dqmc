@@ -84,11 +84,11 @@ end # 1e-14
 #                   safe_mult check
 # -------------------------------------------------------
 function Bchain(mc, safe_mult::Int)
-  F = calc_Bchain_qr(mc, 1, mc.p.slices, safe_mult);
+  F = calc_Bchain(mc, 1, mc.p.slices, safe_mult);
   return F[1]*spdiagm(F[2])*F[3]
 end
 function Bchain_dagger(mc, safe_mult::Int)
-  F = calc_Bchain_qr_dagger(mc, 1, mc.p.slices, safe_mult);
+  F = calc_Bchain_dagger(mc, 1, mc.p.slices, safe_mult);
   return F[1]*spdiagm(F[2])*F[3]
 end
 
