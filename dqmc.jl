@@ -55,7 +55,7 @@ xml2parameters!(p, input_xml)
 if isfile(output_file)
   try
     jldopen(output_file) do f
-      if HDF5.has(f.plain, "resume") && read(f["obs/configurations/count"]) > 0 && read(f["GIT_BRANCH_DQMC"]) == branch
+      if HDF5.has(f.plain, "resume") && HDF5.has(f.plain, "obs/configurations/count") && read(f["obs/configurations/count"]) > 0 && read(f["GIT_BRANCH_DQMC"]) == branch
         p.resume = true
       end
     end
