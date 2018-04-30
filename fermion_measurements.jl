@@ -3,7 +3,8 @@
 # -------------------------------------------------------
 function measure_greens_and_logdet(mc::AbstractDQMC, safe_mult::Int=mc.p.safe_mult)
   greens, greens_logdet = calc_greens_and_logdet(mc, 1, safe_mult)
-  return effective_greens2greens!(mc, greens), greens_logdet
+  effective_greens2greens!(mc, greens)
+  return greens, greens_logdet
 end
 
 function measure_greens(mc::AbstractDQMC, safe_mult::Int=mc.p.safe_mult)
