@@ -235,8 +235,13 @@ function measure!(mc::DQMC, prevmeasurements=0)
     for u in 1:2 * p.slices
       update(mc, i)
 
+      # if s.current_slice == 1 && s.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
       if s.current_slice == p.slices && s.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
+        # println()
         # println("\t\tMeasuring")
+        # @show i
+        # @show mc.s.current_slice
+        # println()
         dumping = (length(boson_action)+1)%cs == 0
         dumping && println("Dumping...")
         # @time begin
@@ -249,7 +254,11 @@ function measure!(mc::DQMC, prevmeasurements=0)
         add!(chi, chi_dyn[1,1,1])
 
         add!(configurations, p.hsfield)
-        add!(greens, effective_greens2greens(mc, s.greens))
+        
+        g = wrap_greens(mc,mc.s.greens,mc.s.current_slice,1)
+        effective_greens2greens!(mc, g)
+        # compare(g, measure_greens(mc))
+        add!(greens, g)
 
         dumping && saverng(p.output_file; group="resume/rng")
         dumping && println("Dumping block of $cs datapoints was a success")
@@ -277,7 +286,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
   # finish measurements, i.e. calculate errors
   println()
   println("Calculating statistical errors...")
-  MonteCarloObservable.export_error(greens)
+  # MonteCarloObservable.export_error(greens)
   MonteCarloObservable.export_error(chi_inv_dynamic)
   MonteCarloObservable.export_error(chi_inv)
   MonteCarloObservable.export_error(chi)
