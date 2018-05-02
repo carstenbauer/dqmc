@@ -6,8 +6,8 @@ function local_updates(mc::AbstractDQMC)
   acc_rat = 0.0
   @inbounds for i in 1:l.sites
     @views new_op = p.hsfield[:,i,s.current_slice] + rand(p.box, p.opdim)
-    exp_delta_S_boson = exp(- calculate_boson_action_diff(mc, i, s.current_slice, new_op) )
-    detratio = calculate_detratio(mc,i,new_op)
+    exp_delta_S_boson = exp(- calc_boson_action_diff(mc, i, s.current_slice, new_op) )
+    detratio = calc_detratio(mc,i,new_op)
 
     if p.opdim == 3
       p_acc_fermion = real(detratio)
@@ -38,7 +38,7 @@ function local_updates(mc::AbstractDQMC)
 end
 
 
-@inline function calculate_detratio(mc::AbstractDQMC, i::Int, new_op::Vector{Float64})
+@inline function calc_detratio(mc::AbstractDQMC, i::Int, new_op::Vector{Float64})
   const p = mc.p
   const s = mc.s
   const l = mc.l

@@ -85,7 +85,7 @@ init_checkerboard_matrices(p,l)
 println("\nInitializing HS field")
 p.hsfield = rand(3,l.sites,p.slices)
 println("Initializing boson action\n")
-p.boson_action = calculate_boson_action(p,l)
+p.boson_action = calc_boson_action(p,l)
 
 # stack init and test
 s = Stack()

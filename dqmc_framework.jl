@@ -18,6 +18,7 @@ isdefined(:DQMC_CBFalse) || (global const DQMC_CBFalse = AbstractDQMC{C} where C
 #                    Includes
 # -------------------------------------------------------
 using Helpers
+using MonteCarloObservable
 include("parameters.jl")
 include("lattice.jl")
 include("stack.jl")
@@ -30,7 +31,7 @@ include("interactions.jl")
 include("action.jl")
 include("local_updates.jl")
 include("global_updates.jl")
-include("observable.jl")
+# include("observable.jl")
 include("boson_measurements.jl")
 include("fermion_measurements.jl")
 
@@ -89,7 +90,7 @@ function init!(mc::DQMC)
   println("\nInitializing HS field")
   mc.p.hsfield = rand(mc.p.opdim,mc.l.sites,mc.p.slices)
   println("Initializing boson action\n")
-  mc.p.boson_action = calculate_boson_action(mc)
+  mc.p.boson_action = calc_boson_action(mc)
 
   # stack init and test
   initialize_stack(mc)
@@ -115,14 +116,15 @@ function run!(mc::DQMC)
   nothing
 end
 
+# TODO resumeshort works, resumebroken not. Why?
 function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
   const p = mc.p
 
   # Init hsfield
   println("\nLoading last HS field")
-  p.hsfield = deepcopy(lastconf)
+  p.hsfield = copy(lastconf)
   println("Initializing boson action\n")
-  p.boson_action = calculate_boson_action(mc)
+  p.boson_action = calc_boson_action(mc)
 
   h5open(p.output_file, "r") do f
     box = read(f, "resume/box")
@@ -206,14 +208,15 @@ function measure!(mc::DQMC, prevmeasurements=0)
   println("Initial propagate: ", s.current_slice, " ", s.direction)
   propagate(mc)
 
-  cs = min(p.measurements, 100)
+  cs = min(floor(Int, p.measurements/p.write_every_nth), 100)
 
-  configurations = Observable{Float64}("configurations", size(p.hsfield), cs)
-  greens = Observable{geltype(mc)}("greens", size(s.greens), cs)
-
-  boson_action = Observable{Float64}("boson_action", cs)
-  mean_abs_op = Observable{Float64}("mean_abs_op", cs)
-  mean_op = Observable{Float64}("mean_op", (p.opdim), cs)
+  configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/configurations")
+  greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/greens")
+  occ = Observable(Float64, "Occupation") # TODO: measure
+  chi_inv_dynamic = Observable(Array{Float64,3}, "chi inverse dynamic (qy, qx, iomega)"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv_dynamic")
+  chi = Observable(Float64, "chi"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi")
+  chi_inv = Observable(Float64, "chi inverse"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv")
+  boson_action = Observable(Float64, "boson_action"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/boson_action")
 
   i_start = 1
   i_end = p.measurements
@@ -232,46 +235,35 @@ function measure!(mc::DQMC, prevmeasurements=0)
     for u in 1:2 * p.slices
       update(mc, i)
 
+      # if s.current_slice == 1 && s.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
       if s.current_slice == p.slices && s.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
+        # println()
         # println("\t\tMeasuring")
-        add_element(boson_action, p.boson_action)
+        # @show i
+        # @show mc.s.current_slice
+        # println()
+        dumping = (length(boson_action)+1)%cs == 0
+        dumping && println("Dumping...")
+        # @time begin
+        add!(boson_action, p.boson_action)
 
-        curr_mean_abs_op, curr_mean_op = measure_op(p.hsfield)
-        add_element(mean_abs_op, curr_mean_abs_op)
-        add_element(mean_op, curr_mean_op)
+        chi_dyn = measure_chi_dynamic(mc.p.hsfield)
+        chi_inv_dyn = 1./chi_dyn
+        add!(chi_inv_dynamic, chi_inv_dyn)
+        add!(chi_inv, chi_inv_dyn[1,1,1])
+        add!(chi, chi_dyn[1,1,1])
 
-        add_element(configurations, p.hsfield)
-        add_element(greens, s.greens)
+        add!(configurations, p.hsfield)
         
-        effective_greens2greens!(mc, greens.timeseries[:,:,greens.count])
+        g = wrap_greens(mc,mc.s.greens,mc.s.current_slice,1)
+        effective_greens2greens!(mc, g)
+        # compare(g, measure_greens(mc))
+        add!(greens, g)
 
-        # compare(greens.timeseries[:,:,greens.count], measure_greens_and_logdet(s, p, l, p.safe_mult)[1])
-
-        # add_element(greens, measure_greens_and_logdet(s, p, l, p.safe_mult)[1])
-
-        if boson_action.count == cs
-            println("Dumping...")
-          @time begin
-            h5open(p.output_file, "r+") do f
-              confs2hdf5(f, configurations)
-              obs2hdf5(f, greens)
-
-              obs2hdf5(f, boson_action)
-              obs2hdf5(f, mean_abs_op)
-              obs2hdf5(f, mean_op)
-            end
-            clear(boson_action)
-            clear(mean_abs_op)
-            clear(mean_op)
-
-            clear(configurations)
-            clear(greens)
-
-            saverng(p.output_file; group="resume/rng")
-            println("Dumping block of $cs datapoints was a success")
-            flush(STDOUT)
-          end
-        end
+        dumping && saverng(p.output_file; group="resume/rng")
+        dumping && println("Dumping block of $cs datapoints was a success")
+        flush(STDOUT)
+        # end
       end
     end
     if mod(i, 100) == 0
@@ -290,6 +282,21 @@ function measure!(mc::DQMC, prevmeasurements=0)
       tic()
     end
   end
+
+  # finish measurements, i.e. calculate errors
+  println()
+  println("Calculating statistical errors...")
+  # MonteCarloObservable.export_error(greens)
+  MonteCarloObservable.export_error(chi_inv_dynamic)
+  MonteCarloObservable.export_error(chi_inv)
+  MonteCarloObservable.export_error(chi)
+  MonteCarloObservable.export_error(boson_action)
+  println("Done.")
+
+  # export_result(boson_action, p.output_file, "obs/boson_action")
+  # export_result(chi, p.output_file, "obs/chi")
+  # export_result(chi_inv, p.output_file, "obs/chi_inv")
+
   toq();
   nothing
 end

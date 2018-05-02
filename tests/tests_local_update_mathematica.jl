@@ -38,7 +38,7 @@ h5write("tests/DetRatioCheck.h5", "newV_imag", imag(newV))
 p.hsfield[:] = hsfield[:]
 
 s.current_slice = slice
-detratio = calculate_detratio(s,p,l,site,new_op)
+detratio = calc_detratio(s,p,l,site,new_op)
 deltai = copy(s.delta_i)
 M = copy(s.M)
 

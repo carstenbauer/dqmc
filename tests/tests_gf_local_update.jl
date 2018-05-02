@@ -3,7 +3,7 @@ include("tests_gf_functions.jl")
 """
 Boson action diff
 """
-function test_calculate_boson_action_diff(p,l)
+function test_calc_boson_action_diff(p,l)
   old_hsfield = copy(p.hsfield)
   new_hsfield = copy(old_hsfield)
 
@@ -13,16 +13,16 @@ function test_calculate_boson_action_diff(p,l)
   # new_op = [100.,0.2,1234.56]
   new_hsfield[:,site,slice] = new_op[:]
 
-  Sbef = calculate_boson_action(p,l,old_hsfield)
-  Saft = calculate_boson_action(p,l,new_hsfield)
+  Sbef = calc_boson_action(p,l,old_hsfield)
+  Saft = calc_boson_action(p,l,new_hsfield)
   dS_direct = Saft - Sbef
-  dS = calculate_boson_action_diff(p,l,site,new_op,old_hsfield,slice)
+  dS = calc_boson_action_diff(p,l,site,new_op,old_hsfield,slice)
   if dS==dS_direct
     error("Inconsistency between boson_action and boson_action_diff!")
   end
   return true
 end
-# test_calculate_boson_action_diff(p,l)
+# test_calc_boson_action_diff(p,l)
 # Worked
 
 
@@ -50,7 +50,7 @@ function test_delta_i_consistency(s,p,l)
   # new_op = [1.,2.,3.]
   new_op = rand(3)
 
-  detratio = calculate_detratio(s,p,l,site,new_op)
+  detratio = calc_detratio(s,p,l,site,new_op)
   delta_n = delta_naive(s,p,l,site,new_op)
   delta_i_n = delta_i_naive(s,p,l,site,new_op)
 
@@ -72,7 +72,7 @@ function test_local_update_gf(s::Stack, p::Params, l::Lattice)
 
   for site in 1:l.sites
     new_op = rand(p.box, 3)
-    detratio = calculate_detratio(s,p,l,site,new_op)
+    detratio = calc_detratio(s,p,l,site,new_op)
     update_greens!(s,p,l,site)
     p.hsfield[:,site,s.current_slice] = new_op[:]
   end
@@ -220,7 +220,7 @@ function plot_delta_full_error(s,p,l)
 end
 
 
-function calculate_detratio_full(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
+function calc_detratio_full(s::Stack, p::Params, l::Lattice, i::Int, new_op::Vector{Float64})
   s.delta_i = delta_i_naive_full(s,p,l,i,new_op)
   s.M = eye_flv + s.delta_i * (eye_flv - s.greens[i:l.sites:end,i:l.sites:end])
   return det(s.M)
@@ -235,7 +235,7 @@ function test_local_update_gf_full_delta(s::Stack, p::Params, l::Lattice)
 
   for site in 1:l.sites
     new_op = rand(p.box, 3)
-    detratio = calculate_detratio_full(s,p,l,site,new_op)
+    detratio = calc_detratio_full(s,p,l,site,new_op)
     update_greens!(s,p,l,site)
     p.hsfield[:,site,s.current_slice] = new_op[:]
   end
@@ -273,7 +273,7 @@ function test_single_local_update_gf_naive(s::Stack, p::Params, l::Lattice)
   s.greens = copy(gfbefore)
 
   new_op = rand(p.box, 3)
-  detratio = calculate_detratio(s,p,l,site,new_op)
+  detratio = calc_detratio(s,p,l,site,new_op)
   g_naive = update_greens_naive(s,p,l,site,new_op)
   update_greens!(s,p,l,site)
   p.hsfield[:,site,s.current_slice] = new_op[:]
@@ -312,7 +312,7 @@ function plot_gf_update_error(s,p,l)
   for (k, dt) in enumerate(dtrange)
     p.delta_tau = dt
 
-    calculate_detratio(s,p,l,site,new_op)
+    calc_detratio(s,p,l,site,new_op)
     g_normal = update_greens(s,p,l,site)
     g_naive = update_greens_naive(s,p,l,site,new_op)
     p.hsfield[:,site,slice] = new_op[:]

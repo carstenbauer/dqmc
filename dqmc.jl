@@ -8,6 +8,7 @@ println("Hostname: ", gethostname())
 # -------------------------------------------------------
 using Helpers
 using Git
+using JLD
 include("dqmc_framework.jl")
 
 
@@ -53,16 +54,17 @@ xml2parameters!(p, input_xml)
 # check if there is a resumable running file
 if isfile(output_file)
   try
-    h5open(output_file) do f
-      if HDF5.has(f, "resume") && read(f["count"]) > 0 && read(f["GIT_BRANCH_DQMC"]) == branch
+    jldopen(output_file) do f
+      if HDF5.has(f.plain, "resume") && HDF5.has(f.plain, "obs/configurations/count") && read(f["obs/configurations/count"]) > 0 && read(f["GIT_BRANCH_DQMC"]) == branch
         p.resume = true
       end
     end
   end
 end
+
 if !p.resume
   # overwrite (potential) running file
-  h5open(output_file, "w") do f
+  jldopen(output_file, "w") do f
     f["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__)).string
     f["GIT_BRANCH_DQMC"] = branch
     f["RUNNING"] = 1
@@ -81,7 +83,8 @@ else
     f["RESUME"] = 1
   end
 
-  prevcount = h5read(output_file, "count")
+  confs = loadobs_frommemory(output_file, "obs/configurations")
+  prevcount = length(confs)
   println("Found $(prevcount) configurations.")
   println()
   lastmeasurements = h5read(output_file, "params/measurements")
@@ -90,7 +93,7 @@ else
     println("Finishing last run (i.e. overriding p.measurements)")
     p.measurements = lastmeasurements - prevmeasurements
   end
-  global lastconf = squeeze(h5read(output_file, "configurations", (:,:,:,prevcount)), 4)
+  global lastconf = confs[end]
 end
 
 

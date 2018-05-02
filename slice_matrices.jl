@@ -4,9 +4,9 @@
 function slice_matrix(mc::AbstractDQMC, slice::Int, power::Float64=1.)
   res = eye(heltype(mc), mc.p.flv*mc.l.sites)
   if power > 0
-    multiply_slice_matrix_left!(mc, slice, res)
+    multiply_B_left!(mc, slice, res)
   else
-    multiply_slice_matrix_inv_left!(mc, slice, res)
+    multiply_B_inv_left!(mc, slice, res)
   end
   return res
 end
@@ -36,31 +36,31 @@ function slice_matrix!(mc::DQMC_CBFalse, slice::Int, power::Float64=1., Bl::Abst
   nothing # slice_matrix now in Bl
 end
 
-function multiply_slice_matrix_left!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
+function multiply_B_left!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
   slice_matrix!(mc, slice, 1., mc.s.Bl)
   A_mul_B!(mc.s.tmp, mc.s.Bl, M)
   M .= mc.s.tmp
 	nothing
 end
-function multiply_slice_matrix_right!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
+function multiply_B_right!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
   slice_matrix!(mc, slice, 1., mc.s.Bl)
   A_mul_B!(mc.s.tmp, M, mc.s.Bl)
   M .= mc.s.tmp
 	nothing
 end
-function multiply_slice_matrix_inv_right!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
+function multiply_B_inv_right!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
   slice_matrix!(mc, slice, -1., mc.s.Bl)
   A_mul_B!(mc.s.tmp, M, mc.s.Bl)
   M .= mc.s.tmp
 	nothing
 end
-function multiply_slice_matrix_inv_left!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
+function multiply_B_inv_left!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
   slice_matrix!(mc, slice, -1., mc.s.Bl)
   A_mul_B!(mc.s.tmp, mc.s.Bl, M)
   M .= mc.s.tmp
 	nothing
 end
-function multiply_daggered_slice_matrix_left!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
+function multiply_daggered_B_left!(mc::DQMC_CBFalse, slice::Int, M::AbstractMatrix)
   slice_matrix!(mc, slice, 1., mc.s.Bl)
   Ac_mul_B!(mc.s.tmp, mc.s.Bl, M) # ctranspose
   M .= mc.s.tmp
@@ -72,7 +72,7 @@ end
 # -------------------------------------------------------
 #  				Assaad checkerboard
 # -------------------------------------------------------
-function multiply_slice_matrix_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_B_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const s = mc.s
 
@@ -91,7 +91,7 @@ function multiply_slice_matrix_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::
   nothing
 end
 
-function multiply_slice_matrix_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_B_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const s = mc.s
 
@@ -110,7 +110,7 @@ function multiply_slice_matrix_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M:
   nothing
 end
 
-function multiply_slice_matrix_inv_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_B_inv_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const s = mc.s
   
@@ -129,7 +129,7 @@ function multiply_slice_matrix_inv_left!(mc::AbstractDQMC{CBAssaad}, slice::Int,
   nothing
 end
 
-function multiply_slice_matrix_inv_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_B_inv_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const s = mc.s
   
@@ -148,7 +148,7 @@ function multiply_slice_matrix_inv_right!(mc::AbstractDQMC{CBAssaad}, slice::Int
   nothing
 end
 
-function multiply_daggered_slice_matrix_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_daggered_B_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const s = mc.s
   
@@ -173,7 +173,7 @@ end
 # -------------------------------------------------------
 #  				Generic checkerboard
 # -------------------------------------------------------
-function multiply_slice_matrix_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const p = mc.p
   const s = mc.s
@@ -199,7 +199,7 @@ function multiply_slice_matrix_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M:
   nothing
 end
 
-function multiply_slice_matrix_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_B_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const p = mc.p
   const s = mc.s
@@ -225,7 +225,7 @@ function multiply_slice_matrix_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M
   nothing
 end
 
-function multiply_slice_matrix_inv_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_B_inv_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const p = mc.p
   const s = mc.s
@@ -251,7 +251,7 @@ function multiply_slice_matrix_inv_left!(mc::AbstractDQMC{CBGeneric}, slice::Int
   nothing
 end
 
-function multiply_slice_matrix_inv_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_B_inv_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const p = mc.p
   const s = mc.s
@@ -277,7 +277,7 @@ function multiply_slice_matrix_inv_right!(mc::AbstractDQMC{CBGeneric}, slice::In
   nothing
 end
 
-function multiply_daggered_slice_matrix_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_daggered_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const p = mc.p
   const s = mc.s

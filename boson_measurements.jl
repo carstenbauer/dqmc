@@ -56,7 +56,9 @@ end
 # -------------------------------------------------------
 
 import DSP.rfftfreq
-# returns qys, qxs and ωs corresponding to output of measure_phi_correlations etc.
+"""
+Returns qys, qxs and ωs corresponding to output of measure_phi_correlations etc.
+"""
 function get_momenta_and_frequencies(L::Int, M::Int, Δτ::Float64=0.1)
   # https://juliadsp.github.io/DSP.jl/latest/util.html#DSP.Util.rfftfreq
   qs = 2*pi*rfftfreq(L) # 2*pi because rfftfreq returns linear momenta
@@ -64,3 +66,4 @@ function get_momenta_and_frequencies(L::Int, M::Int, Δτ::Float64=0.1)
   return qs, qs, ωs
 end
 get_momenta_and_frequencies(C::AbstractArray{Float64, 3}, Δτ::Float64=0.1) = get_momenta_and_frequencies(size(C,2,3)..., Δτ)
+get_momenta_and_frequencies(mc::AbstractDQMC) = get_momenta_and_frequencies(mc.l.L, mc.p.slices, mc.p.delta_tau)

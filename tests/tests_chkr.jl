@@ -220,19 +220,19 @@ multiply right left (inverse) check
 function test_multiply_slice_matrix(s,p,l)
   id = eye_full
   println("B^-1 * B * 1")
-  if !compare(multiply_slice_matrix_inv_left(p,l,1,multiply_slice_matrix_left(p,l,1,id)),id)
+  if !compare(multiply_B_inv_left(p,l,1,multiply_B_left(p,l,1,id)),id)
     warn("B^-1 * B * 1 != 1")
   end
   println("B * B^-1 * 1")
-  if !compare(multiply_slice_matrix_left(p,l,1,multiply_slice_matrix_inv_left(p,l,1,id)),id)
+  if !compare(multiply_B_left(p,l,1,multiply_B_inv_left(p,l,1,id)),id)
     warn("B * B^-1 * 1 != 1")
   end
   println("1 * B * B^-1")
-  if !compare(multiply_slice_matrix_inv_right(p,l,1,multiply_slice_matrix_right(p,l,1,id)),id)
+  if !compare(multiply_B_inv_right(p,l,1,multiply_B_right(p,l,1,id)),id)
     warn("1 * B * B^-1 != 1")
   end
   println("1 * B^-1 * B")
-  if !compare(multiply_slice_matrix_right(p,l,1,multiply_slice_matrix_inv_right(p,l,1,id)),id)
+  if !compare(multiply_B_right(p,l,1,multiply_B_inv_right(p,l,1,id)),id)
     warn("1 * B^-1 * B != 1")
   end
 
@@ -241,19 +241,19 @@ function test_multiply_slice_matrix(s,p,l)
   println("")
 
   println("(B * 1) * B^-1")
-  if !compare(multiply_slice_matrix_inv_right(p,l,1,multiply_slice_matrix_left(p,l,1,id)),id)
+  if !compare(multiply_B_inv_right(p,l,1,multiply_B_left(p,l,1,id)),id)
     warn("(B * 1) * B^-1 != 1")
   end
   println("B^-1 * (1 * B)")
-  if !compare(multiply_slice_matrix_inv_left(p,l,1,multiply_slice_matrix_right(p,l,1,id)),id)
+  if !compare(multiply_B_inv_left(p,l,1,multiply_B_right(p,l,1,id)),id)
   warn("B * (1 * B^-1) != 1")
   end
     println("(B^-1 * 1) * B")
-  if !compare(multiply_slice_matrix_right(p,l,1,multiply_slice_matrix_inv_left(p,l,1,id)),id)
+  if !compare(multiply_B_right(p,l,1,multiply_B_inv_left(p,l,1,id)),id)
     warn("(B^-1 * 1) * B != 1")
   end
   println("B * (1 * B^-1)")
-  if !compare(multiply_slice_matrix_left(p,l,1,multiply_slice_matrix_inv_right(p,l,1,id)),id)
+  if !compare(multiply_B_left(p,l,1,multiply_B_inv_right(p,l,1,id)),id)
     warn("B * (1 * B^-1) != 1")
   end
 end

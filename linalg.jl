@@ -24,6 +24,23 @@ function decompose_udt(A::AbstractMatrix{C}) where C<:Number
   return Q, D, T
 end
 
+# function decompose_udt!(A::AbstractMatrix{C}, D) where C<:Number
+#   Q, R, p = qr(A, Val{true}; thin=false)
+#   @views p[p] = 1:length(p)
+#   D .= abs.(real(diag(R)))
+#   scale!(1./D, R)
+#   return Q, D, R[:, p]
+# end
+
+function decompose_udt!(A::AbstractMatrix{C}, D) where C<:Number
+  F = qrfact!(A, Val{true})
+  @views F[:p][F[:p]] = 1:length(F[:p])
+  D .= abs.(real(diag(F[:R])))
+  R = full(F[:R])
+  scale!(1./D, R)
+  return full(F[:Q]), R[:, F[:p]] # Q, (D is modified in-place), T 
+end
+
 
 #### Other
 function expm_diag!(A::Matrix{T}) where T<:Number
