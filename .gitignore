@@ -1,6 +1,7 @@
 **/*.xml
 **/*.h5
 **/*.running
+**/*.jld
 playground.jl
 testing/
 **/*.bin

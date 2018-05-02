@@ -3,7 +3,7 @@ using DataFrames, StatPlots, BenchmarkTools, NamedTuples, JLD, Query
 default(:framestyle, :box)
 
 input = "CB_vs_L.in.xml"
-include("../live.jl")
+include("../../live.jl")
 
 if !isfile("df.jld")
 	global df = DataFrame(L=Int[], B=Int[], CB=String[], 
@@ -24,7 +24,7 @@ function measure(mc::AbstractDQMC,p::Params,df::DataFrame,
 	M = copy(mc.s.greens)
 
 	tB = @belapsed multiply_slice_matrix_left!($mc, 1, $M)
-	tchain = @belapsed calculate_slice_matrix_chain_qr(mc, 1, 20, 10)
+	tchain = @belapsed calculate_slice_matrix_chain_qr(mc, 1, p.slices, 10)
 	# tgreens = @belapsed measure_greens($mc)
 	# tslicem = @belapsed slice_matrix($mc, 1)
 	# tstack = @belapsed build_stack($mc)
