@@ -212,7 +212,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
 
   configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/configurations")
   greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/greens")
-  occ = Observable(Float64, "Occupation") # TODO: measure
+  occ = Observable(Float64, "occupation"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/occupation")
   chi_inv_dynamic = Observable(Array{Float64,3}, "chi inverse dynamic (qy, qx, iomega)"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv_dynamic")
   chi = Observable(Float64, "chi"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi")
   chi_inv = Observable(Float64, "chi inverse"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv")
@@ -255,10 +255,12 @@ function measure!(mc::DQMC, prevmeasurements=0)
 
         add!(configurations, p.hsfield)
         
+        # fermionic quantities
         g = wrap_greens(mc,mc.s.greens,mc.s.current_slice,1)
         effective_greens2greens!(mc, g)
         # compare(g, measure_greens(mc))
         add!(greens, g)
+        add!(occ, occupation(mc, g))
 
         dumping && saverng(p.output_file; group="resume/rng")
         dumping && println("Dumping block of $cs datapoints was a success")
@@ -284,18 +286,14 @@ function measure!(mc::DQMC, prevmeasurements=0)
   end
 
   # finish measurements, i.e. calculate errors
-  println()
-  println("Calculating statistical errors...")
+  # println()
+  # println("Calculating statistical errors...")
   # MonteCarloObservable.export_error(greens)
-  MonteCarloObservable.export_error(chi_inv_dynamic)
-  MonteCarloObservable.export_error(chi_inv)
-  MonteCarloObservable.export_error(chi)
-  MonteCarloObservable.export_error(boson_action)
-  println("Done.")
-
-  # export_result(boson_action, p.output_file, "obs/boson_action")
-  # export_result(chi, p.output_file, "obs/chi")
-  # export_result(chi_inv, p.output_file, "obs/chi_inv")
+  # MonteCarloObservable.export_error(chi_inv_dynamic)
+  # MonteCarloObservable.export_error(chi_inv)
+  # MonteCarloObservable.export_error(chi)
+  # MonteCarloObservable.export_error(boson_action)
+  # println("Done.")
 
   toq();
   nothing
