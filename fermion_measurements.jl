@@ -390,7 +390,11 @@ end
 # end
 
 
+function calc_greens_stack(mc::AbstractDQMC)
+  const G = typeof(mc.s.greens)
 
+  
+end
 
 # -------------------------------------------------------
 #                Correlation functions
@@ -423,4 +427,22 @@ end
 # end
 
 
+# Yoni
 
+
+
+# function inv_sum(U1,D1,T1,U2,D2,T2)
+#   m1 = T1 * inv(T2)
+#   scale!(D1, m1)
+#   m2 = ctranspose(U1) * U2
+#   scale!(m2, D2)
+
+#   u,d,t = decompose_udt(m1+m2)
+
+#   A = inv(t*T2)
+#   B = 1./d
+#   C = ctranspose(U1*u)
+
+#   scale!(B, C)
+#   return A*C
+# end
