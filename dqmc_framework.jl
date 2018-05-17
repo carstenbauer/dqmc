@@ -85,10 +85,14 @@ end
 # -------------------------------------------------------
 function init!(mc::DQMC)
   srand(mc.p.seed); # init RNG
+  init!(mc, rand(mc.p.opdim,mc.l.sites,mc.p.slices), false)
+end
+function init!(mc::DQMC, start_conf, init_seed=true)
+  init_seed && srand(mc.p.seed); # init RNG
 
   # Init hsfield
   println("\nInitializing HS field")
-  mc.p.hsfield = rand(mc.p.opdim,mc.l.sites,mc.p.slices)
+  mc.p.hsfield = start_conf
   println("Initializing boson action\n")
   mc.p.boson_action = calc_boson_action(mc)
 
@@ -149,7 +153,7 @@ function thermalize!(mc::DQMC)
   a.prop_global = 0
   a.acc_global = 0
   tic()
-  for i in 1:p.thermalization
+  for i in (p.prethermalized+1):p.thermalization
     for u in 1:2 * p.slices
       update(mc, i)
     end
@@ -189,6 +193,17 @@ function thermalize!(mc::DQMC)
       a.acc_rate_global = 0.0
       flush(STDOUT)
       tic()
+    end
+
+    # Save thermal configuration for "resume"
+    if i%p.write_every_nth == 0
+      h5open(mc.p.output_file, "r+") do f
+        HDF5.has(f, "thermal_init/conf") && HDF5.o_delete(f, "thermal_init/conf")
+        HDF5.has(f, "thermal_init/prethermalized") && HDF5.o_delete(f, "thermal_init/prethermalized")
+        write(f, "thermal_init/conf", mc.p.hsfield)
+        write(f, "thermal_init/prethermalized", i)
+        (i == p.thermalization) && saverng(p.output_file; group="thermal_init/rng") # for future features
+      end
     end
 
   end

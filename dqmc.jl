@@ -63,6 +63,34 @@ if isfile(output_file)
 end
 
 if !p.resume
+
+  # Start with a prethermalized conf?
+  if isfile(p.output_file)
+    jldopen(output_file) do f
+      if HDF5.has(f.plain, "thermal_init")
+        println("Using thermal_init/conf as starting configuration.")
+        global const start_conf = read(f["thermal_init/conf"])
+
+        if HDF5.has(f.plain, "thermal_init/prethermalized")
+          p.prethermalized = read(f["thermal_init/prethermalized"])
+          println("Using thermal_init/prethermalized. Will do $(p.thermalization - p.prethermalized) ud-sweeps.")
+        end
+
+        if HDF5.has(f.plain, "thermal_init/box")
+          box = read(f, "thermal_init/box")
+          p.box = Uniform(-box, box)
+          println("Using thermal_init/box.")
+        end
+
+        if HDF5.has(f.plain, "thermal_init/box_global")
+          box_global = read(f, "thermal_init/box_global")
+          p.box_global = Uniform(-box_global, box_global)
+          println("Using thermal_init/box_global.")
+        end
+      end
+    end
+  end
+
   # overwrite (potential) running file
   jldopen(output_file, "w") do f
     f["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__)).string
@@ -110,7 +138,11 @@ println()
 @printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000./60.)
 
 if !mc.p.resume
-  init!(mc)
+  if isdefined(:start_conf)
+    init!(mc, start_conf)
+  else
+    init!(mc)
+  end
   run!(mc)
 else
   resume!(mc, lastconf, prevmeasurements)

@@ -41,6 +41,7 @@ mutable struct Params
   seed::Int
 
   resume::Bool
+  prethermalized::Int # how many thermal ud-sweeps are captured by custom start configuration 'thermal_init/conf'
 
   function Params()
     p = new()
@@ -56,6 +57,7 @@ mutable struct Params
     p.flv = 4
     p.seed = 4729339882041979125
     p.resume = false
+    p.prethermalized = 0
     return p
   end
 end
