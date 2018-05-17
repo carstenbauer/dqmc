@@ -185,49 +185,40 @@ function inv_sum_udvs(Ua, Da, Vda, Ub, Db, Vdb)
     
     d=length(Da)
     
-#DXp = max (X%D, 1) ,DXm = min (X%D, 1) and similarly for Y.
+    #DXp = max (X%D, 1) ,DXm = min (X%D, 1) and similarly for Y.
     Dap = max.(Da,1.)
     Dam = min.(Da,1.)
     Dbp = max.(Db,1.)
     Dbm = min.(Db,1.)
 
-    @show Dap
-    @show Dam
-    @show Dbp
-    @show Dbm
-
-#mat1= DXm * X%Vd * (Y%Vd)^dagger /DYp
+    #mat1= DXm * X%Vd * (Y%Vd)^dagger /DYp
     mat1 = Vda * ctranspose(Vdb)
     for j in 1:d, k in 1:d
         mat1[j,k]=mat1[j,k] * Dam[j]/Dbp[k]
     end
-    @show mat1
 
-#mat2 = 1/(DXp) * (X%U)^dagger * Y%U * DYm
+    #mat2 = 1/(DXp) * (X%U)^dagger * Y%U * DYm
     mat2 = ctranspose(Ua) * Ub
     for j in 1:d, k in 1:d
         mat2[j,k]=mat2[j,k] * Dbm[k]/Dap[j]
     end
-    @show mat2
     
-#mat1 = mat1+mat2
+    #mat1 = mat1+mat2
     mat1 = mat1 + mat2
-
-    @show mat1
     
-#invert mat1: mat1=mat1^(-1)
+    #invert mat1: mat1=mat1^(-1)
     U, D, Vd = decompose_udv!(mat1)
     USV_to_mat!(mat1, U, D, Vd, true)
 
-#mat1 = 1/DYp * mat1 /DXp
+    #mat1 = 1/DYp * mat1 /DXp
     for j in 1:d, k in 1:d
         mat1[j,k]=mat1[j,k] / Dbp[j] / Dap[k]
     end
 
-#mat1 = U D Vd
+    #mat1 = U D Vd
     U, D, Vd = decompose_udv!(mat1)
 
-# U = (Y%Vd)^dagger * U , Vd = Vd * (X%U)^dagger
+    # U = (Y%Vd)^dagger * U , Vd = Vd * (X%U)^dagger
     Ac_mul_B!(mat1,Vdb,U)
     A_mul_Bc!(mat2,Vd,Ua)
     U=mat1
