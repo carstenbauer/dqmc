@@ -36,9 +36,18 @@ function permute_greens(greens::AbstractMatrix)
 end
 
 # Assuming translational invariance go to momentum space Greens function (k, fs1, fs2)
-using PyCall
-@pyimport numpy as np
+try
+  using PyCall
+  @pyimport numpy as np
+end
 function fft_greens(greens::AbstractMatrix)
+  if !isdefined(:PyCall)
+    @eval using PyCall
+    @eval @pyimport numpy as np
+    println("Loaded PyCall. Please execute again.")
+    return
+  end
+
   const L = Int(sqrt(sqrt(length(greens))/4))
   g = reshape(greens, (L,L,4,L,L,4)); # y1, x1, fs1, y2, x2, fs2
   g = fft(g, (1,2))*1/L; # ky1, kx1, fs1, y2, x2, fs2
@@ -96,6 +105,38 @@ function calc_Bchain(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.
       svc += 1
     else
       multiply_B_left!(mc,k,U)
+    end
+  end
+  return (U,D,T,svs)
+end
+
+# Calculate Ul, Dl, Tl = [B(stop) ... B(start)]^(-1) = B(start)^(-1) ... B(stop)^(-1)
+function calc_Bchain_inv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
+  const flv = mc.p.flv
+  const N = mc.l.sites
+  const G = geltype(mc)
+
+  @assert 0 < start <= mc.p.slices
+  @assert 0 < stop <= mc.p.slices
+  @assert start <= stop
+
+  U = eye(G, flv*N, flv*N)
+  D = ones(Float64, flv*N)
+  T = eye(G, flv*N, flv*N)
+
+  svs = zeros(flv*N,length(start:stop))
+  svc = 1
+  for k in reverse(start:stop)
+    if mod(k,safe_mult) == 0 || k == start # always decompose in the end
+      multiply_B_inv_left!(mc,k,U)
+      scale!(U, D)
+      U, Tnew = decompose_udt!(U, D)
+      A_mul_B!(mc.s.tmp, Tnew, T)
+      T .=  mc.s.tmp
+      svs[:,svc] = log.(D)
+      svc += 1
+    else
+      multiply_B_inv_left!(mc,k,U)
     end
   end
   return (U,D,T,svs)
@@ -371,12 +412,24 @@ function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   U,D,T = calc_greens_udt(mc, 1, safe_mult)
 
   # effective -> actual
-  # doesn't seem to change result at all
   effective_greens2greens!(mc, U, T)
 
   # time displace
   Ul, Dl, Tl = calc_Bchain(mc, 1, slice, safe_mult)
   U, D, T = multiply_safely(Ul, Dl, Tl, U, D, T)
+
+  scale!(U, D)
+  return U*T
+end
+
+# Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = [B(slice, 1)^-1 + B(beta, slice)]^-1 which is equal to B(slice,1)G(1)
+function calc_tdgf2(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
+  Ul, Dl, Tl = calc_Bchain_inv(mc, 1, slice, safe_mult)
+  Ur, Dr, Tr = calc_Bchain(mc, slice, mc.p.slices, safe_mult)
+
+  # time displace
+  U, D, T = inv_sum_udts(Ul, Dl, Tl, Ur, Dr, Tr)
+  effective_greens2greens!(mc, U, T) # WHERE TO DO THIS?
 
   scale!(U, D)
   return U*T
