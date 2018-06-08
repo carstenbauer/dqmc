@@ -37,13 +37,13 @@ end
 
 # Assuming translational invariance go to momentum space Greens function (k, fs1, fs2)
 try
-  using PyCall
-  @pyimport numpy as np
+  eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
+  eval(Expr(:toplevel, parse("@pyimport numpy as np")))
 end
 function fft_greens(greens::AbstractMatrix)
   if !isdefined(:PyCall)
-    @eval using PyCall
-    @eval @pyimport numpy as np
+    eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
+    eval(Expr(:toplevel, parse("@pyimport numpy as np")))
     println("Loaded PyCall. Please execute again.")
     return
   end
