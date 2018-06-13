@@ -186,6 +186,7 @@ function thermalize!(mc::DQMC)
       update(mc, i)
     end
     @printf("\tsweep (not ud) duration: %.4fs\n", TimerOutputs.time(a.to["udsweep"])/2 *10.0^(-9)/TimerOutputs.ncalls(a.to["udsweep"]))
+    flush(STDOUT)
 
     if mod(i, 10) == 0
       a.acc_rate = a.acc_rate / (10 * 2 * p.slices)
