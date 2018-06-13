@@ -73,6 +73,9 @@ function initialize_stack(mc::AbstractDQMC)
   const N = mc.l.sites
   const flv = mc.p.flv
   const G = geltype(mc)
+  const a = mc.a
+
+  @mytimeit a.to "initialize_stack" begin
 
   s.n_elements = convert(Int, mc.p.slices / safe_mult) + 1
 
@@ -141,6 +144,8 @@ function initialize_stack(mc::AbstractDQMC)
   ## propagate
   s.greens_temp = zeros(G, flv*N, flv*N)
 
+  end #timeit
+
   nothing
 end
 
@@ -148,6 +153,9 @@ end
 function build_stack(mc::AbstractDQMC)
   const p = mc.p
   const s = mc.s
+  const a = mc.a
+
+  @mytimeit a.to "build_stack" begin
 
   s.u_stack[:, :, 1] = s.eye_full
   s.d_stack[:, 1] = s.ones_vec
@@ -160,6 +168,8 @@ function build_stack(mc::AbstractDQMC)
   s.current_slice = p.slices + 1
   s.direction = -1
 
+  end #timeit
+
   nothing
 end
 
@@ -169,6 +179,7 @@ Updates stack[idx+1] based on stack[idx]
 """
 function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
   const s = mc.s
+  const a = mc.a
 
   copy!(s.curr_U, s.u_stack[:, :, idx])
 
@@ -178,7 +189,7 @@ function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
   end
 
   @views scale!(s.curr_U, s.d_stack[:, idx])
-  s.u_stack[:, :, idx + 1], T = @views decompose_udt!(s.curr_U, s.d_stack[:, idx + 1])
+  @mytimeit a.to "decompose_udt!" s.u_stack[:, :, idx + 1], T = @views decompose_udt!(s.curr_U, s.d_stack[:, idx + 1])
   @views A_mul_B!(s.t_stack[:, :, idx + 1],  T, s.t_stack[:, :, idx])
   nothing
 end
@@ -189,6 +200,7 @@ Updates stack[idx] based on stack[idx+1]
 """
 function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
   const s = mc.s
+  const a = mc.a
 
   copy!(s.curr_U, s.u_stack[:, :, idx + 1])
 
@@ -197,7 +209,7 @@ function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
   end
 
   @views scale!(s.curr_U, s.d_stack[:, idx + 1])
-  s.u_stack[:, :, idx], T = @views decompose_udt!(s.curr_U, s.d_stack[:, idx])
+  @mytimeit a.to "decompose_udt!" s.u_stack[:, :, idx], T = @views decompose_udt!(s.curr_U, s.d_stack[:, idx])
   @views A_mul_B!(s.t_stack[:, :, idx], T, s.t_stack[:, :, idx + 1])
   nothing
 end
@@ -229,11 +241,13 @@ function calculate_greens(mc::AbstractDQMC)
   const s = mc.s
   const tmp = mc.s.tmp
   const tmp2 = mc.s.tmp2
+  const a = mc.a
+  @mytimeit a.to "calculate_greens" begin
 
   A_mul_Bc!(tmp, s.Tl, s.Tr)
   scale!(tmp, s.Dr)
   scale!(s.Dl, tmp)
-  s.U, s.T = decompose_udt!(tmp, s.D)
+  @mytimeit a.to "decompose_udt!" s.U, s.T = decompose_udt!(tmp, s.D)
 
   A_mul_B!(tmp, s.Ul, s.U)
   s.U .= tmp
@@ -241,7 +255,7 @@ function calculate_greens(mc::AbstractDQMC)
   s.T .= tmp2
   Ac_mul_B!(tmp, s.U, inv(s.T))
   tmp[diagind(tmp)] .+= s.D
-  u, t = decompose_udt!(tmp, s.d)
+  @mytimeit a.to "decompose_udt!" u, t = decompose_udt!(tmp, s.d)
 
   A_mul_B!(tmp, t, s.T)
   s.T = inv(tmp)
@@ -252,6 +266,7 @@ function calculate_greens(mc::AbstractDQMC)
   copy!(tmp2, s.U)
   scale!(s.d, tmp2)
   A_mul_B!(s.greens, s.T, tmp2)
+  end #timeit
   nothing
 end
 

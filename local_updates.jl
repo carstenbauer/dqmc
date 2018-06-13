@@ -2,6 +2,7 @@ function local_updates(mc::AbstractDQMC)
   const p = mc.p
   const s = mc.s
   const l = mc.l
+  const a = mc.a
 
   acc_rat = 0.0
   @inbounds for i in 1:l.sites
@@ -43,6 +44,8 @@ end
   const s = mc.s
   const l = mc.l
 
+  @mytimeit mc.a.to "calc_detratio" begin
+
   interaction_matrix_exp_op!(mc,p.hsfield[:,i,s.current_slice],-1.,s.eVop1) #V1i
   interaction_matrix_exp_op!(mc,new_op,1.,s.eVop2) #V2i
   A_mul_B!(s.eVop1eVop2, s.eVop1, s.eVop2)
@@ -50,6 +53,8 @@ end
   s.Mtmp .= s.eye_flv .- s.greens[i:l.sites:end,i:l.sites:end]
   A_mul_B!(s.Mtmp2, s.delta_i, s.Mtmp)
   s.M .= s.eye_flv .+ s.Mtmp2
+
+  end #timeit
   return det(s.M)
 end
 
@@ -57,6 +62,8 @@ end
   const p = mc.p
   const s = mc.s
   const l = mc.l
+
+  @mytimeit mc.a.to "update_greens!" begin
 
   s.A = s.greens[:,i:l.sites:end]
   
@@ -74,4 +81,6 @@ end
   A_mul_B!(s.B, s.delta_i, s.greens[i:l.sites:end,:])
   A_mul_B!(s.AB, s.A, s.B)
   s.greens .+= s.AB
+
+  end #timeit
 end

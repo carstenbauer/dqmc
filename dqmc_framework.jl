@@ -19,6 +19,17 @@ isdefined(:DQMC_CBFalse) || (global const DQMC_CBFalse = AbstractDQMC{C} where C
 # -------------------------------------------------------
 using Helpers
 using MonteCarloObservable
+using TimerOutputs
+
+const ENABLE_TIMINGS = false
+macro mytimeit(exprs...)
+    if ENABLE_TIMINGS
+        return :(@timeit($(esc.(exprs)...)))
+    else
+        return esc(exprs[end])
+    end
+end
+
 include("parameters.jl")
 include("lattice.jl")
 include("stack.jl")
@@ -45,8 +56,9 @@ mutable struct Analysis
   acc_rate_global::Float64
   prop_global::Int
   acc_global::Int
+  to::TimerOutputs.TimerOutput
 
-  Analysis() = new()
+  Analysis() = new(0.0,0.0,0,0,TimerOutput())
 end
 
 mutable struct DQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number} <: AbstractDQMC{C, GreensEltype, HoppingEltype}
@@ -88,6 +100,8 @@ function init!(mc::DQMC)
   init!(mc, rand(mc.p.opdim,mc.l.sites,mc.p.slices), false)
 end
 function init!(mc::DQMC, start_conf, init_seed=true)
+  const a = mc.a
+  @mytimeit a.to "init mc" begin
   init_seed && srand(mc.p.seed); # init RNG
 
   # Init hsfield
@@ -102,6 +116,9 @@ function init!(mc::DQMC, start_conf, init_seed=true)
   build_stack(mc)
   println("Initial propagate: ", mc.s.current_slice, " ", mc.s.direction)
   propagate(mc)
+  end
+
+  ENABLE_TIMINGS && show(TimerOutputs.flatten(a.to); allocations = true)
 end
 
 function run!(mc::DQMC)
@@ -120,7 +137,7 @@ function run!(mc::DQMC)
   nothing
 end
 
-# TODO resumeshort works, resumebroken not. Why?
+# TODO resumeshort works, resumebroken not. Why? - Is this still open?
 function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
   const p = mc.p
 
@@ -144,6 +161,16 @@ function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
   nothing
 end
 
+
+
+
+
+
+
+
+
+
+
 function thermalize!(mc::DQMC)
   const a = mc.a
   const p = mc.p
@@ -152,17 +179,19 @@ function thermalize!(mc::DQMC)
   a.acc_rate_global = 0.0
   a.prop_global = 0
   a.acc_global = 0
-  tic()
+
+  reset_timer!(a.to)
   for i in (p.prethermalized+1):p.thermalization
-    for u in 1:2 * p.slices
+    @timeit a.to "udsweep" for u in 1:2 * p.slices
       update(mc, i)
     end
+    @printf("\tsweep (not ud) duration: %.4fs\n", TimerOutputs.time(a.to["udsweep"])/2 *10.0^(-9)/TimerOutputs.ncalls(a.to["udsweep"]))
 
     if mod(i, 10) == 0
       a.acc_rate = a.acc_rate / (10 * 2 * p.slices)
       a.acc_rate_global = a.acc_rate_global / (10 / p.global_rate)
-      println("\t", i)
-      @printf("\t\tup-down sweep dur: %.2fs\n", toq()/10)
+      println("\n\t", i)
+      @printf("\t\tup-down sweep dur: %.4fs\n", TimerOutputs.time(a.to["udsweep"]) *10.0^(-9)/TimerOutputs.ncalls(a.to["udsweep"]))
       @printf("\t\tacc rate (local) : %.1f%%\n", a.acc_rate*100)
       if p.global_updates
         @printf("\t\tacc rate (global): %.1f%%\n", a.acc_rate_global*100)
@@ -191,8 +220,8 @@ function thermalize!(mc::DQMC)
       end
       a.acc_rate = 0.0
       a.acc_rate_global = 0.0
+      println()
       flush(STDOUT)
-      tic()
     end
 
     # Save thermal configuration for "resume"
@@ -207,9 +236,21 @@ function thermalize!(mc::DQMC)
     end
 
   end
-  toq();
+
+  if ENABLE_TIMINGS 
+    # display(a.to);
+    show(TimerOutputs.flatten(a.to); allocations = true)
+    # save(p.output_file[1:end-10]*"timings.jld", "to", a.to); # TODO
+    rm(p.output_file)
+    exit();
+  end
   nothing
 end
+
+
+
+
+
 
 function measure!(mc::DQMC, prevmeasurements=0)
   const a = mc.a
@@ -324,7 +365,7 @@ function update(mc::DQMC, i::Int)
 
   if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
     a.prop_global += 1
-    b = global_update(mc)
+    @mytimeit a.to "global updates" b = global_update(mc)
     a.acc_rate_global += b
     a.acc_global += b
   end

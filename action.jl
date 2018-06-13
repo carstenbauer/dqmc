@@ -42,6 +42,7 @@ function calc_boson_action_diff(mc::AbstractDQMC, site::Int, slice::Int, new_op:
   const p = mc.p
   const l = mc.l
   
+  @mytimeit mc.a.to "calc_boson_action_diff" begin
   dS = 0.0
 
   @inbounds @views begin
@@ -72,6 +73,8 @@ function calc_boson_action_diff(mc::AbstractDQMC, site::Int, slice::Int, new_op:
     dS += p.delta_tau * (0.5 * p.r * sq_diff + 0.25 * p.u * pow4_diff);
     # dS += p.delta_tau * (0.5 * p.r * sq_diff);
   end
+
+  end #timeit
 
   return dS
 end
