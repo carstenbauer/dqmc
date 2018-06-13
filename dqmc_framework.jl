@@ -21,9 +21,9 @@ using Helpers
 using MonteCarloObservable
 using TimerOutputs
 
-const ENABLE_TIMINGS = false
+isdefined(:TIMING) || (global const TIMING = false)
 macro mytimeit(exprs...)
-    if ENABLE_TIMINGS
+    if TIMING
         return :(@timeit($(esc.(exprs)...)))
     else
         return esc(exprs[end])
@@ -118,7 +118,7 @@ function init!(mc::DQMC, start_conf, init_seed=true)
   propagate(mc)
   end
 
-  ENABLE_TIMINGS && show(TimerOutputs.flatten(a.to); allocations = true)
+  TIMING && show(TimerOutputs.flatten(a.to); allocations = true)
 end
 
 function run!(mc::DQMC)
@@ -237,7 +237,7 @@ function thermalize!(mc::DQMC)
 
   end
 
-  if ENABLE_TIMINGS 
+  if TIMING 
     # display(a.to);
     show(TimerOutputs.flatten(a.to); allocations = true)
     # save(p.output_file[1:end-10]*"timings.jld", "to", a.to); # TODO

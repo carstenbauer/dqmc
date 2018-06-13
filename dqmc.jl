@@ -4,19 +4,12 @@ println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
 
 try
+  # Single core simulation
   BLAS.set_num_threads(1)
   ENV["OMP_NUM_THREADS"] = 1
   ENV["MKL_NUM_THREADS"] = 1
   ENV["JULIA_NUM_THREADS"] = 1
 end
-
-# -------------------------------------------------------
-#                    Includes
-# -------------------------------------------------------
-using Helpers
-using Git
-using JLD
-include("dqmc_framework.jl")
 
 
 # -------------------------------------------------------
@@ -37,15 +30,30 @@ elseif length(ARGS) == 2
   println("Prefix is ", prefix, " and idx is ", idx)
   input_xml = prefix * ".task" * string(idx) * ".in.xml"
 else
-  error("Call with \"whatever.in.xml\" or e.g. \"sdwO3_L_4_B_2_dt_0.1_1 \${SLURM_ARRAY_TASK_ID}\"")
+  input_xml = "dqmc.in.xml"
+  output_file = input_xml[1:searchindex(input_xml, ".in.xml")-1]*".out.h5.running"
 end
 
 # hdf5 write test/ dump git commit
+using Git
 branch = Git.branch(dir=dirname(@__FILE__)).string[1:end-1]
 if branch != "master"
   println("!!!Not on branch master but \"$(branch)\"!!!")
   flush(STDOUT)
 end
+
+# TIMING parameter "hack"
+include("xml_parameters.jl")
+params = xml2dict(input_xml)
+haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) && (global const TIMING = true)
+
+
+# -------------------------------------------------------
+#                    Includes
+# -------------------------------------------------------
+using Helpers
+using JLD
+include("dqmc_framework.jl")
 
 
 # -------------------------------------------------------

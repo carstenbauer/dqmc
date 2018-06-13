@@ -6,7 +6,7 @@ using Iterators
     
 Load `p` from XML file (e.g. `.in.xml`).
 """
-function xml2parameters!(p::Params, input_xml::String)
+function xml2parameters!(p, input_xml::String)
   # READ INPUT XML
   params = Dict{Any, Any}()
   try
