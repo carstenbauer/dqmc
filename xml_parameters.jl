@@ -21,7 +21,7 @@ function xml2parameters!(p, input_xml::String)
   params
 end
 
-function xml2dict(fname::String)
+function xml2dict(fname::String, verbose::Bool=true)
   params = Dict{Any, Any}()
   xdoc = parse_file(fname)
   xroot = LightXML.root(xdoc)
@@ -31,7 +31,7 @@ function xml2dict(fname::String)
         if is_elementnode(p)
           e = XMLElement(p)
           if LightXML.name(e) == "PARAMETER"
-            println(attribute(e, "name"), " = ", content(e))
+            verbose && println(attribute(e, "name"), " = ", content(e))
             params[attribute(e, "name")] = content(e)
           end
         end

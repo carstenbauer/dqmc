@@ -44,7 +44,7 @@ end
 
 # TIMING parameter "hack"
 include("xml_parameters.jl")
-params = xml2dict(input_xml)
+params = xml2dict(input_xml, false)
 haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) && (global const TIMING = true)
 
 

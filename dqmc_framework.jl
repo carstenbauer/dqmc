@@ -122,7 +122,7 @@ function init!(mc::DQMC, start_conf, init_seed=true)
 end
 
 function run!(mc::DQMC)
-  println("\n\nMC Thermalize - ", mc.p.thermalization)
+  println("\n\nMC Thermalize - ", mc.p.thermalization*2)
   flush(STDOUT)
   thermalize!(mc)
 
@@ -131,7 +131,7 @@ function run!(mc::DQMC)
     write(f, "resume/box_global", mc.p.box_global.b)
   end
 
-  println("\n\nMC Measure - ", mc.p.measurements)
+  println("\n\nMC Measure - ", mc.p.measurements*2)
   flush(STDOUT)
   measure!(mc)
   nothing
@@ -154,7 +154,7 @@ function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
     p.box_global = Uniform(-box_global, box_global)
   end
 
-  println("\n\nMC Measure (resuming) - ", p.measurements, " (total $(p.measurements + prevmeasurements))")
+  println("\n\nMC Measure (resuming) - ", p.measurements*2, " (total $((p.measurements + prevmeasurements)*2))")
   flush(STDOUT)
   measure!(mc, prevmeasurements)
 
@@ -182,41 +182,41 @@ function thermalize!(mc::DQMC)
 
   reset_timer!(a.to)
   for i in (p.prethermalized+1):p.thermalization
+    tic()
     @timeit a.to "udsweep" for u in 1:2 * p.slices
       update(mc, i)
     end
-    @printf("\tsweep (not ud) duration: %.4fs\n", TimerOutputs.time(a.to["udsweep"])/2 *10.0^(-9)/TimerOutputs.ncalls(a.to["udsweep"]))
+    udswdur = toq()
+    @printf("\tsweep duration: %.4fs\n", udswdur/2)
     flush(STDOUT)
 
     if mod(i, 10) == 0
       a.acc_rate = a.acc_rate / (10 * 2 * p.slices)
       a.acc_rate_global = a.acc_rate_global / (10 / p.global_rate)
-      println("\n\t", i)
-      @printf("\t\tup-down sweep dur: %.4fs\n", TimerOutputs.time(a.to["udsweep"]) *10.0^(-9)/TimerOutputs.ncalls(a.to["udsweep"]))
+      println("\n\t", i*2)
+      @printf("\t\tsweep dur (total mean): %.4fs\n", TimerOutputs.time(a.to["udsweep"])/2 *10.0^(-9)/TimerOutputs.ncalls(a.to["udsweep"]))
       @printf("\t\tacc rate (local) : %.1f%%\n", a.acc_rate*100)
       if p.global_updates
         @printf("\t\tacc rate (global): %.1f%%\n", a.acc_rate_global*100)
         @printf("\t\tacc rate (global, overall): %.1f%%\n", a.acc_global/a.prop_global*100)
       end
 
-      # adaption (first half of thermalization)
-      if i < p.thermalization / 2 + 1
-        if a.acc_rate < 0.5
-          @printf("\t\tshrinking box: %.2f\n", 0.9*p.box.b)
-          p.box = Uniform(-0.9*p.box.b,0.9*p.box.b)
-        else
-          @printf("\t\tenlarging box: %.2f\n", 1.1*p.box.b)
-          p.box = Uniform(-1.1*p.box.b,1.1*p.box.b)
-        end
+      # adaption (only during thermalization)
+      if a.acc_rate < 0.5
+        @printf("\t\tshrinking box: %.2f\n", 0.9*p.box.b)
+        p.box = Uniform(-0.9*p.box.b,0.9*p.box.b)
+      else
+        @printf("\t\tenlarging box: %.2f\n", 1.1*p.box.b)
+        p.box = Uniform(-1.1*p.box.b,1.1*p.box.b)
+      end
 
-        if p.global_updates
+      if p.global_updates
         if a.acc_global/a.prop_global < 0.5
           @printf("\t\tshrinking box_global: %.2f\n", 0.9*p.box_global.b)
           p.box_global = Uniform(-0.9*p.box_global.b,0.9*p.box_global.b)
         else
           @printf("\t\tenlarging box_global: %.2f\n", 1.1*p.box_global.b)
           p.box_global = Uniform(-1.1*p.box_global.b,1.1*p.box_global.b)
-        end
         end
       end
       a.acc_rate = 0.0
@@ -287,9 +287,9 @@ function measure!(mc::DQMC, prevmeasurements=0)
 
   acc_rate = 0.0
   acc_rate_global = 0.0
-  tic()
   for i in i_start:i_end
-    for u in 1:2 * p.slices
+    # tic()
+    @timeit a.to "udsweep" for u in 1:2 * p.slices
       update(mc, i)
 
       # if s.current_slice == 1 && s.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
@@ -325,11 +325,16 @@ function measure!(mc::DQMC, prevmeasurements=0)
         # end
       end
     end
+    # udswdur = toq()
+    # @printf("\tsweep duration: %.4fs\n", udswdur/2)
+    # flush(STDOUT)
+
+
     if mod(i, 100) == 0
       a.acc_rate = a.acc_rate / (100 * 2 * p.slices)
       a.acc_rate_global = a.acc_rate_global / (100 / p.global_rate)
-      println("\t", i)
-      @printf("\t\tup-down sweep dur: %.2fs\n", toq()/100)
+      println("\t", i*2)
+      @printf("\t\tsweep dur (total mean): %.4fs\n", TimerOutputs.time(a.to["udsweep"])/2 *10.0^(-9)/TimerOutputs.ncalls(a.to["udsweep"]))
       @printf("\t\tacc rate (local) : %.1f%%\n", a.acc_rate*100)
       if p.global_updates
         @printf("\t\tacc rate (global): %.1f%%\n", a.acc_rate_global*100)
@@ -338,7 +343,6 @@ function measure!(mc::DQMC, prevmeasurements=0)
       a.acc_rate = 0.0
       a.acc_rate_global = 0.0
       flush(STDOUT)
-      tic()
     end
   end
 
@@ -352,7 +356,6 @@ function measure!(mc::DQMC, prevmeasurements=0)
   # MonteCarloObservable.export_error(boson_action)
   # println("Done.")
 
-  toq();
   nothing
 end
 
