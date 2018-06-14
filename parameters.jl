@@ -98,7 +98,13 @@ function set_parameters(p::Params, params::Dict)
     p.L = parse(Int, params["L"])
   end
   p.hoppings = params["HOPPINGS"]
-  p.mu = parse(Float64, params["MU"])
+  
+  if haskey(params, "MU1")
+    p.mu = parse(Float64, params["MU1"])
+  else
+    p.mu = parse(Float64, params["MU"])
+  end
+  
   p.lambda = parse(Float64, params["LAMBDA"])
   p.r = parse(Float64, params["R"])
   p.c = parse(Float64, params["C"])
