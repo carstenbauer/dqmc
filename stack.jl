@@ -36,7 +36,7 @@ mutable struct Stack{G<:Number} # G = GreensEltype
 
   #### Array allocations
   curr_U::Matrix{G}
-  eV::Matrix{G}
+  eV::SparseMatrixCSC{G,Int64}
   eVop1::Matrix{G}
   eVop2::Matrix{G}
   eye_flv::Matrix{Float64}
@@ -114,7 +114,7 @@ function initialize_stack(mc::AbstractDQMC)
   end
 
   s.curr_U = zeros(G, flv*N, flv*N)
-  s.eV = zeros(G, flv*N, flv*N)
+  s.eV = spzeros(G, flv*N, flv*N)
   s.eVop1 = zeros(G, flv, flv)
   s.eVop2 = zeros(G, flv, flv)
 

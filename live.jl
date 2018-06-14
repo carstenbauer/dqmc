@@ -13,4 +13,5 @@ init!(mc)
 
 # const l = mc.l;
 # const s = mc.s;
+display(mc)
 nothing

@@ -8,56 +8,72 @@ function interaction_matrix_exp(mc::AbstractDQMC, slice::Int, power::Float64=1.)
 end
 
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
-function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1., eV::Matrix=mc.s.eV)
+function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1., eV::AbstractSparseMatrix=mc.s.eV)
   @mytimeit mc.a.to "interactions (combined)" begin
   @mytimeit mc.a.to "interaction_matrix_exp!" begin
   const p = mc.p
   const l = mc.l
+  const N = l.sites
+  const G = geltype(mc)
 
-  C = blockview(l, eV, 1, 1)
-  S = blockview(l, eV, 1, 2)
+  C = zeros(G, N) #1, 1)
+  S = zeros(G, N) #1, 2)
   if p.opdim == 3
-    R = blockview(l, eV, 1, 4)
+    R = zeros(G, N) #1, 4)
   end
-  @simd for i in 1:l.sites
+  @inbounds @simd for i in 1:N
     n = norm(p.hsfield[:,i,slice])
     sh = sinh(p.lambda * p.delta_tau * n)/n
-    C[i,i] = cosh(p.lambda * p.delta_tau * n)
+    C[i] = cosh(p.lambda * p.delta_tau * n)
     if p.opdim == 3
-      S[i,i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * power * sh
-      R[i,i] = (-p.hsfield[3,i,slice]) * power * sh
+      S[i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * power * sh
+      R[i] = (-p.hsfield[3,i,slice]) * power * sh
     elseif p.opdim == 2
-      S[i,i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * power * sh
+      S[i] = (im * p.hsfield[2,i,slice] - p.hsfield[1,i,slice]) * power * sh
     else # O(1)
-      S[i,i] = - p.hsfield[1,i,slice] * power * sh
+      S[i] = - p.hsfield[1,i,slice] * power * sh
     end
   end
 
+  setblockdiag!(l,eV,1,1,C)
+  setblockdiag!(l,eV,1,2,S)
+  setblockdiag!(l,eV,1,4,R)
+  
   cS = conj(S)
-  blockreplace!(l,eV,2,1,cS)
-  blockreplace!(l,eV,2,2,C)
+  setblockdiag!(l,eV,2,1,cS)
+  setblockdiag!(l,eV,2,2,C)
 
   if p.opdim == 3
     mR = -R
-    blockreplace!(l,eV,2,3,mR)
+    setblockdiag!(l,eV,2,3,mR)
 
-    blockreplace!(l,eV,3,2,mR)
-    blockreplace!(l,eV,3,3,C)
-    blockreplace!(l,eV,3,4,cS)
+    setblockdiag!(l,eV,3,2,mR)
+    setblockdiag!(l,eV,3,3,C)
+    setblockdiag!(l,eV,3,4,cS)
 
-    blockreplace!(l,eV,4,1,R)
-    blockreplace!(l,eV,4,3,S)
-    blockreplace!(l,eV,4,4,C)
+    setblockdiag!(l,eV,4,1,R)
+    setblockdiag!(l,eV,4,3,S)
+    setblockdiag!(l,eV,4,4,C)
   end
   end #timeit
   end #timeit
 end
 
-@inline blockview(l::Lattice, A::AbstractMatrix{T}, row::Int, col::Int) where T<:Number = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
-@inline function blockreplace!(l::Lattice, A::AbstractMatrix{T}, row::Int, col::Int, B::AbstractMatrix{T}) where T<:Number
-  @views A[(row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites] = B
+@inline function setblockdiag!(l::Lattice, A::AbstractSparseMatrix, row::Int, col::Int, B::AbstractVector)
+  rstart = (row-1)*l.sites+1
+  colstart = (col-1)*l.sites+1
+
+  @inbounds for shift in 0:length(B)-1
+    A[rstart+shift,colstart+shift] = B[shift+1]
+  end
   nothing
 end
+
+
+
+
+
+
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
 function interaction_matrix_exp_op(mc::AbstractDQMC, op::Vector{Float64}, power::Float64=1.)

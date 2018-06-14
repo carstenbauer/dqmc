@@ -105,18 +105,24 @@ function multiply_B_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMat
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_B_left!" begin
 
+  @mytimeit a.to "Bleft_construct_eV" begin
   interaction_matrix_exp!(mc,slice,1.,s.eV)
+  end
+  @mytimeit a.to "Bleft_mult_eV" begin
   A_mul_B!(s.tmp, s.eV, M)
   M .= s.tmp
+  end
   A_mul_B!(s.tmp, l.chkr_mu, M)
   M .= s.tmp
 
+  @mytimeit a.to "Bleft_mult_eT" begin
   A_mul_B!(s.tmp, l.chkr_hop_half[2], M)
   M .= s.tmp
   A_mul_B!(s.tmp, l.chkr_hop[1], M)
   M .= s.tmp
   A_mul_B!(s.tmp, l.chkr_hop_half[2], M)
   M .= s.tmp
+  end
   end
   end #timeit
   nothing
@@ -224,7 +230,7 @@ end
 # -------------------------------------------------------
 #  				Generic checkerboard
 # -------------------------------------------------------
-@inline function multiply_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
+function multiply_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const p = mc.p
   const s = mc.s
@@ -232,12 +238,17 @@ end
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_B_left!" begin
 
+  @mytimeit a.to "Bleft_construct_eV" begin
   interaction_matrix_exp!(mc,slice,1.,s.eV)
+  end
+  @mytimeit a.to "Bleft_mult_eV" begin
   A_mul_B!(s.tmp, s.eV, M)
   M .= s.tmp
+  end
   A_mul_B!(s.tmp, l.chkr_mu, M)
   M .= s.tmp
 
+  @mytimeit a.to "Bleft_mult_eT" begin
   @inbounds @views begin
     for i in reverse(2:l.n_groups)
       A_mul_B!(s.tmp, l.chkr_hop_half[i], M)
@@ -249,6 +260,7 @@ end
       A_mul_B!(s.tmp, l.chkr_hop_half[i], M)
       M .= s.tmp
     end
+  end
   end
   end
   end #timeit
