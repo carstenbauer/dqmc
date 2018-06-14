@@ -9,6 +9,8 @@ end
 
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
 function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1., eV::Matrix=mc.s.eV)
+  @mytimeit mc.a.to "interactions (combined)" begin
+  @mytimeit mc.a.to "interaction_matrix_exp!" begin
   const p = mc.p
   const l = mc.l
 
@@ -47,6 +49,8 @@ function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1.
     blockreplace!(l,eV,4,3,S)
     blockreplace!(l,eV,4,4,C)
   end
+  end #timeit
+  end #timeit
 end
 
 @inline blockview(l::Lattice, A::AbstractMatrix{T}, row::Int, col::Int) where T<:Number = view(A, (row-1)*l.sites+1:row*l.sites, (col-1)*l.sites+1:col*l.sites)
@@ -64,6 +68,8 @@ end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
 function interaction_matrix_exp_op!(mc::AbstractDQMC{C,G}, op::Vector{Float64}, power::Float64=1., eVop::Matrix{G}=mc.s.eVop1) where {C,G}
+  @mytimeit mc.a.to "interactions (combined)" begin
+  @mytimeit mc.a.to "interaction_matrix_exp_op!" begin
   n = norm(op)
   sh = power * sinh(mc.p.lambda * mc.p.delta_tau*n)/n
   Cii = cosh(mc.p.lambda * mc.p.delta_tau*n)
@@ -98,4 +104,6 @@ function interaction_matrix_exp_op!(mc::AbstractDQMC{C,G}, op::Vector{Float64}, 
     eVop[4,3] = Sii
     eVop[4,4] = Cii
   end
+  end #timeit
+  end #timeit
 end
