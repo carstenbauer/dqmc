@@ -30,6 +30,7 @@ mutable struct Params
   global_updates::Bool
   global_rate::Int64
 
+  sparsity_limit::Float64 # upper sparsity limit for chkr folding heuristic
   chkr::Bool # checkerboard
   Bfield::Bool # artificial magnetic field to reduce finite size effects
 
@@ -58,6 +59,7 @@ mutable struct Params
     p.seed = 4729339882041979125
     p.resume = false
     p.prethermalized = 0
+    p.sparsity_limit = 0.01
     return p
   end
 end
@@ -148,6 +150,9 @@ function set_parameters(p::Params, params::Dict)
   end
   if haskey(params,"WRITE_EVERY_NTH")
     p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"])
+  end
+  if haskey(params, "SPARSITY_LIMIT")
+    p.sparsity_limit = parse(Float64, params["SPARSITY_LIMIT"])
   end
 
   deduce_remaining_parameters(p)

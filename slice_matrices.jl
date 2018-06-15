@@ -235,74 +235,37 @@ function multiply_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMa
   const p = mc.p
   const s = mc.s
   const a = mc.a
-  @mytimeit a.to "multiply_B (combined)" begin
-  @mytimeit a.to "multiply_B_left!" begin
+  @timeit a.to "multiply_B (combined)" begin
+  @timeit a.to "multiply_B_left!" begin
 
-  @mytimeit a.to "Bleft_construct_eV" begin
+  # @timeit a.to "Bleft_construct_eV" begin
   interaction_matrix_exp!(mc,slice,1.,s.eV)
-  end
-  @mytimeit a.to "Bleft_mult_eV" begin
+  # end
+  # @timeit a.to "Bleft_mult_eV" begin
   A_mul_B!(s.tmp, s.eV, M)
   M .= s.tmp
-  end
+  # end
   A_mul_B!(s.tmp, l.chkr_mu, M)
   M .= s.tmp
 
-  @mytimeit a.to "Bleft_mult_eT" begin
+  # @timeit a.to "Bleft_mult_eT" begin
   @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      A_mul_B!(s.tmp, l.chkr_hop_half[i], M)
+    for i in reverse(1:l.n_folded)
+      A_mul_B!(s.tmp, l.chkr_hop_half_folded_rev[i], M)
       M .= s.tmp
     end
     A_mul_B!(s.tmp, l.chkr_hop[1], M)
     M .= s.tmp
-    for i in 2:l.n_groups
-      A_mul_B!(s.tmp, l.chkr_hop_half[i], M)
+    for i in 1:l.n_folded
+      A_mul_B!(s.tmp, l.chkr_hop_half_folded[i], M)
       M .= s.tmp
     end
   end
-  end
+  # end
   end
   end #timeit
   nothing
 end
-
-# # chkr_hop_half = foldr(*,speye(256,256), mc.l.chkr_hop_half[2:end])
-# # chkr_hop_half_rev = foldr(*,speye(256,256), reverse(mc.l.chkr_hop_half[2:end]))
-
-# function multiply_B_left2!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}, chkr_hop_half, chkr_hop_half_rev) where T<:Number
-#   const l = mc.l
-#   const p = mc.p
-#   const s = mc.s
-#   const a = mc.a
-#   @timeit a.to "multiply_B (combined)" begin
-#   @timeit a.to "multiply_B_left!" begin
-
-#   @timeit a.to "Bleft_construct_eV" begin
-#   interaction_matrix_exp!(mc,slice,1.,s.eV)
-#   end1.
-#   @timeit a.to "Bleft_mult_eV" begin
-#   A_mul_B!(s.tmp, s.eV, M)
-#   M .= s.tmp
-#   end
-#   A_mul_B!(s.tmp, l.chkr_mu, M)
-#   M .= s.tmp
-
-#   @timeit a.to "Bleft_mult_eT" begin
-#   @inbounds @views begin
-#     A_mul_B!(s.tmp, chkr_hop_half_rev, M)
-#     M .= s.tmp
-#     A_mul_B!(s.tmp, l.chkr_hop[1], M)
-#     M .= s.tmp
-#     A_mul_B!(s.tmp, chkr_hop_half, M)
-#     M .= s.tmp
-#   end
-#   end
-
-#   end
-#   end #timeit
-#   nothing
-# end
 
 function multiply_B_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
@@ -313,14 +276,14 @@ function multiply_B_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractM
   @mytimeit a.to "multiply_B_right!" begin
 
   @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      A_mul_B!(s.tmp, M, l.chkr_hop_half[i])
+    for i in reverse(1:l.n_folded)
+      A_mul_B!(s.tmp, M, l.chkr_hop_half_folded[i])
       M .= s.tmp
     end
     A_mul_B!(s.tmp, M, l.chkr_hop[1])
     M .= s.tmp
-    for i in 2:l.n_groups
-      A_mul_B!(s.tmp, M, l.chkr_hop_half[i])
+    for i in 1:l.n_folded
+      A_mul_B!(s.tmp, M, l.chkr_hop_half_folded_rev[i])
       M .= s.tmp
     end
   end
@@ -344,14 +307,14 @@ function multiply_B_inv_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::Abstra
   @mytimeit a.to "multiply_B_inv_left!" begin
   
   @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      A_mul_B!(s.tmp, l.chkr_hop_half_inv[i], M)
+    for i in reverse(1:l.n_folded)
+      A_mul_B!(s.tmp, l.chkr_hop_half_inv_folded_rev[i], M)
       M .= s.tmp
     end
     A_mul_B!(s.tmp, l.chkr_hop_inv[1], M)
     M .= s.tmp
-    for i in 2:l.n_groups
-      A_mul_B!(s.tmp, l.chkr_hop_half_inv[i], M)
+    for i in 1:l.n_folded
+      A_mul_B!(s.tmp, l.chkr_hop_half_inv_folded[i], M)
       M .= s.tmp
     end
   end
@@ -381,14 +344,14 @@ function multiply_B_inv_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::Abstr
   M .= s.tmp
 
   @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      A_mul_B!(s.tmp, M, l.chkr_hop_half_inv[i])
+    for i in reverse(1:l.n_folded)
+      A_mul_B!(s.tmp, M, l.chkr_hop_half_inv_folded[i])
       M .= s.tmp
     end
     A_mul_B!(s.tmp, M, l.chkr_hop_inv[1])
     M .= s.tmp
-    for i in 2:l.n_groups
-      A_mul_B!(s.tmp, M, l.chkr_hop_half_inv[i])
+    for i in 1:l.n_folded
+      A_mul_B!(s.tmp, M, l.chkr_hop_half_inv_folded_rev[i])
       M .= s.tmp
     end
   end
@@ -406,14 +369,14 @@ function multiply_daggered_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::A
   @mytimeit a.to "multiply_daggered_B_left!" begin
     
   @inbounds @views begin
-    for i in reverse(2:l.n_groups)
-      A_mul_B!(s.tmp, l.chkr_hop_half_dagger[i], M)
+    for i in reverse(1:l.n_folded)
+      A_mul_B!(s.tmp, l.chkr_hop_half_dagger_folded_rev[i], M)
       M .= s.tmp
     end
     A_mul_B!(s.tmp, l.chkr_hop_dagger[1], M)
     M .= s.tmp
-    for i in 2:l.n_groups
-      A_mul_B!(s.tmp, l.chkr_hop_half_dagger[i], M)
+    for i in 1:l.n_folded
+      A_mul_B!(s.tmp, l.chkr_hop_half_dagger_folded[i], M)
       M .= s.tmp
     end
   end

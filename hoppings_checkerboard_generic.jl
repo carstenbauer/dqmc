@@ -101,10 +101,89 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
   l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
   l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
 
+  fold_chkr_grps(mc)
+
   hop_mat_exp_chkr = foldl(*,l.chkr_hop_half) * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
   r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
   println("Checkerboard (generic) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
+end
+
+
+
+function fold_chkr_grps(mc::AbstractDQMC{CBGeneric})
+  # ### Heuristic folding (merging) of chkr groups.
+  #
+  # We often have many sparse chkr groups which stay sparse, when folded (multiplied together).
+  # It is advantageous to reduce the number of sparse matrices that we multiply all the time in
+  # multiply_B_*! functions.
+  #
+  # The applied heuristic is as follows:
+  # Fold chkr matrices until a SPARSITY_LIMIT is reached. Save the result as one "folded" matrix.
+  # Continue in the same spirit with remaining chkr matrices until we visited them all.
+  #
+  # Massive(!) speed improvement!!
+  const l = mc.l
+  const H = heltype(mc)
+  const flv = mc.p.flv
+  const N = mc.l.sites
+  const SPARSITY_LIMIT = mc.p.sparsity_limit
+
+  @show SPARSITY_LIMIT
+
+  l.chkr_hop_half_folded = SparseMatrixCSC{H, Int64}[]
+  cur = speye(H, flv*N, flv*N)
+  l.folded = UnitRange{Int64}[]
+  fstart = 2
+  fstop = 1
+
+  for i in 2:l.n_groups
+    if i != 2 && (countnz(cur)/length(cur)) > SPARSITY_LIMIT
+      push!(l.chkr_hop_half_folded, cur)
+      push!(l.folded, fstart:fstop)
+      fstart = i
+      fstop = i
+      cur = speye(H, flv*N, flv*N)
+    else
+      fstop += 1
+    end
+
+    cur = l.chkr_hop_half[i] * cur
+  end
+
+  push!(l.chkr_hop_half_folded, cur)
+  push!(l.folded, fstart:fstop)
+
+  l.n_folded = length(l.folded)
+
+  l.chkr_hop_half_inv_folded = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
+  l.chkr_hop_half_dagger_folded = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
+  l.chkr_hop_half_folded_rev = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
+  l.chkr_hop_half_inv_folded_rev = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
+  l.chkr_hop_half_dagger_folded_rev = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
+
+  for (i, rng) in enumerate(l.folded)
+    cur_rev = speye(H, flv*N, flv*N)
+    cur_inv = speye(H, flv*N, flv*N)
+    cur_inv_rev = speye(H, flv*N, flv*N)
+    cur_dagger = speye(H, flv*N, flv*N)
+    cur_dagger_rev = speye(H, flv*N, flv*N)
+    for k in rng
+      cur_rev = cur_rev * l.chkr_hop_half[k]
+      cur_inv = l.chkr_hop_half_inv[k] * cur_inv
+      cur_inv_rev = cur_inv_rev * l.chkr_hop_half_inv[k]
+      cur_dagger = l.chkr_hop_half_dagger[k] * cur_dagger
+      cur_dagger_rev = cur_dagger_rev * l.chkr_hop_half_dagger[k]
+    end
+    l.chkr_hop_half_folded_rev[i] = cur_rev
+    l.chkr_hop_half_inv_folded[i] = cur_inv
+    l.chkr_hop_half_inv_folded_rev[i] = cur_inv_rev
+    l.chkr_hop_half_dagger_folded[i] = cur_dagger
+    l.chkr_hop_half_dagger_folded_rev[i] = cur_dagger_rev
+  end
+
+  @show l.n_folded
+  nothing
 end
 
 #### WITH ARTIFICIAL B-FIELD
@@ -183,6 +262,8 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
   l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
   l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
   l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
+
+  fold_chkr_grps(mc)
 
   hop_mat_exp_chkr = foldl(*,l.chkr_hop_half) * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)

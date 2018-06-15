@@ -23,6 +23,20 @@ mutable struct Lattice{H<:Number} # H = HoppingEltype
   chkr_hop_half::Vector{SparseMatrixCSC{H, Int64}}
   chkr_hop_half_inv::Vector{SparseMatrixCSC{H, Int64}}
   chkr_hop_half_dagger::Vector{SparseMatrixCSC{H, Int64}}
+
+  # -- chkr groups folding (regrouping)
+  n_folded::Int
+  folded::Vector{UnitRange{Int64}}
+
+  chkr_hop_half_folded::Vector{SparseMatrixCSC{H, Int64}}
+  chkr_hop_half_inv_folded::Vector{SparseMatrixCSC{H, Int64}}
+  chkr_hop_half_dagger_folded::Vector{SparseMatrixCSC{H, Int64}}
+
+  chkr_hop_half_folded_rev::Vector{SparseMatrixCSC{H, Int64}}
+  chkr_hop_half_inv_folded_rev::Vector{SparseMatrixCSC{H, Int64}}
+  chkr_hop_half_dagger_folded_rev::Vector{SparseMatrixCSC{H, Int64}}
+  # --
+
   chkr_hop::Vector{SparseMatrixCSC{H, Int64}} # without prefactor 0.5 in matrix exponentials
   chkr_hop_inv::Vector{SparseMatrixCSC{H, Int64}}
   chkr_hop_dagger::Vector{SparseMatrixCSC{H, Int64}}
