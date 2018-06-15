@@ -119,6 +119,7 @@ function init!(mc::DQMC, start_conf, init_seed=true)
   end
 
   TIMING && show(TimerOutputs.flatten(a.to); allocations = true)
+  nothing
 end
 
 function run!(mc::DQMC)
