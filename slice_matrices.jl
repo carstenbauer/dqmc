@@ -267,6 +267,43 @@ function multiply_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMa
   nothing
 end
 
+# # chkr_hop_half = foldr(*,speye(256,256), mc.l.chkr_hop_half[2:end])
+# # chkr_hop_half_rev = foldr(*,speye(256,256), reverse(mc.l.chkr_hop_half[2:end]))
+
+# function multiply_B_left2!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}, chkr_hop_half, chkr_hop_half_rev) where T<:Number
+#   const l = mc.l
+#   const p = mc.p
+#   const s = mc.s
+#   const a = mc.a
+#   @timeit a.to "multiply_B (combined)" begin
+#   @timeit a.to "multiply_B_left!" begin
+
+#   @timeit a.to "Bleft_construct_eV" begin
+#   interaction_matrix_exp!(mc,slice,1.,s.eV)
+#   end1.
+#   @timeit a.to "Bleft_mult_eV" begin
+#   A_mul_B!(s.tmp, s.eV, M)
+#   M .= s.tmp
+#   end
+#   A_mul_B!(s.tmp, l.chkr_mu, M)
+#   M .= s.tmp
+
+#   @timeit a.to "Bleft_mult_eT" begin
+#   @inbounds @views begin
+#     A_mul_B!(s.tmp, chkr_hop_half_rev, M)
+#     M .= s.tmp
+#     A_mul_B!(s.tmp, l.chkr_hop[1], M)
+#     M .= s.tmp
+#     A_mul_B!(s.tmp, chkr_hop_half, M)
+#     M .= s.tmp
+#   end
+#   end
+
+#   end
+#   end #timeit
+#   nothing
+# end
+
 function multiply_B_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
   const l = mc.l
   const p = mc.p

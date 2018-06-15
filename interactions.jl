@@ -16,11 +16,15 @@ function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1.
   const N = l.sites
   const G = geltype(mc)
 
-  C = zeros(G, N) #1, 1)
-  S = zeros(G, N) #1, 2)
-  if p.opdim == 3
-    R = zeros(G, N) #1, 4)
-  end
+  const C = mc.s.C
+  const S = mc.s.S
+  const R = mc.s.R
+
+  # C = zeros(G, N) #1, 1)
+  # S = zeros(G, N) #1, 2)
+  # if p.opdim == 3
+    # R = zeros(G, N) #1, 4)
+  # end
   @inbounds @simd for i in 1:N
     n = norm(p.hsfield[:,i,slice])
     sh = sinh(p.lambda * p.delta_tau * n)/n

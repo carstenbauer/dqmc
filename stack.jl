@@ -61,6 +61,9 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   tmp::Matrix{G}
   Bl::Matrix{G}
   tmp2::Matrix{G}
+  C::Vector{G}
+  S::Vector{G}
+  R::Vector{G}
 
 
   Stack{G}() where G = new{G}()
@@ -140,6 +143,10 @@ function initialize_stack(mc::AbstractDQMC)
   s.Bl = zeros(G, flv*N, flv*N)
   ## calculate_greens
   s.tmp2 = zeros(G, flv*N, flv*N)
+
+  s.C = zeros(G, N)
+  s.S = zeros(G, N)
+  s.R = zeros(G, N)
 
   ## propagate
   s.greens_temp = zeros(G, flv*N, flv*N)
