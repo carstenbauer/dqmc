@@ -83,8 +83,6 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
             T[trg, src] = T[src, trg] += -l.tNN[2,f]
           elseif v == RR
             T[trg, src] = T[src, trg] += -l.tNN[1,f]
-          else
-            error("Square lattice??? Check lattice file!", v)
           end
         end
 
