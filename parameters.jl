@@ -195,7 +195,12 @@ function deduce_remaining_parameters(p::Params)
     p.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
   else
     hn = lowercase(gethostname())
-    lat = "square_L_$(p.L)_W_$(p.L).xml"
+    lat = ""
+    if p.Nhoppings == "none" && p.NNhoppings == "none"
+      lat = "square_L_$(p.L)_W_$(p.L).xml"
+    else
+      lat = "NNsquare_L_$(p.L)_W_$(p.L).xml"
+    end
     if contains(hn, "cheops")
       p.lattice_file = "/projects/ag-trebst/bauer/lattices/"*lat
     elseif contains(hn, "thp")
