@@ -49,8 +49,12 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
   eT = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
   eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
 
-  const VER = [0.0, 1.0]
-  const HOR = [1.0, 0.0]
+  const U = [0.0, 1.0]
+  const R = [1.0, 0.0]
+  const UR = [1.0, 1.0]
+  const DR = [1.0, -1.0]
+  const UU = [0.0, 2.0]
+  const RR = [2.0, 0.0]
 
   for f in 1:2
     for s in 1:2
@@ -64,10 +68,21 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
           bond = l.checkerboard[3,i]
           v = l.bond_vecs[bond,:]
 
-          if v == VER
+          # nn
+          if v == U
             T[trg, src] = T[src, trg] += -l.t[2,f]
-          elseif v == HOR
+          elseif v == R
             T[trg, src] = T[src, trg] += -l.t[1,f]
+
+          #Nnn
+          elseif v == UR || v == DR
+            T[trg, src] = T[src, trg] += -l.tN[1,f]
+
+          #NNnn
+          elseif v == UU
+            T[trg, src] = T[src, trg] += -l.tNN[2,f]
+          elseif v == RR
+            T[trg, src] = T[src, trg] += -l.tNN[1,f]
           else
             error("Square lattice??? Check lattice file!", v)
           end
@@ -96,10 +111,12 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
   l.chkr_hop_half_dagger = ctranspose.(l.chkr_hop_half)
   l.chkr_hop_dagger = ctranspose.(l.chkr_hop)
 
-  l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
+  muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
+  muv = repeat(muv, outer=[Int(p.flv/2)])
+  l.chkr_mu_half = spdiagm(exp.(-0.5*p.delta_tau * -muv))
+  l.chkr_mu_half_inv = spdiagm(exp.(0.5*p.delta_tau * -muv))
+  l.chkr_mu = spdiagm(exp.(-p.delta_tau * -muv))
+  l.chkr_mu_inv = spdiagm(exp.(p.delta_tau * -muv))
 
   fold_chkr_grps(mc)
 
@@ -209,8 +226,12 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
     B[1,2] = B[2,1] = - 2 * pi / l.sites
   end
 
-  const VER = [0.0, 1.0]
-  const HOR = [1.0, 0.0]
+  const U = [0.0, 1.0]
+  const R = [1.0, 0.0]
+  const UR = [1.0, 1.0]
+  const DR = [1.0, -1.0]
+  const UU = [0.0, 2.0]
+  const RR = [2.0, 0.0]
 
   for f in 1:2
     for s in 1:2
@@ -224,12 +245,25 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
           bond = l.checkerboard[3,i]
           v = l.bond_vecs[bond,:]
 
-          if v == VER
+          if v == U
             T[trg, src] += - exp(im * l.peirls[s,f][trg,src]) * l.t[2,f]
             T[src, trg] += - exp(im * l.peirls[s,f][src,trg]) * l.t[2,f]
-          elseif v == HOR
+          elseif v == R
             T[trg, src] += - exp(im * l.peirls[s,f][trg,src]) * l.t[1,f]
             T[src, trg] += - exp(im * l.peirls[s,f][src,trg]) * l.t[1,f]
+
+          #Nnn
+          elseif v == UR || v == DR
+            T[trg, src] += - exp(im * l.peirls[s,f][trg,src]) * l.tN[1,f]
+            T[src, trg] += - exp(im * l.peirls[s,f][src,trg]) * l.tN[1,f]
+
+          #NNnn
+          elseif v == UU
+            T[trg, src] += - exp(im * l.peirls[s,f][trg,src]) * l.tNN[2,f]
+            T[src, trg] += - exp(im * l.peirls[s,f][src,trg]) * l.tNN[2,f]
+          elseif v == RR
+            T[trg, src] += - exp(im * l.peirls[s,f][trg,src]) * l.tNN[1,f]
+            T[src, trg] += - exp(im * l.peirls[s,f][src,trg]) * l.tNN[1,f]
           else
             error("Square lattice??? Check lattice file!", v)
           end
@@ -258,10 +292,12 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
   l.chkr_hop_half_dagger = ctranspose.(l.chkr_hop_half)
   l.chkr_hop_dagger = ctranspose.(l.chkr_hop)
 
-  l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
+  muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
+  muv = repeat(muv, outer=[Int(p.flv/2)])
+  l.chkr_mu_half = spdiagm(exp.(-0.5*p.delta_tau * -muv))
+  l.chkr_mu_half_inv = spdiagm(exp.(0.5*p.delta_tau * -muv))
+  l.chkr_mu = spdiagm(exp.(-p.delta_tau * -muv))
+  l.chkr_mu_inv = spdiagm(exp.(p.delta_tau * -muv))
 
   fold_chkr_grps(mc)
 

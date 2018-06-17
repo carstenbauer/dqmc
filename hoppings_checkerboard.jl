@@ -119,10 +119,12 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBAssaad})
   l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
   l.chkr_hop_dagger = [ctranspose(eT_A), ctranspose(eT_B)]
 
-  l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
+  muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
+  muv = repeat(muv, outer=[Int(p.flv/2)])
+  l.chkr_mu_half = spdiagm(exp.(-0.5*p.delta_tau * -muv))
+  l.chkr_mu_half_inv = spdiagm(exp.(0.5*p.delta_tau * -muv))
+  l.chkr_mu = spdiagm(exp.(-p.delta_tau * -muv))
+  l.chkr_mu_inv = spdiagm(exp.(p.delta_tau * -muv))
 
   l.n_groups = 2
 
@@ -251,10 +253,12 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBAssaad})
   l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
   l.chkr_hop_dagger = [ctranspose(eT_A), ctranspose(eT_B)]
 
-  l.chkr_mu_half = spdiagm(fill(exp(-0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_half_inv = spdiagm(fill(exp(0.5*p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu = spdiagm(fill(exp(-p.delta_tau * -p.mu), p.flv * l.sites))
-  l.chkr_mu_inv = spdiagm(fill(exp(p.delta_tau * -p.mu), p.flv * l.sites))
+  muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
+  muv = repeat(muv, outer=[Int(p.flv/2)])
+  l.chkr_mu_half = spdiagm(exp.(-0.5*p.delta_tau * -muv))
+  l.chkr_mu_half_inv = spdiagm(exp.(0.5*p.delta_tau * -muv))
+  l.chkr_mu = spdiagm(exp.(-p.delta_tau * -muv))
+  l.chkr_mu_inv = spdiagm(exp.(p.delta_tau * -muv))
 
   l.n_groups = 2
 

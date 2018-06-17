@@ -3,7 +3,9 @@ using Distributions
 
 mutable struct Params
   lattice_file::String
-  hoppings::String
+  hoppings::String # nearest neighbor
+  Nhoppings::String # next nearest neighbor
+  NNhoppings::String # next next nearest neighbor
   beta::Float64
   delta_tau::Float64
   L::Int
@@ -17,7 +19,8 @@ mutable struct Params
   hsfield::Array{Float64, 3} # dim 1: op component, dim 2: linearized spatial lattice, dim 3: imag time
   boson_action::Float64
 
-  mu::Float64
+  mu1::Float64 # x flavor
+  mu2::Float64 # y flavor
   lambda::Float64
   r::Float64
   c::Float64
@@ -60,6 +63,9 @@ mutable struct Params
     p.resume = false
     p.prethermalized = 0
     p.sparsity_limit = 0.01
+    p.hoppings = "none"
+    p.Nhoppings = "none"
+    p.NNhoppings = "none"
     return p
   end
 end
@@ -99,12 +105,28 @@ function set_parameters(p::Params, params::Dict)
   else
     p.L = parse(Int, params["L"])
   end
-  p.hoppings = params["HOPPINGS"]
-  
-  if haskey(params, "MU1")
-    p.mu = parse(Float64, params["MU1"])
+
+  if haskey(params, "HOPPINGS")
+    s = params["HOPPINGS"]
+    sum(abs.(parse.(Float64, split(s, ",")))) > 0 && (p.hoppings = params["HOPPINGS"])
+  end
+  if haskey(params, "N-HOPPINGS")
+    s = params["N-HOPPINGS"]
+    sum(abs.(parse.(Float64, split(s, ",")))) > 0 && (p.Nhoppings = params["N-HOPPINGS"])
+  end
+  if haskey(params, "NN-HOPPINGS")
+    s = params["NN-HOPPINGS"]
+    sum(abs.(parse.(Float64, split(s, ",")))) > 0 && (p.NNhoppings = params["NN-HOPPINGS"])
+  end
+  if haskey(params, "MU1") && haskey(params, "MU2")
+    p.mu1 = parse(Float64, params["MU1"])
+    p.mu2 = parse(Float64, params["MU2"])
+  elseif haskey(params, "MU1")
+    p.mu1 = parse(Float64, params["MU1"])
+    p.mu2 = parse(Float64, params["MU1"])
   else
-    p.mu = parse(Float64, params["MU"])
+    p.mu1 = parse(Float64, params["MU"])
+    p.mu2 = parse(Float64, params["MU"])
   end
   
   p.lambda = parse(Float64, params["LAMBDA"])

@@ -20,24 +20,58 @@ function init_hopping_matrix_exp(mc::AbstractDQMC)::Void
   println("Initializing hopping exponentials")
   !p.Bfield || warn("You should be using `init_hopping_matrix_exp_Bfield()` or set p.Bfield = false!")
 
-  Tx = diagm(fill(-p.mu,l.sites))
-  Ty = diagm(fill(-p.mu,l.sites))
+  Tx = diagm(fill(-p.mu1,l.sites))
+  Ty = diagm(fill(-p.mu2,l.sites))
   hor_nb = [2,4]
   ver_nb = [1,3]
 
   # Nearest neighbor hoppings
-  @inbounds @views begin
-    for src in 1:l.sites
-      for nb in hor_nb # horizontal neighbors
-        trg = l.neighbors[nb,src]
-        Tx[trg,src] += -l.t[1,1] # t_x_hor
-        Ty[trg,src] += -l.t[1,2] # t_y_hor
-      end
+  if p.hoppings != "none"
+    @inbounds @views begin
+      for src in 1:l.sites
+        for nb in hor_nb # horizontal neighbors
+          trg = l.neighbors[nb,src]
+          Tx[trg,src] += -l.t[1,1] # t_x_hor = tx1
+          Ty[trg,src] += -l.t[1,2] # t_y_hor = tx2
+        end
 
-      for nb in ver_nb # vertical neighbors
-        trg = l.neighbors[nb,src]
-        Tx[trg,src] += -l.t[2,1] # t_x_ver
-        Ty[trg,src] += -l.t[2,2] # t_y_ver
+        for nb in ver_nb # vertical neighbors
+          trg = l.neighbors[nb,src]
+          Tx[trg,src] += -l.t[2,1] # t_x_ver = ty1
+          Ty[trg,src] += -l.t[2,2] # t_y_ver = ty2
+        end
+      end
+    end
+  end
+
+  # Next nearest neighbor hoppings (diagonal)
+  if p.Nhoppings != "none"
+    @inbounds @views begin
+      for src in 1:l.sites
+        for nb in 1:4
+          trg = l.Nneighbors[nb,src]
+          Tx[trg,src] += -l.tN[1,1] # t_x_diag = txy1
+          Ty[trg,src] += -l.tN[1,2] # t_y_diag = txy2
+        end
+      end
+    end
+  end
+
+  # Next-next nearest neighbor hoppings
+  if p.NNhoppings != "none"
+    @inbounds @views begin
+      for src in 1:l.sites
+        for nb in hor_nb # horizontal neighbors
+          trg = l.NNneighbors[nb,src]
+          Tx[trg,src] += -l.tNN[1,1] # t_x_hor = txx1
+          Ty[trg,src] += -l.tNN[1,2] # t_y_hor = txx2
+        end
+
+        for nb in ver_nb # vertical neighbors
+          trg = l.NNneighbors[nb,src]
+          Tx[trg,src] += -l.tNN[2,1] # t_x_ver = tyy1
+          Ty[trg,src] += -l.tNN[2,2] # t_y_ver = tyy2
+        end
       end
     end
   end
@@ -108,31 +142,60 @@ function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)::Void
   p.Bfield || warn("You should be using `init_hopping_matrix_exp()` or set p.Bfield = true!")
 
   T = Matrix{Matrix{H}}(2,2) # colidx = flavor, rowidx = spin up,down
-  for i in 1:4
-    T[i] = convert(Matrix{H}, diagm(fill(-p.mu,l.sites)))
-  end
 
   hor_nb = [2,4]
   ver_nb = [1,3]
 
-  # Nearest neighbor hoppings
-  @inbounds @views begin
-    for f in 1:2
-      for s in 1:2
+  for f in 1:2
+    for s in 1:2
+      T[s,f] = convert(Matrix{H}, diagm(fill(f==1?-p.mu1:-p.mu2,l.sites)))
 
-        for src in 1:l.sites
-          for nb in hor_nb # horizontal neighbors
-            trg = l.neighbors[nb,src]
-            T[s,f][trg,src] += - exp(im * l.peirls[s,f][trg,src]) * l.t[1,f] # horizontal
-          end
+      # Nearest neighbor hoppings
+      if p.hoppings != "none"
+        @inbounds @views begin
+          for src in 1:l.sites
+            for nb in hor_nb # horizontal neighbors
+              trg = l.neighbors[nb,src]
+              T[s,f][trg,src] += - exp(im * l.peirls[s,f][trg,src]) * l.t[1,f] # horizontal
+            end
 
-          for nb in ver_nb # vertical neighbors
-            trg = l.neighbors[nb,src]
-            T[s,f][trg,src] += - exp(im * l.peirls[s,f][trg,src]) * l.t[2,f] # vertical
+            for nb in ver_nb # vertical neighbors
+              trg = l.neighbors[nb,src]
+              T[s,f][trg,src] += - exp(im * l.peirls[s,f][trg,src]) * l.t[2,f] # vertical
+            end
           end
         end
-
       end
+
+      # Next nearest neighbor hoppings (diagonal)
+      if p.Nhoppings != "none"
+        @inbounds @views begin
+          for src in 1:l.sites
+            for nb in 1:4
+              trg = l.Nneighbors[nb,src]
+              T[s,f][trg,src] += - exp(im * l.peirls[s,f][trg,src]) * l.tN[1,f]
+            end
+          end
+        end
+      end
+
+      # Next-next nearest neighbor hoppings
+      if p.NNhoppings != "none"
+        @inbounds @views begin
+          for src in 1:l.sites
+            for nb in hor_nb # horizontal neighbors
+              trg = l.NNneighbors[nb,src]
+              T[s,f][trg,src] += - exp(im * l.peirls[s,f][trg,src]) * l.tNN[1,f] # horizontal
+            end
+
+            for nb in ver_nb # vertical neighbors
+              trg = l.NNneighbors[nb,src]
+              T[s,f][trg,src] += - exp(im * l.peirls[s,f][trg,src]) * l.tNN[2,f] # vertical
+            end
+          end
+        end
+      end
+
     end
   end
 

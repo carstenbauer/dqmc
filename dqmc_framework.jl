@@ -70,7 +70,15 @@ end
 
 DQMC(p::Params) = begin
   CB = CBFalse
-  p.chkr && (CB = iseven(p.L) ? CBAssaad : CBGeneric)
+
+  # choose checkerboard variant
+  if p.chkr
+    if p.Nhoppings == "none" && p.NNhoppings == "none"
+      CB = iseven(p.L) ? CBAssaad : CBGeneric
+    else
+      CB = CBGeneric
+    end
+  end
 
   ### SET DATATYPES
   G = Complex128

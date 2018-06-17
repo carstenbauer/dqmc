@@ -9,8 +9,12 @@ mutable struct Lattice{H<:Number} # H = HoppingEltype
   n_neighbors::Int
   n_bonds::Int
   t::Matrix{Float64} # colidx = flavor/band, rowidx = hor,ver
+  tN::Matrix{Float64} # colidx = flavor/band, rowidx = just one (Yoni txy)
+  tNN::Matrix{Float64} # colidx = flavor/band, rowidx = hor,ver
   time_neighbors::Matrix{Int} # colidx = slice, rowidx = up, down
   neighbors::Matrix{Int} # colidx = site, rowidx = up down right left
+  Nneighbors::Matrix{Int} # ur, dr, dl, ul
+  NNneighbors::Matrix{Int} # uu, rr, dd, ll
 
   bonds::Matrix{Int} # src, trg, type
   bond_vecs::Matrix{Float64}
@@ -55,7 +59,10 @@ end
 
 function load_lattice(mc::AbstractDQMC)
   mc.l.L = mc.p.L
-  mc.l.t = reshape([parse(Float64, f) for f in split(mc.p.hoppings, ',')],(2,2))
+  mc.p.hoppings != "none" && (mc.l.t = reshape([parse(Float64, f) for f in split(mc.p.hoppings, ',')],(2,2)))
+  mc.p.Nhoppings != "none" && (mc.l.tN = reshape([parse(Float64, f) for f in split(mc.p.Nhoppings, ',')],(1,2)))
+  mc.p.NNhoppings != "none" && (mc.l.tNN = reshape([parse(Float64, f) for f in split(mc.p.NNhoppings, ',')],(2,2)))
+
   init_lattice_from_filename(mc.p.lattice_file, mc.l)
   init_neighbors_table(mc)
   init_time_neighbors_table(mc)
@@ -105,12 +112,31 @@ function init_neighbors_table(mc::AbstractDQMC)
   sql = reshape(1:l.sites, l.L, l.L)
 
   # Nearest neighbors
-  up = circshift(sql,(-1,0))
-  right = circshift(sql,(0,-1))
-  down = circshift(sql,(1,0))
-  left = circshift(sql,(0,1))
-  l.neighbors = vcat(up[:]',right[:]',down[:]',left[:]')
+  if p.hoppings != "none"
+    up = circshift(sql,(-1,0))
+    right = circshift(sql,(0,-1))
+    down = circshift(sql,(1,0))
+    left = circshift(sql,(0,1))
+    l.neighbors = vcat(up[:]',right[:]',down[:]',left[:]')
+  end
 
+  # Next-nearest neighbors (xy, yx)
+  if p.Nhoppings != "none"
+    ur = circshift(sql,(-1,-1))
+    dr = circshift(sql,(1,-1))
+    dl = circshift(sql,(1,1))
+    ul = circshift(sql,(-1,1))
+    l.Nneighbors = vcat(ur[:]',dr[:]',dl[:]',ul[:]')
+  end
+
+  # Next-next nearest neighbors (xx, yy)
+  if p.NNhoppings != "none"
+    uu = circshift(sql,(-2,0))
+    rr = circshift(sql,(0,-2))
+    dd = circshift(sql,(2,0))
+    ll = circshift(sql,(0,2))
+    l.NNneighbors = vcat(uu[:]',rr[:]',dd[:]',ll[:]')
+  end
   nothing
 end
 
