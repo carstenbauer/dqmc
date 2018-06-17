@@ -69,17 +69,17 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
           v = l.bond_vecs[bond,:]
 
           # nn
-          if v == U
+          if v == U && p.hoppings != "none"
             T[trg, src] = T[src, trg] += -l.t[2,f]
           elseif v == R
             T[trg, src] = T[src, trg] += -l.t[1,f]
 
           #Nnn
-          elseif v == UR || v == DR
+          elseif (v == UR || v == DR) && p.Nhoppings != "none"
             T[trg, src] = T[src, trg] += -l.tN[1,f]
 
           #NNnn
-          elseif v == UU
+          elseif v == UU && p.NNhoppings != "none"
             T[trg, src] = T[src, trg] += -l.tNN[2,f]
           elseif v == RR
             T[trg, src] = T[src, trg] += -l.tNN[1,f]
