@@ -79,6 +79,13 @@ DQMC(p::Params) = begin
       CB = CBGeneric
     end
   end
+  println()
+  @show CB
+  @show p.hoppings
+  @show p.Nhoppings
+  @show p.NNhoppings
+  @show p.lattice_file
+  println()
 
   ### SET DATATYPES
   G = Complex128
