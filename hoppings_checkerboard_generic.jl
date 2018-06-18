@@ -197,6 +197,7 @@ function fold_chkr_grps(mc::AbstractDQMC{CBGeneric})
     l.chkr_hop_half_dagger_folded_rev[i] = cur_dagger_rev
   end
 
+  @show l.n_groups
   @show l.n_folded
   nothing
 end
