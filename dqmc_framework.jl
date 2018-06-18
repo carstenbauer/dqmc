@@ -287,9 +287,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
   configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/configurations")
   greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/greens")
   occ = Observable(Float64, "occupation"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/occupation")
-  chi_inv_dynamic = Observable(Array{Float64,3}, "chi inverse dynamic (qy, qx, iomega)"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv_dynamic")
-  chi = Observable(Float64, "chi"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi")
-  chi_inv = Observable(Float64, "chi inverse"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv")
+  chi_inv_dyn = Observable(Array{Float64,3}, "chi inverse dynamic (qy, qx, iomega)"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv_dyn")
   boson_action = Observable(Float64, "boson_action"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/boson_action")
 
   i_start = 1
@@ -321,11 +319,9 @@ function measure!(mc::DQMC, prevmeasurements=0)
         # @time begin
         add!(boson_action, p.boson_action)
 
-        chi_dyn = measure_chi_dynamic(mc.p.hsfield)
-        chi_inv_dyn = 1./chi_dyn
-        add!(chi_inv_dynamic, chi_inv_dyn)
-        add!(chi_inv, chi_inv_dyn[1,1,1])
-        add!(chi, chi_dyn[1,1,1])
+        chi = measure_chi_dynamic(mc.p.hsfield)
+        chi_inv = 1./chi
+        add!(chi_inv_dyn, chi_inv)
 
         add!(configurations, p.hsfield)
         
@@ -367,7 +363,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
   # println()
   # println("Calculating statistical errors...")
   # MonteCarloObservable.export_error(greens)
-  # MonteCarloObservable.export_error(chi_inv_dynamic)
+  # MonteCarloObservable.export_error(chi_inv_dyn)
   # MonteCarloObservable.export_error(chi_inv)
   # MonteCarloObservable.export_error(chi)
   # MonteCarloObservable.export_error(boson_action)
