@@ -282,6 +282,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
   propagate(mc)
 
   cs = min(floor(Int, p.measurements/p.write_every_nth), 100)
+  p.edrun && (cs = 1000)
 
   configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/configurations")
   greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/greens")
