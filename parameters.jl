@@ -47,6 +47,8 @@ mutable struct Params
   resume::Bool
   prethermalized::Int # how many thermal ud-sweeps are captured by custom start configuration 'thermal_init/conf'
 
+  edrun::Bool # if true, only the mass term of the bosonic action is considered
+
   function Params()
     p = new()
     p.global_updates = true
@@ -66,6 +68,7 @@ mutable struct Params
     p.hoppings = "none"
     p.Nhoppings = "none"
     p.NNhoppings = "none"
+    p.edrun = false
     return p
   end
 end
@@ -146,18 +149,10 @@ function set_parameters(p::Params, params::Dict)
       error("OPDIM must be 1, 2 or 3!")
     end
   end
-  if haskey(params, "SEED")
-    p.seed = parse(Int, params["SEED"])
-  end
-  if haskey(params,"GLOBAL_UPDATES")
-    p.global_updates = parse(Bool, lowercase(params["GLOBAL_UPDATES"]))
-  end
-  if haskey(params,"CHECKERBOARD")
-    p.chkr = parse(Bool, lowercase(params["CHECKERBOARD"]))
-  end
-  if haskey(params,"BFIELD")
-    p.Bfield = parse(Bool, lowercase(params["BFIELD"]))
-  end
+  haskey(params, "SEED") && (p.seed = parse(Int, params["SEED"]))
+  haskey(params,"GLOBAL_UPDATES") && (p.global_updates = parse(Bool, lowercase(params["GLOBAL_UPDATES"])))
+  haskey(params,"CHECKERBOARD") && (p.chkr = parse(Bool, lowercase(params["CHECKERBOARD"])))
+  haskey(params,"BFIELD") && (p.Bfield = parse(Bool, lowercase(params["BFIELD"])))
   if haskey(params,"BOX_HALF_LENGTH")
     len = parse(Float64, params["BOX_HALF_LENGTH"])
     p.box = Uniform(-len,len)
@@ -167,15 +162,10 @@ function set_parameters(p::Params, params::Dict)
     len = parse(Float64, params["BOX_GLOBAL_HALF_LENGTH"])
     p.box_global = Uniform(-len,len)
   end
-  if haskey(params,"GLOBAL_RATE")
-    p.global_rate = parse(Int64, params["GLOBAL_RATE"])
-  end
-  if haskey(params,"WRITE_EVERY_NTH")
-    p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"])
-  end
-  if haskey(params, "SPARSITY_LIMIT")
-    p.sparsity_limit = parse(Float64, params["SPARSITY_LIMIT"])
-  end
+  haskey(params,"GLOBAL_RATE") && (p.global_rate = parse(Int64, params["GLOBAL_RATE"]))
+  haskey(params,"WRITE_EVERY_NTH") && (p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"]))
+  haskey(params, "SPARSITY_LIMIT") && (p.sparsity_limit = parse(Float64, params["SPARSITY_LIMIT"]))
+  haskey(params, "EDRUN") && (p.edrun = parse(Bool, lowercase(params["EDRUN"]))
 
   deduce_remaining_parameters(p)
 

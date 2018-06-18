@@ -4,30 +4,46 @@ function calc_boson_action(mc::AbstractDQMC, hsfield::Array{Float64,3}=p.hsfield
 
   S = 0.0
 
-  h = reshape(hsfield, (p.opdim,l.L,l.L,p.slices))
+  if !p.edrun
+    h = reshape(hsfield, (p.opdim,l.L,l.L,p.slices))
 
-  # temporal gradient
-  t = h - circshift(h, (0,0,0,-1))
-  S += 0.5/p.delta_tau * 1./p.c^2 * dot(t,t);
+    # temporal gradient
+    t = h - circshift(h, (0,0,0,-1))
+    S += 0.5/p.delta_tau * 1./p.c^2 * dot(t,t);
 
-  # spatial gradient
-  # Count only top and right neighbor (avoid overcounting)
-  @inbounds @simd for n in 2:3
-    x = zeros(Int, 4)
-    x[n] = -1
-    t = h - circshift(h, x)
-    S += p.delta_tau * 0.5 * dot(t,t);
-  end
+    # spatial gradient
+    # Count only top and right neighbor (avoid overcounting)
+    @inbounds @simd for n in 2:3
+      x = zeros(Int, 4)
+      x[n] = -1
+      t = h - circshift(h, x)
+      S += p.delta_tau * 0.5 * dot(t,t);
+    end
 
-  # mass term & quartic interaction
-  @inbounds @views begin
-    @simd for s in 1:p.slices
-      @simd for i in 1:l.sites
+    # mass term & quartic interaction
+    @inbounds @views begin
+      @simd for s in 1:p.slices
+        @simd for i in 1:l.sites
 
-        squared = dot(hsfield[:,i,s],hsfield[:,i,s])
-        S += p.delta_tau * p.r/2.0 * squared;
-        S += p.delta_tau * p.u/4.0 * squared * squared;
+          squared = dot(hsfield[:,i,s],hsfield[:,i,s])
+          S += p.delta_tau * p.r/2.0 * squared;
+          S += p.delta_tau * p.u/4.0 * squared * squared;
 
+        end
+      end
+    end
+
+  else
+    # --- ED RUN ---
+    # mass term
+    @inbounds @views begin
+      @simd for s in 1:p.slices
+        @simd for i in 1:l.sites
+
+          squared = dot(hsfield[:,i,s],hsfield[:,i,s])
+          S += p.delta_tau * p.r/2.0 * squared;
+
+        end
       end
     end
   end
@@ -66,12 +82,17 @@ function calc_boson_action_diff(mc::AbstractDQMC, site::Int, slice::Int, new_op:
       op_space_neighbors += p.hsfield[:,l.neighbors[n,site],slice]
     end
 
-    dS += 1.0/(p.delta_tau * p.c^2)  * (sq_diff - dot(op_time_neighbors, diff));
+    if !p.edrun
+      dS += 1.0/(p.delta_tau * p.c^2)  * (sq_diff - dot(op_time_neighbors, diff));
 
-    dS += 0.5 * p.delta_tau * (4 * sq_diff - 2.0 * dot(op_space_neighbors, diff));
+      dS += 0.5 * p.delta_tau * (4 * sq_diff - 2.0 * dot(op_space_neighbors, diff));
 
-    dS += p.delta_tau * (0.5 * p.r * sq_diff + 0.25 * p.u * pow4_diff);
-    # dS += p.delta_tau * (0.5 * p.r * sq_diff);
+      dS += p.delta_tau * (0.5 * p.r * sq_diff + 0.25 * p.u * pow4_diff);
+      
+    else
+      # --- ED RUN ---
+      dS += p.delta_tau * (0.5 * p.r * sq_diff);
+    end
   end
 
   end #timeit
