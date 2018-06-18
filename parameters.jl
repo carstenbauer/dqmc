@@ -165,7 +165,7 @@ function set_parameters(p::Params, params::Dict)
   haskey(params,"GLOBAL_RATE") && (p.global_rate = parse(Int64, params["GLOBAL_RATE"]))
   haskey(params,"WRITE_EVERY_NTH") && (p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"]))
   haskey(params, "SPARSITY_LIMIT") && (p.sparsity_limit = parse(Float64, params["SPARSITY_LIMIT"]))
-  haskey(params, "EDRUN") && (p.edrun = parse(Bool, lowercase(params["EDRUN"]))
+  haskey(params, "EDRUN") && (p.edrun = parse(Bool, lowercase(params["EDRUN"])))
 
   deduce_remaining_parameters(p)
 
