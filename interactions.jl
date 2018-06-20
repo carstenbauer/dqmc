@@ -41,7 +41,6 @@ function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1.
 
   setblockdiag!(l,eV,1,1,C)
   setblockdiag!(l,eV,1,2,S)
-  setblockdiag!(l,eV,1,4,R)
   
   cS = conj(S)
   setblockdiag!(l,eV,2,1,cS)
@@ -49,6 +48,8 @@ function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1.
 
   if p.opdim == 3
     mR = -R
+    setblockdiag!(l,eV,1,4,R)
+    
     setblockdiag!(l,eV,2,3,mR)
 
     setblockdiag!(l,eV,3,2,mR)

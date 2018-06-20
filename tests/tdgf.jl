@@ -36,7 +36,7 @@ PyPlot.savefig("tdgf_free_dqmc.pdf")
 
 # plot dqmc together with ed
 using HDF5
-tdgfs_ed = h5read("../tdgfed.jld", "tdgfiivstau")
+tdgfs_ed = h5read("tdgfed.jld", "tdgfiivstau")
 pl = Plots.plot((1:n).*p.delta_tau, tdgfs, 
 	xlab="\$ \\tau \$", 
 	ylab="\$ \\langle c_i(\\tau) c_i(0)^\\dagger \\rangle \$", 
