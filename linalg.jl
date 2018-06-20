@@ -74,6 +74,20 @@ function Base.A_mul_B!(Y::StridedMatrix{TY}, X::StridedMatrix{TX}, A::SparseMatr
 end
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Calculates (UDVd)^-1, where U, D, Vd come from SVD decomp.
 function inv_udv(U,D,Vd)
   m = ctranspose(Vd)
@@ -153,8 +167,9 @@ function inv_one_plus_udt(U,D,T)
   u,d,t = decompose_udt(m)
   u = U*u
   t = t*T
-  scale!(u, d)
-  inv(t)*inv(u)
+  tinv = inv(t)
+  scale!(tinv, 1./d)
+  tinv*ctranspose(u)
 end
 
 function USV_to_mat!(mat, U, D, Vd, is_inv) 
@@ -225,4 +240,23 @@ function inv_sum_udvs(Ua, Da, Vda, Ub, Db, Vdb)
     Vd=mat2
 
     return U, D, Vd
+end
+
+# Calculates (UaDaVda + UbDbVdb)^-1
+function inv_sum_udts(Ua,Da,Ta,Ub,Db,Tb)
+  m1 = Ta * inv(Tb)
+  scale!(Da, m1)
+
+  m2 = ctranspose(Ua) * Ub
+  scale!(m2, Db)
+
+  u,d,t = decompose_udt(m1 + m2)
+
+  A_mul_B!(m1, Ua, u)
+  A_mul_B!(m2, t, Tb)
+
+  return inv(m2), 1./d, ctranspose(m1)
+  # m3 = inv(m2)
+  # scale!(m3, 1./d)
+  # return m3 * ctranspose(m1)
 end
