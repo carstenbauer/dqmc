@@ -93,11 +93,10 @@ function init_hopping_matrix_exp(mc::AbstractDQMC)::Void
 end
 
 function init_peirls_phases(mc::AbstractDQMC)
-  const p = mc.p
-  const l = mc.l
-
   println("Initializing Peirls phases (Bfield)")
-  const L = l.L
+  const l = mc.l
+  const L = mc.l.L
+  const p = mc.p
 
   B = zeros(2,2) # colidx = flavor, rowidx = spin up,down
   if p.Bfield
@@ -114,17 +113,54 @@ function init_peirls_phases(mc::AbstractDQMC)
         for y in 1:L
           xp = mod1(x + 1, L)
           yp = mod1(y + 1, L)
-          
+          xm = mod1(x - 1, L)
+          ym = mod1(y - 1, L)
+          xp2 = mod1(x + 2, L)
+          yp2 = mod1(y + 2, L)
+
           #nn
-          phis[x,y,x,yp] = 0
-          phis[x,yp,x,y] = 0
-          
-          phis[x,y,xp,y] = - B[s,f] * (y - 1)
-          phis[xp,y,x,y] = - phis[x,y,xp,y]
-          if y == L
-              phis[x,y,x,yp] = B[s,f] * L * (x -1)
-              phis[x,yp,x,y] = - phis[x,y,x,yp]
+          if p.hoppings != "none"
+            phis[x,y,x,yp] = 0
+            phis[x,yp,x,y] = 0
+            
+            phis[x,y,xp,y] = - B[s,f] * (y - 1)
+            phis[xp,y,x,y] = - phis[x,y,xp,y]
+            if y == L
+                phis[x,y,x,yp] = B[s,f] * L * (x -1)
+                phis[x,yp,x,y] = - phis[x,y,x,yp]
+            end
           end
+
+          #nnn
+          if p.Nhoppings != "none"
+            phis[x,y,xp,yp] = -B[s,f] * (y -1 + 0.5)
+            phis[xp,yp,x,y] = -phis[x,y,xp,yp]
+            
+            phis[x,y,xm,yp] = B[s,f] * (y -1 + 0.5)
+            phis[xm,yp,x,y] = -phis[x,y,xm,yp]
+            
+            if y == L
+                phis[x,y,xp,yp] = B[s,f] * (L * (x -1) + 0.5)
+                phis[xp,yp,x,y] = - phis[x,y,xp,yp]
+                
+                phis[x,y,xm,yp] = B[s,f] * (L * (x-1) - 0.5)
+                phis[xm,yp,x,y] = - phis[x,y,xm,yp]
+            end
+          end
+              
+          #nnnn
+          if p.NNhoppings != "none"
+            phis[x,y,x,yp2] = 0
+            phis[x,yp2,x,y] = 0
+            
+            phis[x,y,xp2,y] = -2 * B[s,f] * (y-1)
+            phis[xp2,y,x,y] = -phis[x,y,xp2,y]
+            if (y == L) || (y == L - 1)
+                phis[x,y,x,yp2] = B[s,f] * L * (x-1)
+                phis[x,yp2,x,y] = - phis[x,y,x,yp2]
+            end
+          end
+
         end
       end
       l.peirls[s,f] = reshape(permutedims(phis, [2,1,4,3]), (l.sites,l.sites))
