@@ -287,7 +287,6 @@ function measure!(mc::DQMC, prevmeasurements=0)
   configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/configurations")
   greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/greens")
   occ = Observable(Float64, "occupation"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/occupation")
-  chi_inv_dyn = Observable(Array{Float64,3}, "chi inverse dynamic (qy, qx, iomega)"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/chi_inv_dyn")
   boson_action = Observable(Float64, "boson_action"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/boson_action")
 
   i_start = 1
@@ -303,25 +302,14 @@ function measure!(mc::DQMC, prevmeasurements=0)
   acc_rate = 0.0
   acc_rate_global = 0.0
   for i in i_start:i_end
-    # tic()
     @timeit a.to "udsweep" for u in 1:2 * p.slices
       update(mc, i)
 
       # if s.current_slice == 1 && s.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
       if s.current_slice == p.slices && s.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
-        # println()
-        # println("\t\tMeasuring")
-        # @show i
-        # @show mc.s.current_slice
-        # println()
         dumping = (length(boson_action)+1)%cs == 0
         dumping && println("Dumping...")
-        # @time begin
         add!(boson_action, p.boson_action)
-
-        chi = measure_chi_dynamic(mc.p.hsfield)
-        chi_inv = 1./chi
-        add!(chi_inv_dyn, chi_inv)
 
         add!(configurations, p.hsfield)
         
@@ -335,13 +323,8 @@ function measure!(mc::DQMC, prevmeasurements=0)
         dumping && saverng(p.output_file; group="resume/rng")
         dumping && println("Dumping block of $cs datapoints was a success")
         flush(STDOUT)
-        # end
       end
     end
-    # udswdur = toq()
-    # @printf("\tsweep duration: %.4fs\n", udswdur/2)
-    # flush(STDOUT)
-
 
     if mod(i, 100) == 0
       a.acc_rate = a.acc_rate / (100 * 2 * p.slices)
@@ -358,16 +341,6 @@ function measure!(mc::DQMC, prevmeasurements=0)
       flush(STDOUT)
     end
   end
-
-  # finish measurements, i.e. calculate errors
-  # println()
-  # println("Calculating statistical errors...")
-  # MonteCarloObservable.export_error(greens)
-  # MonteCarloObservable.export_error(chi_inv_dyn)
-  # MonteCarloObservable.export_error(chi_inv)
-  # MonteCarloObservable.export_error(chi)
-  # MonteCarloObservable.export_error(boson_action)
-  # println("Done.")
 
   nothing
 end
