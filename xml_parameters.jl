@@ -41,7 +41,7 @@ function xml2dict(fname::String, verbose::Bool=true)
   return params
 end
 
-function paramset2xml(params::Dict, prefix::String)
+function paramset2xml(params::Dict, prefix::String, taskidshift::Int=0)
   for (i, param_set) in enumerate(product(values(params)...))
     xdoc = XMLDocument()
     xroot = create_root(xdoc, "SIMULATION")
@@ -51,6 +51,6 @@ function paramset2xml(params::Dict, prefix::String)
       add_text(pc, string(p))
       set_attribute(pc, "name", string(k))
     end
-    save_file(xdoc, prefix * ".task" * string(i) * ".in.xml")
+    save_file(xdoc, prefix * ".task" * string(i+taskidshift) * ".in.xml")
   end
 end
