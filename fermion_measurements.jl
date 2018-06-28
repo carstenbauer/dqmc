@@ -408,7 +408,7 @@ end
 #         Time-displaced Green's function
 # -------------------------------------------------------
 # Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = B(slice,1)G(1)
-function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
+function calc_tdgf_naive(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   U,D,T = calc_greens_udt(mc, 1, safe_mult)
 
   # effective -> actual
@@ -423,31 +423,275 @@ function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
 end
 
 # Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = [B(slice, 1)^-1 + B(beta, slice)]^-1 which is equal to B(slice,1)G(1)
-function calc_tdgf2(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
+function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   Ul, Dl, Tl = calc_Bchain_inv(mc, 1, slice, safe_mult)
   Ur, Dr, Tr = calc_Bchain(mc, slice, mc.p.slices, safe_mult)
 
   # time displace
   U, D, T = inv_sum_udts(Ul, Dl, Tl, Ur, Dr, Tr)
-  effective_greens2greens!(mc, U, T) # WHERE TO DO THIS?
+  effective_greens2greens!(mc, U, T)
 
   scale!(U, D)
   return U*T
 end
-# Calculate "G(tau, 0)", i.e. G(slice,1) naively
-# function calc_tdgf_naive(mc::AbstractDQMC, slice::Int)
-#   G, = calc_greens_and_logdet(mc,1,2*mc.p.slices)
-#   Ul, Dl, Tl = calc_Bchain(mc,1,slice,2*mc.p.slices)
-#   B12 = Ul * spdiagm(Dl) * Tl
-#   return B12 * G
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Backup before dagger stuff
+# function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::String="left")
+#   const G = geltype(mc)
+#   const flv = mc.p.flv
+#   const N = mc.l.sites
+#   const nranges= length(mc.s.ranges)
+#   const curr_U = mc.s.curr_U
+#   const eye_full = mc.s.eye_full
+#   const ones_vec = mc.s.ones_vec
+#   const ranges = mc.s.ranges
+  
+#   u_stack = [zeros(G, flv*N, flv*N) for _ in 1:nranges]
+#   d_stack = [zeros(Float64, flv*N) for _ in 1:nranges]
+#   t_stack = [zeros(G, flv*N, flv*N) for _ in 1:nranges]
+
+#   rng = 1:length(ranges)
+#   dir == "right" && (rng = reverse(rng))
+
+#   # Calculate BT1[i], given BT1[i-1]
+#   @inbounds for (i, rngidx) in enumerate(rng)
+
+#     if i == 1
+#       copy!(curr_U, eye_full)
+#     else
+#       copy!(curr_U, u_stack[i-1])
+#     end
+
+#     slice_range = dir == "right" ? reverse(ranges[rngidx]) : ranges[rngidx]
+
+#     for slice in slice_range
+#       if inv == false
+#         if dir == "left"
+#           multiply_B_left!(mc, slice, curr_U)
+#         else
+#           warn("not working because of right multiplication!")
+#           multiply_B_right!(mc, slice, curr_U)
+#         end
+#       else
+#         if dir == "left"
+#           warn("not working because of right multiplication!")
+#           multiply_B_inv_right!(mc, slice, curr_U)
+#         else
+#           multiply_B_inv_left!(mc, slice, curr_U)
+#         end
+#       end
+#     end
+
+#     if i != 1
+#       scale!(curr_U, d_stack[i-1])
+#     end
+
+#     u_stack[i], T = decompose_udt!(curr_U, d_stack[i])
+
+#     if i == 1
+#       A_mul_B!(t_stack[i], T, eye_full)
+#     else
+#       A_mul_B!(t_stack[i], T, t_stack[i-1])
+#     end
+#   end
+
+#   return u_stack, d_stack, t_stack
 # end
 
 
-function calc_greens_stack(mc::AbstractDQMC)
-  const G = typeof(mc.s.greens)
 
+
+
+
+
+
+
+
+
+
+
+"""
+Calculate UDVs at safe_mult time slices of
+dir = "left": 
+inv=false:  B(tau, 1) = B(tau) * B(tau-1) * ... * B(1)                    # mult left, 1:tau
+inv=true:   [B(tau, 1)]^-1 = B(1)^-1 * B(2)^-1 * ... B(tau)^-1            # mult inv right, 1:tau
+
+dir = "right":
+inv=false:  B(beta, tau) = B(beta) * B(beta-1) * ... * B(tau)             # mult right, beta:tau
+inv=true:   [B(beta, tau)]^-1 = B(tau)^-1 * B(tau+1)^-1 * ... B(beta)^-1  # mult inv left, beta:tau
+"""
+function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::String="left")
+  const G = geltype(mc)
+  const flv = mc.p.flv
+  const N = mc.l.sites
+  const nranges= length(mc.s.ranges)
+  const curr_U_or_T = mc.s.curr_U
+  const eye_full = mc.s.eye_full
+  const ones_vec = mc.s.ones_vec
+  const ranges = mc.s.ranges
   
+  u_stack = [zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  d_stack = [zeros(Float64, flv*N) for _ in 1:nranges]
+  t_stack = [zeros(G, flv*N, flv*N) for _ in 1:nranges]
+
+  rightmult = false
+  ((dir == "right" && !inv) || (dir == "left" && inv)) && (rightmult = true)
+
+  @show rightmult
+
+  rng = 1:length(ranges)
+  dir == "right" && (rng = reverse(rng))
+
+  # Calculate udv[i], given udv[i-1]
+  @inbounds for (i, rngidx) in enumerate(rng)
+
+    if i == 1
+      copy!(curr_U_or_T, eye_full)
+    else
+      if !rightmult
+        copy!(curr_U_or_T, u_stack[i-1])
+      else
+        copy!(curr_U_or_T, t_stack[i-1])
+      end
+    end
+
+    slice_range = dir == "right" ? reverse(ranges[rngidx]) : ranges[rngidx]
+
+    for slice in slice_range
+      if inv == false
+        if dir == "left"
+          multiply_B_left!(mc, slice, curr_U_or_T)
+        else
+          # rightmult
+          multiply_B_right!(mc, slice, curr_U_or_T)
+        end
+      else
+        if dir == "left"
+          # rightmult
+          multiply_B_inv_right!(mc, slice, curr_U_or_T)
+        else
+          multiply_B_inv_left!(mc, slice, curr_U_or_T)
+        end
+      end
+    end
+
+    if i != 1
+      if !rightmult
+        scale!(curr_U_or_T, d_stack[i-1])
+      else
+        scale!(d_stack[i-1], curr_U_or_T)
+      end
+    end
+
+    if !rightmult
+      u_stack[i], T = decompose_udt!(curr_U_or_T, d_stack[i])
+    else
+      U, t_stack[i] = decompose_udt!(curr_U_or_T, d_stack[i])
+    end
+
+    if i == 1
+      if !rightmult
+        A_mul_B!(t_stack[i], T, eye_full)
+      else
+        A_mul_B!(u_stack[i], eye_full, U)
+      end
+    else
+      if !rightmult
+        A_mul_B!(t_stack[i], T, t_stack[i-1])
+      else
+        A_mul_B!(u_stack[i], u_stack[i-1], U)
+      end
+    end
+  end
+
+  return u_stack, d_stack, t_stack
 end
+
+function calc_tdgfs(mc)
+  # right mult
+  BT0Inv_u_stack, BT0Inv_d_stack, BT0Inv_t_stack = calc_tdgf_B_udvs(mc, inv=true, dir="left");
+  BBetaT_u_stack, BBetaT_d_stack, BBetaT_t_stack = calc_tdgf_B_udvs(mc, inv=false, dir="right");
+  
+  # left mult
+  BT0_u_stack, BT0_d_stack, BT0_t_stack = calc_tdgf_B_udvs(mc, inv=false, dir="left");
+  BBetaTInv_u_stack, BBetaTInv_d_stack, BBetaTInv_t_stack = calc_tdgf_B_udvs(mc, inv=true, dir="right");
+end
+
+
+function test_stacks()
+  # test left multiplications
+  B2 = BT0_u_stack[3] * spdiagm(BT0_d_stack[3]) * BT0_t_stack[3];
+  U, D, T = calc_Bchain(mc, 1, mc.s.ranges[3][end]); B1 = U*spdiagm(D)*T;
+  compare(B1, B2)
+
+  B2 = BBetaTInv_u_stack[3] * spdiagm(BBetaTInv_d_stack[3]) * BBetaTInv_t_stack[3];
+  U, D, T = calc_Bchain_inv(mc, mc.s.ranges[end-2][1], mc.p.slices); B1 = U*spdiagm(D)*T;
+  compare(B1, B2)
+
+
+
+
+  # test right multiplications
+  B2 = BT0Inv_u_stack[3] * spdiagm(BT0Inv_d_stack[3]) * BT0Inv_t_stack[3];
+  U, D, T = calc_Bchain_inv(mc, 1, mc.s.ranges[3][end]); B1 = U*spdiagm(D)*T;
+  compare(B1, B2)
+
+  B2 = BBetaT_u_stack[3] * spdiagm(BBetaT_d_stack[3]) * BBetaT_t_stack[3];
+  U, D, T = calc_Bchain(mc, mc.s.ranges[end-2][1], mc.p.slices); B1 = U*spdiagm(D)*T;
+  compare(B1, B2)
+
+
+  check_unitarity(BT0_u_stack)
+  check_unitarity(BBetaTInv_u_stack)
+  check_unitarity(BT0Inv_u_stack)
+  check_unitarity(BBetaT_u_stack)
+
+
+  # compare B(beta, 1), build by combining BBetaT and BT0
+  nr = length(mc.s.ranges)
+  i = floor(Int, nr/2)
+  betatidx = nr - i
+
+  U = BBetaT_t_stack[betatidx] * BT0_u_stack[i]
+  scale!(U, BT0_d_stack[i])
+  scale!(BBetaT_d_stack[betatidx], U)
+  u,d,t = decompose_udt(U)
+  u = BBetaT_u_stack[betatidx] * u
+  t = t * BT0_t_stack[i]
+  Bfull = u * spdiagm(d) * t
+  Bfull_d = copy(d)
+  U, D, T = calc_Bchain(mc, 1, mc.p.slices); Bfull2 = U * spdiagm(D) * T;
+  Bfull2_d = copy(D)
+  compare(Bfull, Bfull2) # max absdiff: 7.7e+03, max reldiff: 3.4e+01
+  compare(Bfull_d, Bfull2_d) # max absdiff: 9.2e+03, max reldiff: 2.3e-13
+
+  # compare resulting greens
+  g1 = inv_one_plus_udt(u, d, t)
+  g2 = calc_greens(mc, 1)
+  compare(g1, g2) # 1e-15
+end
+
+function check_unitarity(u_stack)
+  for i in 1:length(u_stack)
+    U = u_stack[i]
+    !isapprox(U * ctranspose(U), eye(U)) && (return false)
+  end
+  return true
+end
+
+
 
 # -------------------------------------------------------
 #                Correlation functions

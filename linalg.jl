@@ -242,7 +242,7 @@ function inv_sum_udvs(Ua, Da, Vda, Ub, Db, Vdb)
     return U, D, Vd
 end
 
-# Calculates (UaDaVda + UbDbVdb)^-1
+# Calculates (UaDaTda + UbDbTdb)^-1
 function inv_sum_udts(Ua,Da,Ta,Ub,Db,Tb)
   m1 = Ta * inv(Tb)
   scale!(Da, m1)
