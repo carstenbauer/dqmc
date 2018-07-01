@@ -66,6 +66,24 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   R::Vector{G}
 
 
+  #### Allocations for measurements (won't be initialized for dqmc)
+  # TDGF
+  BT0Inv_u_stack::Vector{Matrix{G}}
+  BT0Inv_d_stack::Vector{Vector{Float64}}
+  BT0Inv_t_stack::Vector{Matrix{G}}
+  BBetaT_u_stack::Vector{Matrix{G}}
+  BBetaT_d_stack::Vector{Vector{Float64}}
+  BBetaT_t_stack::Vector{Matrix{G}}
+  BT0_u_stack::Vector{Matrix{G}}
+  BT0_d_stack::Vector{Vector{Float64}}
+  BT0_t_stack::Vector{Matrix{G}}
+  BBetaTInv_u_stack::Vector{Matrix{G}}
+  BBetaTInv_d_stack::Vector{Vector{Float64}}
+  BBetaTInv_t_stack::Vector{Matrix{G}}
+  Gt0::Vector{Matrix{G}}
+  G0t::Vector{Matrix{G}}
+
+
   Stack{G}() where G = new{G}()
 end
 

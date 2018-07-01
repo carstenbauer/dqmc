@@ -160,7 +160,7 @@ function inv_one_plus_udv_scalettar(U,D,Vd)
   m*vd
 end
 
-# TODO speed? Left in a hurry
+# speed? Left in a hurry
 function inv_one_plus_udt(U,D,T)
   m = ctranspose(U) * inv(T)
   m[diagind(m)] .+= D
@@ -172,7 +172,25 @@ function inv_one_plus_udt(U,D,T)
   tinv*ctranspose(u)
 end
 
-function USV_to_mat!(mat, U, D, Vd, is_inv) 
+function inv_one_plus_udt!(mc, res, U,D,T)
+  const m = mc.s.tmp
+  const d = mc.s.d
+  const u = mc.s.U
+  const t = mc.s.T
+
+  Ac_mul_B!(m, U, inv(T))
+  m[diagind(m)] .+= D
+
+  utmp,ttmp = decompose_udt!(m, d)
+  A_mul_B!(u, U, utmp)
+  A_mul_B!(t, ttmp, T)
+  tinv = inv(t)
+  scale!(tinv, 1./d)
+  A_mul_Bc!(res, tinv, u)
+  nothing
+end
+
+function UDV_to_mat!(mat, U, D, Vd, is_inv) 
     if !is_inv
         mat1 = copy(U)
         scale!(mat1, D)
@@ -181,6 +199,18 @@ function USV_to_mat!(mat, U, D, Vd, is_inv)
         mat1 = copy(Vd)
         scale!(1./D, Vd)
         Ac_mul_Bc!(mat,mat1,U)
+    end  
+end
+
+function UDT_to_mat!(mat, U, D, T; inv=false) 
+    if !inv
+        mat1 = copy(U)
+        scale!(mat1, D)
+        A_mul_B!(mat,mat1,T)
+    else # (DT)^-1 * U^dagger
+        mat1 = copy(T)
+        scale!(D, mat1)
+        mat .= A_ldiv_Bc(mat1,U)
     end  
 end
 
@@ -223,7 +253,7 @@ function inv_sum_udvs(Ua, Da, Vda, Ub, Db, Vdb)
     
     #invert mat1: mat1=mat1^(-1)
     U, D, Vd = decompose_udv!(mat1)
-    USV_to_mat!(mat1, U, D, Vd, true)
+    UDV_to_mat!(mat1, U, D, Vd, true)
 
     #mat1 = 1/DYp * mat1 /DXp
     for j in 1:d, k in 1:d
@@ -259,4 +289,27 @@ function inv_sum_udts(Ua,Da,Ta,Ub,Db,Tb)
   # m3 = inv(m2)
   # scale!(m3, 1./d)
   # return m3 * ctranspose(m1)
+end
+
+function inv_sum_udts!(mc, res, Ua,Da,Ta,Ub,Db,Tb)
+  const d = mc.s.d
+  const m1 = mc.s.tmp
+  const m2 = mc.s.tmp2
+
+  A_mul_B!(m1, Ta, inv(Tb))
+  scale!(Da, m1)
+
+  Ac_mul_B!(m2, Ua, Ub)
+  scale!(m2, Db)
+
+  u,t = decompose_udt!(m1 + m2, d)
+
+  A_mul_B!(m1, Ua, u)
+  A_mul_B!(m2, t, Tb)
+
+  m3 = inv(m2)
+  scale!(m3, 1./d)
+  A_mul_Bc!(res, m3, m1)
+
+  nothing
 end
