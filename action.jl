@@ -1,4 +1,4 @@
-function calc_boson_action(mc::AbstractDQMC, hsfield::Array{Float64,3}=p.hsfield)
+function calc_boson_action(mc::AbstractDQMC, hsfield::Array{Float64,3}=mc.p.hsfield)
   const p = mc.p
   const l = mc.l
 
