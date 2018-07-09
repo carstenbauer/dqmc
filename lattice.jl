@@ -112,7 +112,7 @@ function init_neighbors_table(mc::AbstractDQMC)
   sql = reshape(1:l.sites, l.L, l.L)
 
   # Nearest neighbors
-  if p.hoppings != "none"
+  if mc.p.hoppings != "none"
     up = circshift(sql,(-1,0))
     right = circshift(sql,(0,-1))
     down = circshift(sql,(1,0))
@@ -121,7 +121,7 @@ function init_neighbors_table(mc::AbstractDQMC)
   end
 
   # Next-nearest neighbors (xy, yx)
-  if p.Nhoppings != "none"
+  if mc.p.Nhoppings != "none"
     ur = circshift(sql,(-1,-1))
     dr = circshift(sql,(1,-1))
     dl = circshift(sql,(1,1))
@@ -130,7 +130,7 @@ function init_neighbors_table(mc::AbstractDQMC)
   end
 
   # Next-next nearest neighbors (xx, yy)
-  if p.NNhoppings != "none"
+  if mc.p.NNhoppings != "none"
     uu = circshift(sql,(-2,0))
     rr = circshift(sql,(0,-2))
     dd = circshift(sql,(2,0))
