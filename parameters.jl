@@ -193,6 +193,8 @@ function deduce_remaining_parameters(p::Params)
     end
     if contains(hn, "cheops")
       p.lattice_file = "/projects/ag-trebst/bauer/lattices/"*lat
+    elseif contains(hn, "fz-juelich")
+      p.lattice_file = "/gpfs/homea/hku27/hku273/lattices/"
     elseif contains(hn, "thp")
       p.lattice_file = "/home/bauer/lattices/"*lat
     elseif contains(hn, "thinkable")
