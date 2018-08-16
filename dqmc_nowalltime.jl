@@ -3,23 +3,6 @@ start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
 
-# Calculate DateTime where wall-time limit will be reached.
-function wtl2DateTime(wts::AbstractString, start_time::DateTime)
-  @assert contains(wts, "-")
-  @assert contains(wts, ":")
-  @assert length(wts) >= 10
-
-  tmp = split(wts, "-")
-
-  d = parse(Int, tmp[1])
-  h, m, s = parse.(Int, split(tmp[2], ":"))
-
-  start_time + Dates.Day(d) + Dates.Hour(h) + Dates.Minute(m) + Dates.Second(s)
-end
-
-JULIA_WALLTIMELIMIT = "0-00:00:05"
-global const stop_time = wtl2DateTime(JULIA_WALLTIMELIMIT, start_time)
-
 try
   # Single core simulation
   BLAS.set_num_threads(1)
