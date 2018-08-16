@@ -77,7 +77,7 @@ p = Params()
 p.output_file = output_file
 xml2parameters!(p, input_xml)
 if "WALLTIMELIMIT" in keys(ENV)
-  p.walltimelimit = wtl2DateTime(ENVS["WALLTIMELIMIT"], start_time)
+  p.walltimelimit = wtl2DateTime(ENV["WALLTIMELIMIT"], start_time)
 end
 
 # mv old .out.h5 to .out.h5.running (and then try to resume below)
