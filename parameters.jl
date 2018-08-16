@@ -193,16 +193,22 @@ function deduce_remaining_parameters(p::Params)
     else
       lat = "NNsquare_L_$(p.L)_W_$(p.L).xml"
     end
-    if contains(hn, "cheops")
-      p.lattice_file = "/projects/ag-trebst/bauer/lattices/"*lat
-    elseif contains(hn, "fz-juelich")
-      p.lattice_file = "/gpfs/homea/hku27/hku273/lattices/"*lat
-    elseif contains(hn, "thp")
-      p.lattice_file = "/home/bauer/lattices/"*lat
-    elseif contains(hn, "thinkable")
-      p.lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/"*lat
+
+    if "LATTICES" in keys(ENV)
+      p.lattice_file = joinpath(ENV["LATTICES"], lat)
     else
-      error("Unrecognized host. Can't deduce lattice file path.")
+      # try to deduce lattice path from hostname
+      if contains(hn, "cheops")
+        p.lattice_file = "/projects/ag-trebst/bauer/lattices/"*lat
+      elseif contains(hn, "fz-juelich") || contains(hn, "juwels")
+        p.lattice_file = "/gpfs/homea/hku27/hku273/lattices/"*lat
+      elseif contains(hn, "thp")
+        p.lattice_file = "/home/bauer/lattices/"*lat
+      elseif contains(hn, "thinkable")
+        p.lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/"*lat
+      else
+        error("Unrecognized host. Can't deduce lattice file path.")
+      end
     end
   end
   nothing
