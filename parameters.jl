@@ -48,6 +48,7 @@ mutable struct Params
   prethermalized::Int # how many thermal ud-sweeps are captured by custom start configuration 'thermal_init/conf'
 
   edrun::Bool # if true, only the mass term of the bosonic action is considered
+  walltimelimit::Dates.DateTime
 
   function Params()
     p = new()
@@ -69,6 +70,7 @@ mutable struct Params
     p.Nhoppings = "none"
     p.NNhoppings = "none"
     p.edrun = false
+    p.walltimelimit = Dates.DateTime("2099", "YYYY") # effective infinity
     return p
   end
 end

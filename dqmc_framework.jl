@@ -252,6 +252,11 @@ function thermalize!(mc::DQMC)
       end
     end
 
+    if now() >= p.walltimelimit
+      println("Approaching wall-time limit. Safely exiting.")
+      exit()
+    end
+
   end
 
   if TIMING 
@@ -340,6 +345,11 @@ function measure!(mc::DQMC, prevmeasurements=0)
       a.acc_rate_global = 0.0
       flush(STDOUT)
     end
+  end
+
+  if now() >= p.walltimelimit
+    println("Approaching wall-time limit. Safely exiting.")
+    exit()
   end
 
   nothing

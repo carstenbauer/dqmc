@@ -17,9 +17,6 @@ function wtl2DateTime(wts::AbstractString, start_time::DateTime)
   start_time + Dates.Day(d) + Dates.Hour(h) + Dates.Minute(m) + Dates.Second(s)
 end
 
-JULIA_WALLTIMELIMIT = "0-00:00:05"
-global const stop_time = wtl2DateTime(JULIA_WALLTIMELIMIT, start_time)
-
 try
   # Single core simulation
   BLAS.set_num_threads(1)
@@ -79,6 +76,9 @@ include("dqmc_framework.jl")
 p = Params()
 p.output_file = output_file
 xml2parameters!(p, input_xml)
+if "WALLTIMELIMIT" in keys(ENV)
+  p.walltimelimit = wtl2DateTime(ENVS["WALLTIMELIMIT"], start_time)
+end
 
 # mv old .out.h5 to .out.h5.running (and then try to resume below)
 (isfile(output_file[1:end-8]) && !isfile(output_file)) && mv(output_file[1:end-8], output_file)
