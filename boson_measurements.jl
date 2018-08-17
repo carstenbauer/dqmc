@@ -67,3 +67,56 @@ function get_momenta_and_frequencies(L::Int, M::Int, Δτ::Float64=0.1)
 end
 get_momenta_and_frequencies(C::AbstractArray{Float64, 3}, Δτ::Float64=0.1) = get_momenta_and_frequencies(size(C,2,3)..., Δτ)
 get_momenta_and_frequencies(mc::AbstractDQMC) = get_momenta_and_frequencies(mc.l.L, mc.p.slices, mc.p.delta_tau)
+
+
+
+
+
+
+
+
+
+
+
+
+# ------------------------------------------------------------------
+#         "Macroscopic methods" - measure MC time series
+# ------------------------------------------------------------------
+function measure_chi_dynamics(confs::AbstractArray{Float64, 4})
+    num_confs = size(confs,4)
+    N = size(confs, 2)
+    M = size(confs, 3)
+
+    chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs)
+    chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs)
+    @inbounds @views for i in 1:num_confs
+        chi = measure_chi_dynamic(confs[:,:,:,i])
+        add!(chi_dyn, chi)
+        chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
+        add!(chi_dyn_symm, chi)
+    end
+
+    return chi_dyn, chi_dyn_symm
+end
+
+function measure_binder(confs::AbstractArray{Float64, 4})
+    num_confs = size(confs,4)
+    N = size(confs, 2)
+    M = size(confs, 3)
+
+    m2s = Vector{Float64}(num_confs)
+    m4s = Vector{Float64}(num_confs)
+    @inbounds @views for i in 1:num_confs
+        m = mean(confs[:,:,:,i],[2,3])
+        m2s[i] = dot(m, m)
+        m4s[i] = m2s[i]*m2s[i]
+    end
+
+    m2ev2 = mean(m2s)^2
+    m4ev = mean(m4s)
+
+    binder = Observable(Float64, "binder")
+    add!(binder, m4ev/m2ev2)
+
+    return binder
+end
