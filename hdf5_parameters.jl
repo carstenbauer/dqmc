@@ -18,6 +18,8 @@ function parameters2hdf5(p::Params, filename::String)
     elseif field_type == Bool
       # HDF5 1.8.x doesn't support Bool fields, use Int instead.
       field_value = Int(field_value)
+    elseif field_type == Dates.DateTime
+      field_value = string(field_value)
     end
 
     try
@@ -55,6 +57,8 @@ function hdf52parameters!(p::Params, input_h5::String)
             value = Bool(value)
           elseif field_name in ["box", "box_global"] # handle Distributions
             value = Distributions.Uniform{Float64}(-value, value)
+          elseif field_name in ["walltimelimit"] # handle DateTimes
+            value = Dates.DateTime(value)
           end
 
           setfield!(p, field, value)
