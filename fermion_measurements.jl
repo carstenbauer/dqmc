@@ -1,5 +1,5 @@
 # -------------------------------------------------------
-#         Measurements
+#         Measurements: Greens (ETGF)
 # -------------------------------------------------------
 function measure_greens_and_logdet(mc::AbstractDQMC, safe_mult::Int=mc.p.safe_mult)
   greens, greens_logdet = calc_greens_and_logdet(mc, 1, safe_mult)
@@ -11,6 +11,11 @@ function measure_greens(mc::AbstractDQMC, safe_mult::Int=mc.p.safe_mult)
   return measure_greens_and_logdet(mc, safe_mult)[1]
 end
 
+
+
+# -------------------------------------------------------
+#         Occupation
+# -------------------------------------------------------
 """
 Average occupation per site and fermion flavor.
 
@@ -23,6 +28,114 @@ function occupation(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
   # const M = mc.p.slices
   # n = 1/(N*M) * sum(1 .- diag(greens))
   real(n)
+end
+
+
+
+
+# -------------------------------------------------------
+#         Equal time pairing correlations
+# -------------------------------------------------------
+"""
+Calculate equal time pairing susceptibility
+
+  P(y,x) = << Δ_η^†(r)Δ_η(0) >>
+
+where η=± (s or d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
+
+Details:
+- we mean over r_0, that is "0".
+- we do not mean over τ_0=0 (τ not shown above).
+"""
+function etpc(mc::AbstractDQMC, η::Int, greens::AbstractMatrix=mc.s.greens)
+  const L = mc.p.L
+  const G = geltype(mc)
+
+  etpcs = etpc_ev(mc, greens)
+
+  P = zeros(Complex128,L,L)
+
+  @inbounds @simd for x in 1:L, y in 1:L
+    P[y,x] += etpc(xd,xu,xu,xd, y,x) + η*etpc(xd,xu,yu,yd, y,x) +
+                η*etpc(yd,yu,xu,xd, y,x) + etpc(yd,yu,yu,yd, y,x)
+  end
+
+  return P
+end
+
+etpc_k(args...) = fft(etpc(args...), (1,2))
+
+etpc_uniform(mc, η, greens=mc.s.greens) = sum(etpc(mc, η, greens))
+
+"""
+Equal time pairing correlation expectation value
+
+  etpc(j1,j2,j3,j4,y,x) = 1/N Σ_r0 << c_j1(r + r0) c_j2(r + r0) c_j3(r0)^† c_j4(r0)^† >>
+
+where js ∈ (xup, ydown, xdown, yup), r=(x,y), and we mean over r_0.
+"""
+function etpc_ev(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
+  const L = mc.p.L
+  const N = mc.l.sites
+  const G = geltype(mc)
+
+  etpc = zeros(G,4,4,4,4,L,L)
+  sql = reshape(collect(1:N),L,L)
+
+  @inbounds for x in 1:L, y in 1:L # r
+    for x0 in 1:L, y0 in 1:L # r0
+      r1 = r2 = siteidx(mc, sql, x0+x, y0+y)
+      r3 = r4 = siteidx(mc, sql, x0, y0)
+
+      # @simd for j1 in 1:4, j2 in 1:4, j3 in 1:4, j4 in 1:4 # all flvs
+      # we only need four combinations for etpc
+      xu, yd, xd, yu = 1,2,3,4
+      js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
+      @simd for (j1,j2,j3,j4) in js
+        i1 = greensidx(N, j1, r1)
+        i2 = greensidx(N, j2, r2)
+        i3 = greensidx(N, j3, r3)
+        i4 = greensidx(N, j4, r4)
+
+        etpc[j1, j2, j3, j4, y, x] += greens[i1, i4]*greens[i2, i3] - greens[i1, i3]*greens[i2, i4] # wick_etpc
+      end
+    end
+  end
+
+  etpc /= N # r0 mean
+
+  return etpc
+end
+
+siteidx(mc,sql,x,y) = siteidx(mc.p.L, mc.l.sites, sql, x, y)
+function siteidx(L,N,tolinidx,x,y)
+  xpbc = mod1(x, L)
+  ypbc = mod1(y, L)
+  tolinidx[ypbc, xpbc]
+end
+
+"""
+Calculate equal time pairing EV by Wick's theorem,
+i.e. <<c_α c_β c_γ^† c_δ^†>> = <<c_α c_δ^†>><<c_β c_γ^†>> - <<c_α c_γ^†>><<c_β c_δ^†>>
+"""
+wick_etpc(greens, α, β, γ, δ) = greens[α, δ]*greens[β, γ] - greens[α, γ]*greens[β, δ]
+
+
+"""
+Greens function indexing helpers
+"""
+greensidx(N::Int, flv, site) = (flv-1)*N + site
+greensidx(N::Int, band, site, spin) = (greensblock(band, spin)-1)*N + site
+function greensblock(band, spin)
+  if band == 1 && spin == 1 #xup
+    return 1
+  elseif band == 2 && spin == 2 # ydown
+    return 2
+  elseif band == 1 && spin == 2 # xdown
+    return 3
+  else band == 2 && spin == 1 # yup
+    return 4
+  end
 end
 
 # -------------------------------------------------------
