@@ -1,3 +1,12 @@
+mutable struct MeasStack{G<:Number} # G = GreensEltype
+
+  # ETPCs
+  etpc_evs::Array{G, 6}
+  P::Array{Float64, 2}
+
+  MeasStack{G}() where G = new{G}()
+end
+
 mutable struct Stack{G<:Number} # G = GreensEltype
   u_stack::Array{G, 3}
   d_stack::Matrix{Float64}
@@ -67,6 +76,7 @@ mutable struct Stack{G<:Number} # G = GreensEltype
 
 
   #### Allocations for measurements (won't be initialized for dqmc)
+  #TODO Move to meas stack!
   # TDGF
   BT0Inv_u_stack::Vector{Matrix{G}}
   BT0Inv_d_stack::Vector{Vector{Float64}}
@@ -82,6 +92,8 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   BBetaTInv_t_stack::Vector{Matrix{G}}
   Gt0::Vector{Matrix{G}}
   G0t::Vector{Matrix{G}}
+
+  meas::MeasStack{G}
 
 
   Stack{G}() where G = new{G}()
@@ -168,6 +180,9 @@ function initialize_stack(mc::AbstractDQMC)
 
   ## propagate
   s.greens_temp = zeros(G, flv*N, flv*N)
+
+  ## MeasStack
+  s.meas = MeasStack{G}()
 
   end #timeit
 

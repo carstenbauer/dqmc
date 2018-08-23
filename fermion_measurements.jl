@@ -36,6 +36,18 @@ end
 # -------------------------------------------------------
 #         Equal time pairing correlations
 # -------------------------------------------------------
+function allocate_etpc!(mc)
+  const G = geltype(mc)
+  const L = mc.p.L
+  const meas = mc.s.meas
+
+  meas.etpc_evs = zeros(G,4,4,4,4,L,L)
+  meas.P = zeros(Float64,L,L)
+
+  println("Allocated memory for ETPC measurements.")
+  nothing
+end
+
 """
 Calculate equal time pairing susceptibility
 
@@ -47,39 +59,39 @@ Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function etpc(mc::AbstractDQMC, η::Int, greens::AbstractMatrix)
+function etpc!(mc::AbstractDQMC, η::Int, greens::AbstractMatrix)
   const L = mc.p.L
   const G = geltype(mc)
+  const evs = mc.s.meas.etpc_evs
+  const P = mc.s.meas.P
 
-  evs = real(etpc_ev(mc, greens))
-
-  P = zeros(eltype(evs),L,L)
+  fill!(P, 0.)
+  xu, yd, xd, yu = 1,2,3,4
+  etpc_evs!(mc, greens)
 
   @inbounds for x in 1:L
     @simd for y in 1:L
-      P[y,x] += evs[xd,xu,xu,xd, y,x] + η*evs[xd,xu,yu,yd, y,x] +
-                  η*evs[yd,yu,xu,xd, y,x] + evs[yd,yu,yu,yd, y,x]
+      P[y,x] .+= real(evs[xd,xu,xu,xd, y,x] + η*evs[xd,xu,yu,yd, y,x] +
+                  η*evs[yd,yu,xu,xd, y,x] + evs[yd,yu,yu,yd, y,x])
     end
   end
 
-  return P
+  nothing
 end
 
 """
 FFT of `etpc`, i.e. P(ky, kx)
 """
-etpc_k(args...) = rfft(etpc(args...), (1,2))
+etpc_k(args...) = begin etpc!(args...); rfft(mc.s.meas.P, (1,2)); end
 
 """
 P = Σ_r P(r), with P(r) from `etpc`.
 """
-etpc_uniform(mc, η, greens) = sum(etpc(mc, η, greens))
-
-"""
-P = P(q=0), with P(q)=fft(P(r)) from `etpc_k`.
-"""
-etpc_uniform_k(mc, η, greens) = real(etpc_k(mc, η, greens)[1,1])
-# TODO: is this faster or slower? (compare once we got rid of all temporary allocations)
+etpc_uniform(mc, η, greens) = begin etpc!(mc, η, greens); sum(mc.s.meas.P); end
+# """
+# P = P(q=0), with P(q)=fft(P(r)) from `etpc_k`.
+# """
+# etpc_uniform_alternative(mc, η, greens) = real(etpc_k(mc, η, greens)[1,1])
 
 """
 Equal time pairing correlation expectation value
@@ -88,12 +100,15 @@ Equal time pairing correlation expectation value
 
 where js ∈ (xup, ydown, xdown, yup), r=(x,y), and we mean over r_0.
 """
-function etpc_ev(mc::AbstractDQMC, greens::AbstractMatrix)
+function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
   const L = mc.p.L
   const N = mc.l.sites
   const G = geltype(mc)
+  const etpc = mc.s.meas.etpc_evs
 
-  etpc = zeros(G,4,4,4,4,L,L)
+  # etpc = zeros(G,4,4,4,4,L,L)
+  fill!(etpc, zero(G))
+
   sql = reshape(collect(1:N),L,L)
 
   # """
@@ -117,17 +132,20 @@ function etpc_ev(mc::AbstractDQMC, greens::AbstractMatrix)
         i3 = greensidx(N, j3, r3)
         i4 = greensidx(N, j4, r4)
 
-        etpc[j1, j2, j3, j4, y, x] += greens[i1, i4]*greens[i2, i3] - greens[i1, i3]*greens[i2, i4] # wick_etpc
+        etpc[j1, j2, j3, j4, y, x] += greens[i1, i4]*greens[i2, i3] -
+                                        greens[i1, i3]*greens[i2, i4] # wick_etpc
       end
     end
   end
 
-  etpc /= N # r0 mean
+  etpc ./= N # r0 mean
 
   # The result seems to be real. Why? Until we understand it, leave it as cpx array.
-  @assert all(isapprox.(imag(etpc), 0, atol=1e-15))
+  for x in etpc # faster check for non-real values than isapprox
+    imag(x) > 1e-15 && warn("etpc evals aren't all real!")
+  end
 
-  return etpc
+  nothing
 end
 
 """
