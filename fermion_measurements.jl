@@ -47,25 +47,39 @@ Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function etpc(mc::AbstractDQMC, η::Int, greens::AbstractMatrix=mc.s.greens)
+function etpc(mc::AbstractDQMC, η::Int, greens::AbstractMatrix)
   const L = mc.p.L
   const G = geltype(mc)
 
-  etpcs = etpc_ev(mc, greens)
+  evs = real(etpc_ev(mc, greens))
 
-  P = zeros(Complex128,L,L)
+  P = zeros(eltype(evs),L,L)
 
-  @inbounds @simd for x in 1:L, y in 1:L
-    P[y,x] += etpc(xd,xu,xu,xd, y,x) + η*etpc(xd,xu,yu,yd, y,x) +
-                η*etpc(yd,yu,xu,xd, y,x) + etpc(yd,yu,yu,yd, y,x)
+  @inbounds for x in 1:L
+    @simd for y in 1:L
+      P[y,x] += evs[xd,xu,xu,xd, y,x] + η*evs[xd,xu,yu,yd, y,x] +
+                  η*evs[yd,yu,xu,xd, y,x] + evs[yd,yu,yu,yd, y,x]
+    end
   end
 
   return P
 end
 
-etpc_k(args...) = fft(etpc(args...), (1,2))
+"""
+FFT of `etpc`, i.e. P(ky, kx)
+"""
+etpc_k(args...) = rfft(etpc(args...), (1,2))
 
-etpc_uniform(mc, η, greens=mc.s.greens) = sum(etpc(mc, η, greens))
+"""
+P = Σ_r P(r), with P(r) from `etpc`.
+"""
+etpc_uniform(mc, η, greens) = sum(etpc(mc, η, greens))
+
+"""
+P = P(q=0), with P(q)=fft(P(r)) from `etpc_k`.
+"""
+etpc_uniform_k(mc, η, greens) = real(etpc_k(mc, η, greens)[1,1])
+# TODO: is this faster or slower? (compare once we got rid of all temporary allocations)
 
 """
 Equal time pairing correlation expectation value
@@ -74,13 +88,19 @@ Equal time pairing correlation expectation value
 
 where js ∈ (xup, ydown, xdown, yup), r=(x,y), and we mean over r_0.
 """
-function etpc_ev(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
+function etpc_ev(mc::AbstractDQMC, greens::AbstractMatrix)
   const L = mc.p.L
   const N = mc.l.sites
   const G = geltype(mc)
 
   etpc = zeros(G,4,4,4,4,L,L)
   sql = reshape(collect(1:N),L,L)
+
+  # """
+  # Calculate equal time pairing EV by Wick's theorem,
+  # i.e. <<c_α c_β c_γ^† c_δ^†>> = <<c_α c_δ^†>><<c_β c_γ^†>> - <<c_α c_γ^†>><<c_β c_δ^†>>
+  # """
+  # wick_etpc(greens, α, β, γ, δ) = greens[α, δ]*greens[β, γ] - greens[α, γ]*greens[β, δ]
 
   @inbounds for x in 1:L, y in 1:L # r
     for x0 in 1:L, y0 in 1:L # r0
@@ -91,7 +111,7 @@ function etpc_ev(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
       # we only need four combinations for etpc
       xu, yd, xd, yu = 1,2,3,4
       js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
-      @simd for (j1,j2,j3,j4) in js
+      for (j1,j2,j3,j4) in js
         i1 = greensidx(N, j1, r1)
         i2 = greensidx(N, j2, r2)
         i3 = greensidx(N, j3, r3)
@@ -104,39 +124,38 @@ function etpc_ev(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
 
   etpc /= N # r0 mean
 
+  # The result seems to be real. Why? Until we understand it, leave it as cpx array.
+  @assert all(isapprox.(imag(etpc), 0, atol=1e-15))
+
   return etpc
 end
 
+"""
+Get linear site index of cartesian coordinates (x,y) respecting PBC.
+"""
 siteidx(mc,sql,x,y) = siteidx(mc.p.L, mc.l.sites, sql, x, y)
-function siteidx(L,N,tolinidx,x,y)
+function siteidx(L,N,sql,x,y)
   xpbc = mod1(x, L)
   ypbc = mod1(y, L)
-  tolinidx[ypbc, xpbc]
+  sql[ypbc, xpbc] # to linear idx
 end
 
 """
-Calculate equal time pairing EV by Wick's theorem,
-i.e. <<c_α c_β c_γ^† c_δ^†>> = <<c_α c_δ^†>><<c_β c_γ^†>> - <<c_α c_γ^†>><<c_β c_δ^†>>
-"""
-wick_etpc(greens, α, β, γ, δ) = greens[α, δ]*greens[β, γ] - greens[α, γ]*greens[β, δ]
-
-
-"""
-Greens function indexing helpers
+Get column/row idx of particular flv ∈ (xu, yd, xd, yu) and site ∈ 1:N in Green's function.
 """
 greensidx(N::Int, flv, site) = (flv-1)*N + site
-greensidx(N::Int, band, site, spin) = (greensblock(band, spin)-1)*N + site
-function greensblock(band, spin)
-  if band == 1 && spin == 1 #xup
-    return 1
-  elseif band == 2 && spin == 2 # ydown
-    return 2
-  elseif band == 1 && spin == 2 # xdown
-    return 3
-  else band == 2 && spin == 1 # yup
-    return 4
-  end
-end
+# greensidx(N::Int, band, site, spin) = (greensblock(band, spin)-1)*N + site
+# function greensblock(band, spin)
+#   if band == 1 && spin == 1 #xup
+#     return 1
+#   elseif band == 2 && spin == 2 # ydown
+#     return 2
+#   elseif band == 1 && spin == 2 # xdown
+#     return 3
+#   else band == 2 && spin == 1 # yup
+#     return 4
+#   end
+# end
 
 # -------------------------------------------------------
 #         Postprocessing/Analysis
