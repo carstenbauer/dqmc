@@ -26,10 +26,17 @@ end
 
 
 # -------------------------------------------------------
-#    Parse meas.xml, runstable and create MeasParams
+#            Includes
 # -------------------------------------------------------
+using Helpers
+using MonteCarloObservable
+include("dqmc_framework.jl")
 using JLD, DataFrames
 
+
+# -------------------------------------------------------
+#    Parse meas.xml, runstable and create MeasParams
+# -------------------------------------------------------
 input_xml = length(ARGS) == 1 ? ARGS[1] : ""
 
 using Git
@@ -70,12 +77,6 @@ end
 
 
 
-# -------------------------------------------------------
-#            Includes + prepare everything
-# -------------------------------------------------------
-using Helpers
-using MonteCarloObservable
-include("dqmc_framework.jl")
 
 
 # -------------------------------------------------------
