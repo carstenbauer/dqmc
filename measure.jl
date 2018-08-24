@@ -1,4 +1,8 @@
-# measure.jl input args: inputfile.meas.xml or nothing (in which case we only measure standard bosonic stuff)
+# measure.jl input args: runstable.jld [inputfile.meas.xml]
+#
+# If no meas.xml given (second argument is zero), we only measure standard bosonic stuff.
+length(ARGS) < 1 && error("input args: runstable.jld [inputfile.meas.xml]")
+
 # -------------------------------------------------------
 #        Start + wall-time handling
 # -------------------------------------------------------
@@ -22,8 +26,10 @@ end
 
 
 # -------------------------------------------------------
-#        Parse input file and create MeasParams
+#    Parse meas.xml, runstable and create MeasParams
 # -------------------------------------------------------
+using JLD, DataFrames
+
 input_xml = length(ARGS) == 1 ? ARGS[1] : ""
 
 using Git
@@ -36,21 +42,30 @@ end
 using Parameters
 @with_kw mutable struct MeasParams
   chi::Bool = true
+  chi_symm::Bool = true
   binder::Bool = true
   greens::Bool = false
 
   safe_mult::Int = 10
   overwrite::Bool = false
   num_threads::Int = 1
-  recursive::Bool = true
-  single_file::String = "" # if != "" ignore all files with filename != single_file
   include_running::Bool = true
 end
 
 # direct mapping of xml fields to kwargs
-mpdict = xml2dict(input_xml, false)
-kwargs = Dict([Symbol(lowercase(k))=>lowercase(v) for (k,v) in mpdict])
-mp = MeasParams(; kwargs...)
+if input_xml != ""
+  mpdict = xml2dict(input_xml, false)
+  kwargs = Dict([Symbol(lowercase(k))=>lowercase(v) for (k,v) in mpdict])
+  mp = MeasParams(; kwargs...)
+else
+  mp = MeasParams()
+end
+
+try
+  global rt = load(ARGS[1], "runstable")
+catch
+  error("Couldn't load runstable.")
+end
 
 
 
@@ -59,68 +74,66 @@ mp = MeasParams(; kwargs...)
 #            Includes + prepare everything
 # -------------------------------------------------------
 using Helpers
-using JLD
 using MonteCarloObservable
 include("dqmc_framework.jl")
 
 
 # -------------------------------------------------------
-#            Walk and measure
+#            Iterate runstable and measure
 # -------------------------------------------------------
-function walkmeasure(mp::MeasParams)
-  for (root, dirs, files) in WALK
-      println("I'm in " ,root)
-      for file in files
-          fpath = joinpath(root, file) # path to file
-          contains(fpath, ".out.h5") || continue
+function foreachrun(mp::MeasParams, rt::DataFrames)
+  pwd_before = pwd()
 
-          # contains(fpath, "L_8") || continue
-          # contains(fpath, "B_10") || continue
-          mp.single_file != "" && !contains(fpath, mp.single_file) && continue
-          !mp.include_running && contains(fpath, ".running") && continue
+  for r in eachrow(q) # for every selected run
+    fpath = r[:PATH] # path to file
+    cd(dirname(fpath))
 
-          println(basename(fpath)); flush(STDOUT)
-          outfile = replace(fpath, ".out.h5", ".meas.h5")
+    fpath = replace(fpath, ".in.xml", ".out.h5")
+    if !isfile(fpath)
+        fpath = replace(fpath, ".out.h5", ".out.h5.running")
+        isfile(fpath) || continue
+    end
+    fpathnice = replace(fpath, "/projects/ag-trebst/bauer/", "")
+    println(fpathnice); flush(STDOUT)
 
-          if !endswith(outfile, ".running")
-              # already measured? comment out to overwrite all measurement files.
-              isfile(outfile) && !mp.overwrite && begin println("Already measured. Skipping."); continue end
+    outfile = replace(fpath, ".out.h5", ".meas.h5")
 
-              # maybe job finished in the mean time. is there an old .meas.h5.running? if so, delete it.
-              isfile(outfile*".running") && rm(outfile*".running")
-          end
+    if !endswith(outfile, ".running")
+        # already measured? comment out to overwrite all measurement files.
+        isfile(outfile) && begin println("Already measured. Skipping."); continue end
 
-          try
-              confs = ts_flat(fpath, "obs/configurations")
-              R = 0
-              L = 0
-              B = 0
-              WRITE_EVERY_NTH = 0
-              h5open(fpath, "r") do f
-                R = read(f["params/r"])
-                delta_tau = read(f["params/delta_tau"])
-                # L = read(f["params/L"])
-                # B = read(f["params/beta"])
-                
-                # how many sweeps?
-                WRITE_EVERY_NTH = read(f["params/write_every_nth"])
-              end
+        # maybe job finished in the mean time. is there an old .meas.h5.running? if so, delete it.
+        isfile(outfile*".running") && rm(outfile*".running")
+    end
 
-              measure(mp, confs, R, delta_tau, WRITE_EVERY_NTH)
-          catch err
-              println("Failed. There was in issue for $(fpath). Maybe it doesn't have any configurations yet.")
-              println(err)
-              println()
-          end
+    try
+        confs = ts_flat(fpath, "obs/configurations")
+        R = 0
+        WRITE_EVERY_NTH = 0
+        h5open(fpath, "r") do f
+          R = read(f["params/r"])
+          delta_tau = read(f["params/delta_tau"])
+          # L = read(f["params/L"])
+          # B = read(f["params/beta"])
+          
+          # how many sweeps?
+          WRITE_EVERY_NTH = read(f["params/write_every_nth"])
+        end
 
-          println("Done.\n")
-          flush(STDOUT)
+        measure(mp, confs, R, delta_tau, WRITE_EVERY_NTH)
+    catch err
+        println("Failed. There was in issue for $(fpath). Maybe it doesn't have any configurations yet.")
+        println(err)
+        println()
+    end
 
-          if now() >= p.walltimelimit
-            println("Approaching wall-time limit. Safely exiting.")
-            exit(42)
-          end
-      end
+    println("Done.\n")
+    flush(STDOUT)
+
+    if now() >= p.walltimelimit
+      println("Approaching wall-time limit. Safely exiting.")
+      exit(42)
+    end
   end
 end
 
@@ -137,8 +150,8 @@ function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, d
   #            Allocate
   # -------------------------------------------------------
   # chi
-  chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs)
-  chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs)
+  mp.chi_symm && chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs)
+  mp.chi && chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs)
   # binder
   m2s = Vector{Float64}(num_confs)
   m4s = Vector{Float64}(num_confs)
@@ -147,35 +160,45 @@ function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, d
   #            Measure loop
   # -------------------------------------------------------
   @inbounds @views for i in 1:num_confs
-      # chi
-      println("Measuring chi_dyn/chi_dyn_symm/binder etc. ..."); flush(STDOUT)
-      chi = measure_chi_dynamic(confs[:,:,:,i])
-      add!(chi_dyn, chi)
-      chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
-      add!(chi_dyn_symm, chi)
 
-      # binder
-      m = mean(confs[:,:,:,i],[2,3])
-      m2s[i] = dot(m, m)
-      m4s[i] = m2s[i]*m2s[i]
+      if mp.chi
+        # chi
+        println("Measuring chi_dyn/chi_dyn_symm/binder etc. ..."); flush(STDOUT)
+        chi = measure_chi_dynamic(confs[:,:,:,i])
+        add!(chi_dyn, chi)
+
+        if mp.chi_symm
+          chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
+          add!(chi_dyn_symm, chi)
+        end
+      end
+
+      if mp.binder
+        # binder
+        m = mean(confs[:,:,:,i],[2,3])
+        m2s[i] = dot(m, m)
+        m4s[i] = m2s[i]*m2s[i]
+      end
   end
 
   # -------------------------------------------------------
   #            Postprocessing + Export
   # -------------------------------------------------------
-  # binder postprocessing
-  m2ev2 = mean(m2s)^2
-  m4ev = mean(m4s)
+  if mp.binder
+    # binder postprocessing
+    m2ev2 = mean(m2s)^2
+    m4ev = mean(m4s)
 
-  binder = Observable(Float64, "binder")
-  add!(binder, m4ev/m2ev2)
+    binder = Observable(Float64, "binder")
+    add!(binder, m4ev/m2ev2)
+  end
 
   # export results
   println("Calculating errors and exporting..."); flush(STDOUT)
-  export_result(chi_dyn, outfile, "obs/chi_dyn"; timeseries=true)
-  export_result(chi_dyn_symm, outfile, "obs/chi_dyn_symm"; timeseries=true)
+  mp.chi && export_result(chi_dyn, outfile, "obs/chi_dyn"; timeseries=true)
+  mp.chi_symm && export_result(chi_dyn_symm, outfile, "obs/chi_dyn_symm"; timeseries=true)
 
-  export_result(binder, outfile, "obs/binder", error=false) # jackknife for error
+  mp.binder && export_result(binder, outfile, "obs/binder", error=false) # jackknife for error
 
   h5open(outfile, "r+") do fout
     HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
@@ -202,9 +225,7 @@ try
   ENV["JULIA_NUM_THREADS"] = mp.num_threads
 end
 
-WALK = mp.recursive ? walkdir(".") : (".", filter(x->isdir(x), readdir()), filter(x->isfile(x), readdir()))
-
-walkmeasure(mp, WALK)
+foreachrun(mp, rt)
 
 
 
