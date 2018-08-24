@@ -37,7 +37,7 @@ using JLD, DataFrames
 # -------------------------------------------------------
 #    Parse meas.xml, runstable and create MeasParams
 # -------------------------------------------------------
-input_xml = length(ARGS) == 1 ? ARGS[1] : ""
+input_xml = length(ARGS) == 2 ? ARGS[2] : ""
 
 using Git
 branch = Git.branch(dir=dirname(@__FILE__)).string[1:end-1]
