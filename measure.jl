@@ -57,6 +57,7 @@ using Parameters
   overwrite::Bool = false
   num_threads::Int = 1
   include_running::Bool = true
+  walltimelimit::Dates.DateTime = Dates.DateTime("2099", "YYYY") # effective infinity
 end
 
 # direct mapping of xml fields to kwargs
@@ -68,13 +69,16 @@ else
   mp = MeasParams()
 end
 
+if "WALLTIMELIMIT" in keys(ENV)
+  mp.walltimelimit = wtl2DateTime(ENV["WALLTIMELIMIT"], start_time)
+end
+
+
 try
   global rt = load(ARGS[1], "runstable")
 catch
   error("Couldn't load runstable.")
 end
-
-
 
 
 
@@ -130,7 +134,7 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
     println("Done.\n")
     flush(STDOUT)
 
-    if now() >= p.walltimelimit
+    if now() >= mp.walltimelimit
       println("Approaching wall-time limit. Safely exiting.")
       exit(42)
     end
