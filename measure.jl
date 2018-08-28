@@ -125,7 +125,7 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
           WRITE_EVERY_NTH = read(f["params/write_every_nth"])
         end
 
-        measure(mp, confs, R, delta_tau, WRITE_EVERY_NTH)
+        measure(mp, confs, R, delta_tau, WRITE_EVERY_NTH, outfile)
     catch err
         println("Failed. There was in issue for $(fpath). Maybe it doesn't have any configurations yet.")
         println(err)
@@ -143,7 +143,7 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
 end
 
 
-function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, delta_tau::Float64, WRITE_EVERY_NTH::Int)
+function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, delta_tau::Float64, WRITE_EVERY_NTH::Int, outfile::String)
   num_confs = size(confs, ndims(confs))
   nsweeps = num_confs*WRITE_EVERY_NTH
   N = size(confs, 2)
@@ -164,11 +164,13 @@ function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, d
   # -------------------------------------------------------
   #            Measure loop
   # -------------------------------------------------------
+  mp.chi && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
+  flush(STDOUT)
+
   @inbounds @views for i in 1:num_confs
 
       if mp.chi
         # chi
-        println("Measuring chi_dyn/chi_dyn_symm/binder etc. ..."); flush(STDOUT)
         chi = measure_chi_dynamic(confs[:,:,:,i])
         add!(chi_dyn, chi)
 
