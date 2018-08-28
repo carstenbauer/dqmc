@@ -28,10 +28,8 @@ end
 # -------------------------------------------------------
 #            Includes
 # -------------------------------------------------------
-using Helpers
-using MonteCarloObservable
 include("dqmc_framework.jl")
-using JLD, DataFrames
+using Helpers, MonteCarloObservable, JLD, DataFrames
 
 
 # -------------------------------------------------------
