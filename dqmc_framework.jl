@@ -26,6 +26,10 @@ using HDF5
 using LightXML
 using Iterators
 
+# to avoid namespace conflict warnings
+import Distributions: params
+import LightXML: root, name
+
 isdefined(:TIMING) || (global const TIMING = false)
 macro mytimeit(exprs...)
     if TIMING

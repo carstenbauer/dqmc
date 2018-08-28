@@ -37,12 +37,11 @@ end
 #         Equal time pairing correlations
 # -------------------------------------------------------
 function allocate_etpc!(mc)
-  const G = geltype(mc)
   const L = mc.p.L
   const meas = mc.s.meas
 
-  meas.etpc_evs = zeros(G,4,L,L)
-  meas.P = zeros(Float64,L,L)
+  meas.etpc_evs = zeros(Float64,4,L,L)
+  meas.etpc = zeros(Float64,L,L)
 
   println("Allocated memory for ETPC measurements.")
   nothing
@@ -51,7 +50,7 @@ end
 """
 Calculate equal time pairing susceptibility
 
-  P(y,x) = << Δ_η^†(r)Δ_η(0) >>
+  etpc(y,x) = << Δ_η^†(r)Δ_η(0) >> = P(y,x)
 
 where η=± (s or d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
 
@@ -62,10 +61,10 @@ Details:
 function etpc!(mc::AbstractDQMC, η::Int, greens::AbstractMatrix)
   const L = mc.p.L
   const G = geltype(mc)
-  const evs = mc.s.meas.etpc_evs
-  const P = mc.s.meas.P
+  const etpc_evs = mc.s.meas.etpc_evs
+  const etpc = mc.s.meas.etpc
 
-  fill!(P, 0.)
+  fill!(etpc, 0.)
   xu, yd, xd, yu = 1,2,3,4
   etpc_evs!(mc, greens)
 
@@ -76,32 +75,33 @@ function etpc!(mc::AbstractDQMC, η::Int, greens::AbstractMatrix)
 
   @inbounds for x in 1:L
     @simd for y in 1:L
-      P[y,x] .+= real(evs[xd_xu_xu_xd, y,x] + η*evs[xd_xu_yu_yd, y,x] +
-                  η*evs[yd_yu_xu_xd, y,x] + evs[yd_yu_yu_yd, y,x])
+      etpc[y,x] .+= real(etpc_evs[xd_xu_xu_xd, y,x] + η*etpc_evs[xd_xu_yu_yd, y,x] +
+                  η*etpc_evs[yd_yu_xu_xd, y,x] + etpc_evs[yd_yu_yu_yd, y,x])
     end
   end
 
   nothing
 end
 
-"""
-FFT of `etpc`, i.e. P(ky, kx)
-"""
-etpc_k(args...) = begin etpc!(args...); rfft(mc.s.meas.P, (1,2)); end
+# """
+# FFT of ETPC, i.e. P(ky, kx)
+# """
+# etpc_k!(args...) = begin etpc!(args...); rfft(mc.s.meas.etpc, (1,2)); end
 
-"""
-P = Σ_r P(r), with P(r) from `etpc`.
-"""
-etpc_uniform(mc, η, greens) = begin etpc!(mc, η, greens); sum(mc.s.meas.P); end
 # """
-# P = P(q=0), with P(q)=fft(P(r)) from `etpc_k`.
+# P = Σ_r P(r), with P(r) from `etpc`.
 # """
-# etpc_uniform_alternative(mc, η, greens) = real(etpc_k(mc, η, greens)[1,1])
+# etpc_uniform!(mc, η, greens) = begin etpc!(mc, η, greens); sum(mc.s.meas.etpc); end
+
+# """
+# P = P(q=0), with P(q)=fft(P(r)) from `etpc_k`. Slower than `etpc_uniform!`.
+# """
+# etpc_uniform_alternative!(mc, η, greens) = real(etpc_k!(mc, η, greens)[1,1])
 
 """
 Equal time pairing correlation expectation value
 
-  etpc(j,y,x) = 1/N Σ_r0 << c_j1(r + r0) c_j2(r + r0) c_j3(r0)^† c_j4(r0)^† >>
+  etpc_evs(j,y,x) = 1/N Σ_r0 << c_j1(r + r0) c_j2(r + r0) c_j3(r0)^† c_j4(r0)^† >>
 
 where j ∈ 1:4 corresponds to (j1, j2, j3, j4) ∈ ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd)),
 r=(x,y), and we mean over r_0.
@@ -109,14 +109,13 @@ r=(x,y), and we mean over r_0.
 function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
   const L = mc.p.L
   const N = mc.l.sites
-  const G = geltype(mc)
-  const etpc = mc.s.meas.etpc_evs
+  const etpc_ev = mc.s.meas.etpc_evs
 
-  # we only need four combinations of j1,j2,j3,j4 for etpc
+  # we only need four combinations of j1,j2,j3,j4 for etpc_ev
   const xu, yd, xd, yu = 1,2,3,4
   const js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
 
-  fill!(etpc, zero(G))
+  fill!(etpc_ev, 0.)
   sql = reshape(collect(1:N),L,L)
 
   @inbounds for x in 1:L, y in 1:L # r
@@ -130,18 +129,17 @@ function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
         i3 = greensidx(N, js[j][3], r3)
         i4 = greensidx(N, js[j][4], r4)
 
-        etpc[j, y, x] += greens[i1, i4]*greens[i2, i3] -
-                                        greens[i1, i3]*greens[i2, i4] # wick_etpc
+        # TODO: This is always real because of _____ symmetry
+        etpc_ev[j, y, x] += real(greens[i1, i4]*greens[i2, i3] -
+                                        greens[i1, i3]*greens[i2, i4]) # wick_etpc
+
+        # check realness
+        # imag(etpc_ev[j, y, x]) < 1e-14 || warn("single etpc_ev should be real! found imag part: $(imag(etpc_ev[j, y, x]))")
       end
     end
   end
 
-  etpc ./= N # r0 mean
-
-  # Check that result is real
-  for x in etpc # faster check for non-real values than isapprox
-    imag(x) > 1e-15 && warn("etpc evals aren't all real!")
-  end
+  etpc_ev ./= N # r0 mean
 
   nothing
 end
