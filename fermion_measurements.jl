@@ -129,12 +129,9 @@ function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
         i3 = greensidx(N, js[j][3], r3)
         i4 = greensidx(N, js[j][4], r4)
 
-        # TODO: This is always real because of _____ symmetry
-        etpc_ev[j, y, x] += real(greens[i1, i4]*greens[i2, i3] -
-                                        greens[i1, i3]*greens[i2, i4]) # wick_etpc
-
-        # check realness
-        # imag(etpc_ev[j, y, x]) < 1e-14 || warn("single etpc_ev should be real! found imag part: $(imag(etpc_ev[j, y, x]))")
+        # Wick's theorem. Result is real because greens is symm. in r and has anti-unitary symm.
+        etpc_ev[j, y, x] += real(G(mc, i1, i4, greens)*G(mc, i2, i3, greens) -
+                                        G(mc, i1, i3, greens)*G(mc, i2, i4, greens))
       end
     end
   end
@@ -144,11 +141,17 @@ function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
   nothing
 end
 
+
+
+
+
+
+
 """
 Get linear site index of cartesian coordinates (x,y) respecting PBC.
 """
-siteidx(mc,sql,x,y) = siteidx(mc.p.L, mc.l.sites, sql, x, y)
-function siteidx(L,N,sql,x,y)
+@inline siteidx(mc,sql,x,y) = siteidx(mc.p.L, mc.l.sites, sql, x, y)
+@inline siteidx(L,N,sql,x,y) = begin
   xpbc = mod1(x, L)
   ypbc = mod1(y, L)
   sql[ypbc, xpbc] # to linear idx
@@ -157,7 +160,7 @@ end
 """
 Get column/row idx of particular flv ∈ (xu, yd, xd, yu) and site ∈ 1:N in Green's function.
 """
-greensidx(N::Int, flv, site) = (flv-1)*N + site
+@inline greensidx(N::Int, flv, site) = (flv-1)*N + site
 # greensidx(N::Int, band, site, spin) = (greensblock(band, spin)-1)*N + site
 # function greensblock(band, spin)
 #   if band == 1 && spin == 1 #xup
@@ -170,6 +173,56 @@ greensidx(N::Int, flv, site) = (flv-1)*N + site
 #     return 4
 #   end
 # end
+
+"""
+Access full (4*N, 4*N) Green's function for any OPDIM efficiently.
+"""
+@inline function G(mc, i, j, greens=mc.s.greens)
+  const gt = eltype(greens)
+  const N = mc.l.sites
+  const opdim = mc.p.opdim
+  const half = 2*N
+
+  @inbounds if opdim == 3
+    return greens[i,j]
+
+  else
+    # Virtually expand Green's function
+    if i>half && j<=half # lower left block
+      return zero(gt)
+
+    elseif i<=half && j>half # upper right block
+      return zero(gt)
+
+    elseif i>half && j>half # lower right block
+      return conj(greens[j - half, i - half])
+
+    else # upper left block
+      return greens[i, j]
+    end
+  end
+end
+
+"""
+Construct full (4*N, 4*N) Green's function for any OPDIM efficiently.
+"""
+function fullG(mc, greens=mc.s.greens)
+  const gt = eltype(greens)
+  const N = mc.l.sites
+  g = zeros(gt, 4*N, 4*N)
+
+  @inbounds for j in 1:4*N
+    for i in 1:4*N
+      g[i,j] = G(mc, i, j, greens)
+    end
+  end
+  return g
+end
+
+
+
+
+
 
 # -------------------------------------------------------
 #         Postprocessing/Analysis
