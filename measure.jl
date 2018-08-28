@@ -114,6 +114,7 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
         confs = ts_flat(fpath, "obs/configurations")
         R = 0
         WRITE_EVERY_NTH = 0
+        delta_tau = 0.1
         h5open(fpath, "r") do f
           R = read(f["params/r"])
           delta_tau = read(f["params/delta_tau"])
