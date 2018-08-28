@@ -150,8 +150,8 @@ function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, d
   #            Allocate
   # -------------------------------------------------------
   # chi
-  mp.chi_symm && chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs)
-  mp.chi && chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs)
+  mp.chi_symm && (chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs))
+  mp.chi && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
   # binder
   m2s = Vector{Float64}(num_confs)
   m4s = Vector{Float64}(num_confs)
