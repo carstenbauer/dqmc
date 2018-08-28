@@ -20,6 +20,11 @@ isdefined(:DQMC_CBFalse) || (global const DQMC_CBFalse = AbstractDQMC{C} where C
 using Helpers
 using MonteCarloObservable
 using TimerOutputs
+using FFTW # v.0.6 naming bug
+using Distributions
+using HDF5
+using LightXML
+using Iterators
 
 isdefined(:TIMING) || (global const TIMING = false)
 macro mytimeit(exprs...)

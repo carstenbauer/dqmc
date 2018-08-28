@@ -1,7 +1,3 @@
-using LightXML
-using Helpers
-
-# define lattice type
 mutable struct Lattice{H<:Number} # H = HoppingEltype
   dim::Int
   sites::Int

@@ -41,7 +41,7 @@ function allocate_etpc!(mc)
   const L = mc.p.L
   const meas = mc.s.meas
 
-  meas.etpc_evs = zeros(G,4,4,4,4,L,L)
+  meas.etpc_evs = zeros(G,4,L,L)
   meas.P = zeros(Float64,L,L)
 
   println("Allocated memory for ETPC measurements.")
@@ -69,10 +69,15 @@ function etpc!(mc::AbstractDQMC, η::Int, greens::AbstractMatrix)
   xu, yd, xd, yu = 1,2,3,4
   etpc_evs!(mc, greens)
 
+  xd_xu_xu_xd = 1
+  xd_xu_yu_yd = 2
+  yd_yu_xu_xd = 3
+  yd_yu_yu_yd = 4
+
   @inbounds for x in 1:L
     @simd for y in 1:L
-      P[y,x] .+= real(evs[xd,xu,xu,xd, y,x] + η*evs[xd,xu,yu,yd, y,x] +
-                  η*evs[yd,yu,xu,xd, y,x] + evs[yd,yu,yu,yd, y,x])
+      P[y,x] .+= real(evs[xd_xu_xu_xd, y,x] + η*evs[xd_xu_yu_yd, y,x] +
+                  η*evs[yd_yu_xu_xd, y,x] + evs[yd_yu_yu_yd, y,x])
     end
   end
 
@@ -96,9 +101,10 @@ etpc_uniform(mc, η, greens) = begin etpc!(mc, η, greens); sum(mc.s.meas.P); en
 """
 Equal time pairing correlation expectation value
 
-  etpc(j1,j2,j3,j4,y,x) = 1/N Σ_r0 << c_j1(r + r0) c_j2(r + r0) c_j3(r0)^† c_j4(r0)^† >>
+  etpc(j,y,x) = 1/N Σ_r0 << c_j1(r + r0) c_j2(r + r0) c_j3(r0)^† c_j4(r0)^† >>
 
-where js ∈ (xup, ydown, xdown, yup), r=(x,y), and we mean over r_0.
+where j ∈ 1:4 corresponds to (j1, j2, j3, j4) ∈ ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd)),
+r=(x,y), and we mean over r_0.
 """
 function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
   const L = mc.p.L
@@ -106,33 +112,25 @@ function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
   const G = geltype(mc)
   const etpc = mc.s.meas.etpc_evs
 
-  # etpc = zeros(G,4,4,4,4,L,L)
+  # we only need four combinations of j1,j2,j3,j4 for etpc
+  const xu, yd, xd, yu = 1,2,3,4
+  const js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
+
   fill!(etpc, zero(G))
-
   sql = reshape(collect(1:N),L,L)
-
-  # """
-  # Calculate equal time pairing EV by Wick's theorem,
-  # i.e. <<c_α c_β c_γ^† c_δ^†>> = <<c_α c_δ^†>><<c_β c_γ^†>> - <<c_α c_γ^†>><<c_β c_δ^†>>
-  # """
-  # wick_etpc(greens, α, β, γ, δ) = greens[α, δ]*greens[β, γ] - greens[α, γ]*greens[β, δ]
 
   @inbounds for x in 1:L, y in 1:L # r
     for x0 in 1:L, y0 in 1:L # r0
       r1 = r2 = siteidx(mc, sql, x0+x, y0+y)
       r3 = r4 = siteidx(mc, sql, x0, y0)
 
-      # @simd for j1 in 1:4, j2 in 1:4, j3 in 1:4, j4 in 1:4 # all flvs
-      # we only need four combinations for etpc
-      xu, yd, xd, yu = 1,2,3,4
-      js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
-      for (j1,j2,j3,j4) in js
-        i1 = greensidx(N, j1, r1)
-        i2 = greensidx(N, j2, r2)
-        i3 = greensidx(N, j3, r3)
-        i4 = greensidx(N, j4, r4)
+      @inbounds for j in 1:length(js)
+        i1 = greensidx(N, js[j][1], r1)
+        i2 = greensidx(N, js[j][2], r2)
+        i3 = greensidx(N, js[j][3], r3)
+        i4 = greensidx(N, js[j][4], r4)
 
-        etpc[j1, j2, j3, j4, y, x] += greens[i1, i4]*greens[i2, i3] -
+        etpc[j, y, x] += greens[i1, i4]*greens[i2, i3] -
                                         greens[i1, i3]*greens[i2, i4] # wick_etpc
       end
     end
@@ -140,7 +138,7 @@ function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
 
   etpc ./= N # r0 mean
 
-  # The result seems to be real. Why? Until we understand it, leave it as cpx array.
+  # Check that result is real
   for x in etpc # faster check for non-real values than isapprox
     imag(x) > 1e-15 && warn("etpc evals aren't all real!")
   end

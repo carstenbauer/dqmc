@@ -29,7 +29,7 @@ end
 #            Includes
 # -------------------------------------------------------
 include("dqmc_framework.jl")
-using Helpers, MonteCarloObservable, JLD, DataFrames
+using JLD, DataFrames
 
 
 # -------------------------------------------------------
@@ -225,6 +225,7 @@ end
 # set num threads
 try
   BLAS.set_num_threads(mp.num_threads)
+  FFTW.set_num_threads(1)  = mp.num_threads
   ENV["OMP_NUM_THREADS"] = mp.num_threads
   ENV["MKL_NUM_THREADS"] = mp.num_threads
   ENV["JULIA_NUM_THREADS"] = mp.num_threads

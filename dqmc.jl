@@ -57,6 +57,7 @@ if branch != "master"
 end
 
 # TIMING parameter "hack"
+using LightXML, Iterators
 include("xml_parameters.jl")
 params = xml2dict(input_xml, false)
 haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) && (global const TIMING = true)
@@ -65,9 +66,8 @@ haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) &
 # -------------------------------------------------------
 #                    Includes
 # -------------------------------------------------------
-using Helpers
-using JLD
 include("dqmc_framework.jl")
+using JLD
 
 
 # -------------------------------------------------------

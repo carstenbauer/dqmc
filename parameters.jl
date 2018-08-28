@@ -1,6 +1,3 @@
-using FFTW # v.0.6 naming bug
-using Distributions
-
 mutable struct Params
   lattice_file::String
   hoppings::String # nearest neighbor

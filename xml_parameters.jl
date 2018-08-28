@@ -1,6 +1,3 @@
-using LightXML
-using Iterators
-
 """
     xml2parameters!(p::Params, input_xml)
     

@@ -1,5 +1,3 @@
-using HDF5
-
 """
     parameters2hdf5(p::Params, filename)
     

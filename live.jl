@@ -1,8 +1,13 @@
-isdefined(:input) || error("Variable 'input' != path to input.in.xml")
+if !isdefined(:input)
+    if isfile("dqmc.in.xml")
+        input = "dqmc.in.xml"
+    else
+        error("Variable 'input' != path to input.in.xml")
+    end
+end
 
-# using Revise
+using Revise, BenchmarkTools
 include("dqmc_framework.jl")
-using BenchmarkTools
 
 p = Params()
 p.output_file = "live.out.h5.running"
@@ -13,5 +18,6 @@ init!(mc)
 
 # const l = mc.l;
 # const s = mc.s;
+meas = mc.s.meas
 display(mc)
 nothing

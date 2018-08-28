@@ -1,8 +1,8 @@
 mutable struct MeasStack{G<:Number} # G = GreensEltype
 
   # ETPCs
-  etpc_evs::Array{G, 6}
-  P::Array{Float64, 2}
+  etpc_evs::Array{G, 3} # j, y, x; where j ∈ ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
+  P::Array{Float64, 2} # ETPC
 
   MeasStack{G}() where G = new{G}()
 end
