@@ -183,6 +183,8 @@ function initialize_stack(mc::AbstractDQMC)
 
   ## MeasStack
   s.meas = MeasStack{G}()
+  # only initialize MeasStack fields that we need during regular DQMC here.
+  allocate_etpc!(mc)
 
   end #timeit
 

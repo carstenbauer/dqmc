@@ -6,7 +6,7 @@ length(ARGS) < 1 && error("input args: runstable.jld [inputfile.meas.xml]")
 # -------------------------------------------------------
 #        Start + wall-time handling
 # -------------------------------------------------------
-start_time = now()
+const start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
 
@@ -44,18 +44,23 @@ if branch != "master"
   flush(STDOUT)
 end
 
+choose_walltimelimit(ENV) = "WALLTIMELIMIT" in keys(ENV) ? wtl2DateTime(ENV["WALLTIMELIMIT"], start_time) : Dates.DateTime("2099", "YYYY") # effective infinity
+
 using Parameters
 @with_kw mutable struct MeasParams
+  # bosonic
   chi::Bool = true
   chi_symm::Bool = true
   binder::Bool = true
-  greens::Bool = false
+
+  # fermionic
+  etpc::Bool = false
 
   safe_mult::Int = 10
   overwrite::Bool = false
   num_threads::Int = 1
   include_running::Bool = true
-  walltimelimit::Dates.DateTime = Dates.DateTime("2099", "YYYY") # effective infinity
+  walltimelimit::Dates.DateTime = choose_walltimelimit(ENV)
 end
 
 # direct mapping of xml fields to kwargs
@@ -65,10 +70,6 @@ if input_xml != ""
   mp = MeasParams(; kwargs...)
 else
   mp = MeasParams()
-end
-
-if "WALLTIMELIMIT" in keys(ENV)
-  mp.walltimelimit = wtl2DateTime(ENV["WALLTIMELIMIT"], start_time)
 end
 
 
