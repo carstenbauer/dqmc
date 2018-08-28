@@ -84,7 +84,7 @@ end
 # -------------------------------------------------------
 function foreachrun(mp::MeasParams, rt::DataFrame)
 
-  for r in eachrow(q) # for every selected run
+  for r in eachrow(rt) # for every selected run
     fpath = r[:PATH] # path to file
     cd(dirname(fpath))
 
