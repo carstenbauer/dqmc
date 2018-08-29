@@ -3,11 +3,11 @@
     
 Load `p` from XML file (e.g. `.in.xml`).
 """
-function xml2parameters!(p, input_xml::String)
+function xml2parameters!(p, input_xml::String, verbose=true)
   # READ INPUT XML
   params = Dict{Any, Any}()
   try
-    params = xml2dict(input_xml)
+    params = xml2dict(input_xml, verbose)
 
   catch e
     println(e)

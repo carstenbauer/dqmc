@@ -1,41 +1,19 @@
+# -------------------------------------------------------
+#            Check input arguments
+# -------------------------------------------------------
 # measure.jl input args: runstable.jld [inputfile.meas.xml]
 #
 # If no meas.xml given (second argument is zero), we only measure standard bosonic stuff.
 length(ARGS) < 1 && error("input args: runstable.jld [inputfile.meas.xml]")
 
+
+
 # -------------------------------------------------------
-#        Start + wall-time handling
+#            Start + Check git branch
 # -------------------------------------------------------
 const start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
-
-# Calculate DateTime where wall-time limit will be reached.
-function wtl2DateTime(wts::AbstractString, start_time::DateTime)
-  @assert contains(wts, "-")
-  @assert contains(wts, ":")
-  @assert length(wts) >= 10
-
-  tmp = split(wts, "-")
-
-  d = parse(Int, tmp[1])
-  h, m, s = parse.(Int, split(tmp[2], ":"))
-
-  start_time + Dates.Day(d) + Dates.Hour(h) + Dates.Minute(m) + Dates.Second(s)
-end
-
-
-# -------------------------------------------------------
-#            Includes
-# -------------------------------------------------------
-include("dqmc_framework.jl")
-using JLD, DataFrames
-
-
-# -------------------------------------------------------
-#    Parse meas.xml, runstable and create MeasParams
-# -------------------------------------------------------
-input_xml = length(ARGS) == 2 ? ARGS[2] : ""
 
 using Git
 branch = Git.branch(dir=dirname(@__FILE__)).string[1:end-1]
@@ -44,9 +22,25 @@ if branch != "master"
   flush(STDOUT)
 end
 
-choose_walltimelimit(ENV) = "WALLTIMELIMIT" in keys(ENV) ? wtl2DateTime(ENV["WALLTIMELIMIT"], start_time) : Dates.DateTime("2099", "YYYY") # effective infinity
 
-using Parameters
+
+
+# #######################################################
+#                       Framework
+# #######################################################
+# -------------------------------------------------------
+#                       Includes
+# -------------------------------------------------------
+include("dqmc_framework.jl")
+using Parameters, JLD, DataFrames
+
+
+
+
+
+# -------------------------------------------------------
+#                  Define MeasParams
+# -------------------------------------------------------
 @with_kw mutable struct MeasParams
   # bosonic
   chi::Bool = true
@@ -63,35 +57,25 @@ using Parameters
   walltimelimit::Dates.DateTime = choose_walltimelimit(ENV)
 end
 
-# direct mapping of xml fields to kwargs
-if input_xml != ""
-  mpdict = xml2dict(input_xml, false)
-  kwargs = Dict([Symbol(lowercase(k))=>lowercase(v) for (k,v) in mpdict])
-  mp = MeasParams(; kwargs...)
-else
-  mp = MeasParams()
-end
 
 
-try
-  global rt = load(ARGS[1], "runstable")
-catch
-  error("Couldn't load runstable.")
-end
-
-
+# p = Params()
+# p.output_file = output_file
+# xml2parameters!(p, input_xml)
 
 
 # -------------------------------------------------------
-#            Iterate runstable and measure
+#                   For each run ...
 # -------------------------------------------------------
+
+
 function foreachrun(mp::MeasParams, rt::DataFrame)
-
   for r in eachrow(rt) # for every selected run
-    fpath = r[:PATH] # path to file
-    cd(dirname(fpath))
+    infile = r[:PATH] # path to file
+    cd(dirname(infile))
 
-    fpath = replace(fpath, ".in.xml", ".out.h5")
+    # --------------- Find .out.h5 ----------------------
+    fpath = replace(infile, ".in.xml", ".out.h5")
     if !isfile(fpath)
         fpath = replace(fpath, ".out.h5", ".out.h5.running")
         isfile(fpath) || continue
@@ -99,8 +83,9 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
     fpathnice = replace(fpath, "/projects/ag-trebst/bauer/", "")
     println(fpathnice); flush(STDOUT)
 
-    outfile = replace(fpath, ".out.h5", ".meas.h5")
 
+    # --------------- Set .meas.h5 ----------------------
+    outfile = replace(fpath, ".out.h5", ".meas.h5")
     if !endswith(outfile, ".running")
         # already measured? comment out to overwrite all measurement files.
         isfile(outfile) && begin println("Already measured. Skipping."); continue end
@@ -109,8 +94,15 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
         isfile(outfile*".running") && rm(outfile*".running")
     end
 
+
+
+
+    # --------------- Measure ----------------------
     try
+        # load configurations (TODO: what to actually load here?)
         confs = ts_flat(fpath, "obs/configurations")
+
+        # TODO: Why load this from h5 and not .in.xml?
         R = 0
         WRITE_EVERY_NTH = 0
         delta_tau = 0.1
@@ -124,10 +116,13 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
           WRITE_EVERY_NTH = read(f["params/write_every_nth"])
         end
 
+        # measure
         measure(mp, confs, R, delta_tau, WRITE_EVERY_NTH, outfile)
+
     catch err
-        println("Failed. There was in issue for $(fpath). Maybe it doesn't have any configurations yet.")
-        println(err)
+        println("Failed. There was in issue with $(fpathnice).")
+        println("Maybe it doesn't have any configurations yet?")
+        println("Error: $(err)")
         println()
     end
 
@@ -142,6 +137,20 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
 end
 
 
+
+
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------------
+#                      Measurements
+# -------------------------------------------------------
 function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, delta_tau::Float64, WRITE_EVERY_NTH::Int, outfile::String)
   num_confs = size(confs, ndims(confs))
   nsweeps = num_confs*WRITE_EVERY_NTH
@@ -150,9 +159,7 @@ function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, d
   L = Int(sqrt(N))
   B = M * delta_tau
 
-  # -------------------------------------------------------
-  #            Allocate
-  # -------------------------------------------------------
+  # ------------------- Allocate --------------------------
   # chi
   mp.chi_symm && (chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs))
   mp.chi && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
@@ -160,9 +167,7 @@ function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, d
   m2s = Vector{Float64}(num_confs)
   m4s = Vector{Float64}(num_confs)
 
-  # -------------------------------------------------------
-  #            Measure loop
-  # -------------------------------------------------------
+  # ----------------- Measure loop ------------------------
   mp.chi && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
   flush(STDOUT)
 
@@ -187,9 +192,7 @@ function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, d
       end
   end
 
-  # -------------------------------------------------------
-  #            Postprocessing + Export
-  # -------------------------------------------------------
+  # ------------ Postprocessing + Export   ----------------
   if mp.binder
     # binder postprocessing
     m2ev2 = mean(m2s)^2
@@ -220,9 +223,32 @@ end
 
 
 
+# #######################################################
+#                       Main
+# #######################################################
 # -------------------------------------------------------
-#            Main
+#           Parse meas.xml and runstable
 # -------------------------------------------------------
+input_xml = length(ARGS) == 2 ? ARGS[2] : ""
+
+
+# meas.xml: direct mapping of xml fields to kwargs
+if input_xml != ""
+  mpdict = xml2dict(input_xml, false)
+  kwargs = Dict([Symbol(lowercase(k))=>lowercase(v) for (k,v) in mpdict])
+  mp = MeasParams(; kwargs...)
+else
+  mp = MeasParams()
+end
+
+# runstable
+try
+  global rt = load(ARGS[1], "runstable")
+catch
+  error("Couldn't load runstable.")
+end
+
+
 # set num threads
 try
   BLAS.set_num_threads(mp.num_threads)
@@ -233,11 +259,17 @@ try
 end
 
 
+# -------------------------------------------------------
+#                     Let's go
+# -------------------------------------------------------
 pwd_before = pwd()
 foreachrun(mp, rt)
 cd(pwd_before)
 
 
+# -------------------------------------------------------
+#                       Exit
+# -------------------------------------------------------
 end_time = now()
 println("\nEnded: ", Dates.format(end_time, "d.u yyyy HH:MM"))
 @printf("Duration: %.2f minutes", (end_time - start_time).value/1000./60.)

@@ -400,3 +400,21 @@ function Base.show(io::IO, mc::DQMC{C}) where C<:Checkerboard
   print(io, "B-field: ", mc.p.Bfield)
 end
 Base.show(io::IO, m::MIME"text/plain", mc::DQMC) = print(io, mc)
+
+
+
+# Calculate DateTime where wall-time limit will be reached.
+function wtl2DateTime(wts::AbstractString, start_time::DateTime)
+  @assert contains(wts, "-")
+  @assert contains(wts, ":")
+  @assert length(wts) >= 10
+
+  tmp = split(wts, "-")
+
+  d = parse(Int, tmp[1])
+  h, m, s = parse.(Int, split(tmp[2], ":"))
+
+  start_time + Dates.Day(d) + Dates.Hour(h) + Dates.Minute(m) + Dates.Second(s)
+end
+
+choose_walltimelimit(ENV) = "WALLTIMELIMIT" in keys(ENV) ? wtl2DateTime(ENV["WALLTIMELIMIT"], start_time) : Dates.DateTime("2099", "YYYY") # effective infinity
