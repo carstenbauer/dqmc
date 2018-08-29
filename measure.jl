@@ -43,8 +43,8 @@ using Parameters, JLD, DataFrames
 # -------------------------------------------------------
 @with_kw mutable struct MeasParams
   # bosonic
-  chi::Bool = true
-  chi_symm::Bool = true
+  chi_dyn::Bool = true
+  chi_dyn_symm::Bool = true
   binder::Bool = true
 
   # fermionic
@@ -55,27 +55,44 @@ using Parameters, JLD, DataFrames
   num_threads::Int = 1
   include_running::Bool = true
   walltimelimit::Dates.DateTime = choose_walltimelimit(ENV)
+
+  # temporary variables (change per run)
+  dochi_dyn::Bool = chi_dyn
+  dochi_dyn_symm::Bool = chi_dyn_symm
+  dobinder::Bool = binder
+  doetpc::Bool = etpc
+  outfile::String = ""
+end
+
+
+global const dofields = Symbol.(filter(x->startswith(x, "do"), string.(fieldnames(MeasParams))))
+global const dodefaults = getfield.(mp, Symbol.(replace.(string.(dofields), "do", "")))
+donothing!(mp::MeasParams) = begin
+  for f in dofields
+    setfield!(mp, f, false)
+  end
+end
+doallrequested!(mp::MeasParams) = begin
+  @inbounds for (i,f) in enumerate(dofields)
+    setfield!(mp, f, dodefaults[i])
+  end
 end
 
 
 
-# p = Params()
-# p.output_file = output_file
-# xml2parameters!(p, input_xml)
+
 
 
 # -------------------------------------------------------
 #                   For each run ...
 # -------------------------------------------------------
-
-
 function foreachrun(mp::MeasParams, rt::DataFrame)
   for r in eachrow(rt) # for every selected run
-    infile = r[:PATH] # path to file
-    cd(dirname(infile))
+    inxml = r[:PATH] # path to file
+    cd(dirname(inxml))
 
     # --------------- Find .out.h5 ----------------------
-    fpath = replace(infile, ".in.xml", ".out.h5")
+    fpath = replace(inxml, ".in.xml", ".out.h5")
     if !isfile(fpath)
         fpath = replace(fpath, ".out.h5", ".out.h5.running")
         isfile(fpath) || continue
@@ -85,46 +102,54 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
 
 
     # --------------- Set .meas.h5 ----------------------
-    outfile = replace(fpath, ".out.h5", ".meas.h5")
-    if !endswith(outfile, ".running")
-        # already measured? comment out to overwrite all measurement files.
-        isfile(outfile) && begin println("Already measured. Skipping."); continue end
+    mp.outfile = replace(fpath, ".out.h5", ".meas.h5")
+    doallrequested!(mp)
+    if !endswith(mp.outfile, ".running")
+        # already measured
+        if !mp.overwrite
+          isfile(mp.outfile) && begin
+            println("Measurements found."); # only measure what isn't there yet
+            donothing!(mp)
+
+            todo = false
+            println("Checking...")
+            allobs = listobs(mp.outfile)
+
+            mp.chi_dyn && !("chi_dyn" in allobs) && (mp.dochi_dyn = true; todo = true)
+            mp.chi_dyn_symm && !("chi_dyn_symm" in allobs) && (mp.dochi_dyn_symm = true; todo = true)
+            mp.binder && !("binder" in allobs) && (mp.dobinder = true; todo = true)
+            mp.etpc && !("etpc_minus" in allobs) && (mp.doetpc = true; todo = true)
+            mp.etpc && !("etpc_plus" in allobs) && (mp.doetpc = true; todo = true)
+
+            todo || begin println("Already measured. Skipping."); continue end
+          end
+        end # measure everything requested (overwrite if necessary)
 
         # maybe job finished in the mean time. is there an old .meas.h5.running? if so, delete it.
-        isfile(outfile*".running") && rm(outfile*".running")
+        isfile(mp.outfile*".running") && rm(mp.outfile*".running")
     end
 
 
 
 
-    # --------------- Measure ----------------------
+    # -------------- Load DQMC params/results -----------------
+    local confs;
+    local p;
     try
         # load configurations (TODO: what to actually load here?)
         confs = ts_flat(fpath, "obs/configurations")
 
-        # TODO: Why load this from h5 and not .in.xml?
-        R = 0
-        WRITE_EVERY_NTH = 0
-        delta_tau = 0.1
-        h5open(fpath, "r") do f
-          R = read(f["params/r"])
-          delta_tau = read(f["params/delta_tau"])
-          # L = read(f["params/L"])
-          # B = read(f["params/beta"])
-          
-          # how many sweeps?
-          WRITE_EVERY_NTH = read(f["params/write_every_nth"])
-        end
-
-        # measure
-        measure(mp, confs, R, delta_tau, WRITE_EVERY_NTH, outfile)
-
+        # load dqmc params
+        p = Params(); xml2parameters!(p, inxml, false);
     catch err
-        println("Failed. There was in issue with $(fpathnice).")
+        println("Failed to load dqmc params/results for $(fpathnice).")
         println("Maybe it doesn't have any configurations yet?")
         println("Error: $(err)")
         println()
     end
+
+    # --------------------- Measure -------------------------
+    measure(mp, p, confs)
 
     println("Done.\n")
     flush(STDOUT)
@@ -149,36 +174,34 @@ end
 
 
 # -------------------------------------------------------
-#                      Measurements
+#                      MEASUREMENTS
 # -------------------------------------------------------
-function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, delta_tau::Float64, WRITE_EVERY_NTH::Int, outfile::String)
-  num_confs = size(confs, ndims(confs))
-  nsweeps = num_confs*WRITE_EVERY_NTH
-  N = size(confs, 2)
-  M = size(confs, 3)
-  L = Int(sqrt(N))
-  B = M * delta_tau
+function measure(mp::MeasParams, p::Params confs::AbstractArray{Float64, 4})
+  const num_confs = size(confs, ndims(confs))
+  const nsweeps = num_confs * p.write_every_nth
 
   # ------------------- Allocate --------------------------
-  # chi
-  mp.chi_symm && (chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs))
-  mp.chi && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
+  # chi_dyn
+  mp.chi_dyn_symm && (chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs))
+  mp.chi_dyn && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
   # binder
   m2s = Vector{Float64}(num_confs)
   m4s = Vector{Float64}(num_confs)
 
+
+
   # ----------------- Measure loop ------------------------
-  mp.chi && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
+  mp.chi_dyn && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
   flush(STDOUT)
 
   @inbounds @views for i in 1:num_confs
 
-      if mp.chi
-        # chi
+      if mp.chi_dyn
+        # chi_dyn
         chi = measure_chi_dynamic(confs[:,:,:,i])
         add!(chi_dyn, chi)
 
-        if mp.chi_symm
+        if mp.chi_dyn_symm
           chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
           add!(chi_dyn_symm, chi)
         end
@@ -192,7 +215,9 @@ function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, d
       end
   end
 
-  # ------------ Postprocessing + Export   ----------------
+
+
+  # ------------ Postprocessing   ----------------
   if mp.binder
     # binder postprocessing
     m2ev2 = mean(m2s)^2
@@ -202,18 +227,20 @@ function measure(mp::MeasParams, confs::AbstractArray{Float64, 4}, R::Float64, d
     add!(binder, m4ev/m2ev2)
   end
 
-  # export results
+  
+
+  # ------------ Export results   ----------------
   println("Calculating errors and exporting..."); flush(STDOUT)
-  mp.chi && export_result(chi_dyn, outfile, "obs/chi_dyn"; timeseries=true)
-  mp.chi_symm && export_result(chi_dyn_symm, outfile, "obs/chi_dyn_symm"; timeseries=true)
+  mp.chi_dyn && export_result(chi_dyn, mp.outfile, "obs/chi_dyn"; timeseries=true)
+  mp.chi_dyn_symm && export_result(chi_dyn_symm, mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
 
-  mp.binder && export_result(binder, outfile, "obs/binder", error=false) # jackknife for error
+  mp.binder && export_result(binder, mp.outfile, "obs/binder", error=false) # jackknife for error
 
-  h5open(outfile, "r+") do fout
+  h5open(mp.outfile, "r+") do fout
     HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
     HDF5.has(fout, "write_every_nth") && HDF5.o_delete(fout, "write_every_nth")
     fout["nsweeps"] = nsweeps
-    fout["write_every_nth"] = WRITE_EVERY_NTH
+    fout["write_every_nth"] = p.write_every_nth
   end
 end
 
