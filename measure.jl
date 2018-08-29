@@ -141,6 +141,7 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
 
         # load dqmc params
         p = Params(); xml2parameters!(p, inxml, false);
+        # TODO: Probably even set up mc object here?
     catch err
         println("Failed to load dqmc params/results for $(fpathnice).")
         println("Maybe it doesn't have any configurations yet?")
