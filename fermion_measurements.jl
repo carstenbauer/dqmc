@@ -41,42 +41,44 @@ function allocate_etpc!(mc)
   const meas = mc.s.meas
 
   meas.etpc_evs = zeros(Float64,4,L,L)
-  meas.etpc = zeros(Float64,L,L)
+  meas.etpc_minus = zeros(Float64,L,L)
+  meas.etpc_plus = zeros(Float64,L,L)
 
   println("Allocated memory for ETPC measurements.")
   nothing
 end
 
 """
-Calculate equal time pairing susceptibility
+Calculate equal time pairing susceptibilities
 
-  etpc(y,x) = << Δ_η^†(r)Δ_η(0) >> = P(y,x)
+  Pη(y,x) = << Δη^†(r)Δη(0) >> = etpc_plus/minus(y,x)
 
-where η=± (s or d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
+where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
 
 Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function etpc!(mc::AbstractDQMC, η::Int, greens::AbstractMatrix)
+function etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
   const L = mc.p.L
   const G = geltype(mc)
-  const etpc_evs = mc.s.meas.etpc_evs
-  const etpc = mc.s.meas.etpc
+  const ev = mc.s.meas.etpc_evs
+  const Pm = mc.s.meas.etpc_minus # d-wave
+  const Pp = mc.s.meas.etpc_plus # s-wave
 
-  fill!(etpc, 0.)
-  xu, yd, xd, yu = 1,2,3,4
+  fill!(Pm, 0.)
+  fill!(Pp, 0.)
   etpc_evs!(mc, greens)
 
-  xd_xu_xu_xd = 1
-  xd_xu_yu_yd = 2
-  yd_yu_xu_xd = 3
-  yd_yu_yu_yd = 4
+  # xd,xu,xu,xd = 1
+  # xd,xu,yu,yd = 2
+  # yd,yu,xu,xd = 3
+  # yd,yu,yu,yd = 4
 
   @inbounds for x in 1:L
     @simd for y in 1:L
-      etpc[y,x] .+= real(etpc_evs[xd_xu_xu_xd, y,x] + η*etpc_evs[xd_xu_yu_yd, y,x] +
-                  η*etpc_evs[yd_yu_xu_xd, y,x] + etpc_evs[yd_yu_yu_yd, y,x])
+      Pm[y,x] .+= real(ev[1,y,x] - ev[2,y,x] - ev[3,y,x] + ev[4,y,x])
+      Pp[y,x] .+= real(ev[1,y,x] + ev[2,y,x] + ev[3,y,x] + ev[4,y,x])
     end
   end
 
@@ -141,9 +143,39 @@ function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
   nothing
 end
 
+# import MacroTools: postwalk
 
+# greensexpand_replace(x) = begin
+#   @show x
+#   if x == :greens
+#     :(G)
+#   else
+#     x
+#   end
+# end
 
+# macro greensexpand(ex)
+#   expr = postwalk(greensexpand_replace, startex)
+#   @show expr
+#   return :()
+# end
 
+# greensexpand_walk(ex) = begin
+#   if ex.head == :ref
+#     @show ex
+#   else
+
+#   end
+# end
+
+# macro greensexpand(ex)
+#   expr = postwalk(greensexpand_replace, startex)
+#   @show expr
+#   return :()
+# end
+
+# startex = :(greens[i1, i4]*greens[i2, i3])
+# finalex = :(G(mc, i1, i4, greens)*G(mc, i2, i3, greens))
 
 
 

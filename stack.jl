@@ -2,7 +2,8 @@ mutable struct MeasStack{G<:Number} # G = GreensEltype
 
   # ETPCs
   etpc_evs::Array{Float64, 3} # j, y, x; where j ∈ ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
-  etpc::Array{Float64, 2} # "P(x,y)"
+  etpc_minus::Array{Float64, 2} # "P_(x,y)", i.e. d-wave
+  etpc_plus::Array{Float64, 2} # "P+(x,y)", i.e. s-wave
 
   MeasStack{G}() where G = new{G}()
 end
