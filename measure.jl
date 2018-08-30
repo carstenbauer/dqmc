@@ -66,9 +66,6 @@ using Parameters, JLD, DataFrames
   outfile::String = ""
 end
 
-
-global const dofields = Symbol.(filter(x->startswith(x, "do"), string.(fieldnames(MeasParams))))
-global const dodefaults = getfield.(mp, Symbol.(replace.(string.(dofields), "do", "")))
 donothing!(mp::MeasParams) = begin
   for f in dofields
     setfield!(mp, f, false)
@@ -273,6 +270,9 @@ if input_xml != ""
 else
   mp = MeasParams()
 end
+
+const dofields = Symbol.(filter(x->startswith(x, "do"), string.(fieldnames(MeasParams))))
+const dodefaults = getfield.(mp, Symbol.(replace.(string.(dofields), "do", "")))
 
 # runstable
 try
