@@ -56,6 +56,8 @@ using Parameters, JLD, DataFrames
   include_running::Bool = true
   walltimelimit::Dates.DateTime = choose_walltimelimit(ENV)
 
+
+
   # temporary variables (change per run)
   dochi_dyn::Bool = chi_dyn
   dochi_dyn_symm::Bool = chi_dyn_symm
@@ -101,7 +103,7 @@ function foreachrun(mp::MeasParams, rt::DataFrame)
     println(fpathnice); flush(STDOUT)
 
 
-    # --------------- Set .meas.h5 ----------------------
+    # ----------- Set .meas.h5 and todos ------------------
     mp.outfile = replace(fpath, ".out.h5", ".meas.h5")
     doallrequested!(mp)
     if !endswith(mp.outfile, ".running")
@@ -183,8 +185,9 @@ function measure(mp::MeasParams, p::Params confs::AbstractArray{Float64, 4})
 
   # ------------------- Allocate --------------------------
   # chi_dyn
-  mp.chi_dyn_symm && (chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs))
-  mp.chi_dyn && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
+  mp.dochi_dyn_symm && (chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs))
+  mp.dochi_dyn && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
+  
   # binder
   m2s = Vector{Float64}(num_confs)
   m4s = Vector{Float64}(num_confs)
@@ -192,23 +195,25 @@ function measure(mp::MeasParams, p::Params confs::AbstractArray{Float64, 4})
 
 
   # ----------------- Measure loop ------------------------
-  mp.chi_dyn && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
+  mp.dochi_dyn && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
   flush(STDOUT)
 
   @inbounds @views for i in 1:num_confs
 
-      if mp.chi_dyn
+      # chi_dyn
+      if mp.dochi_dyn
         # chi_dyn
         chi = measure_chi_dynamic(confs[:,:,:,i])
         add!(chi_dyn, chi)
 
-        if mp.chi_dyn_symm
+        if mp.dochi_dyn_symm
           chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
           add!(chi_dyn_symm, chi)
         end
       end
 
-      if mp.binder
+      # binder
+      if mp.dobinder
         # binder
         m = mean(confs[:,:,:,i],[2,3])
         m2s[i] = dot(m, m)
@@ -219,7 +224,7 @@ function measure(mp::MeasParams, p::Params confs::AbstractArray{Float64, 4})
 
 
   # ------------ Postprocessing   ----------------
-  if mp.binder
+  if mp.dobinder
     # binder postprocessing
     m2ev2 = mean(m2s)^2
     m4ev = mean(m4s)
@@ -232,10 +237,10 @@ function measure(mp::MeasParams, p::Params confs::AbstractArray{Float64, 4})
 
   # ------------ Export results   ----------------
   println("Calculating errors and exporting..."); flush(STDOUT)
-  mp.chi_dyn && export_result(chi_dyn, mp.outfile, "obs/chi_dyn"; timeseries=true)
-  mp.chi_dyn_symm && export_result(chi_dyn_symm, mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
+  mp.dochi_dyn && export_result(chi_dyn, mp.outfile, "obs/chi_dyn"; timeseries=true)
+  mp.dochi_dyn_symm && export_result(chi_dyn_symm, mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
 
-  mp.binder && export_result(binder, mp.outfile, "obs/binder", error=false) # jackknife for error
+  mp.dobinder && export_result(binder, mp.outfile, "obs/binder", error=false) # jackknife for error
 
   h5open(mp.outfile, "r+") do fout
     HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
