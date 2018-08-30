@@ -101,38 +101,21 @@ mutable struct Stack{G<:Number} # G = GreensEltype
 end
 
 
-function initialize_stack(mc::AbstractDQMC)
+
+
+
+
+@def stackshortcuts begin
   const s = mc.s
-  const safe_mult = mc.p.safe_mult
   const N = mc.l.sites
   const flv = mc.p.flv
+  const safe_mult = mc.p.safe_mult
   const G = geltype(mc)
-  const a = mc.a
+end
 
-  @mytimeit a.to "initialize_stack" begin
 
-  s.n_elements = convert(Int, mc.p.slices / safe_mult) + 1
-
-  s.eye_flv = eye(flv,flv)
-  s.eye_full = eye(flv*N,flv*N)
-  s.ones_vec = ones(flv*N)
-
-  s.u_stack = zeros(G, flv*N, flv*N, s.n_elements)
-  s.d_stack = zeros(Float64, flv*N, s.n_elements)
-  s.t_stack = zeros(G, flv*N, flv*N, s.n_elements)
-
-  s.greens = zeros(G, flv*N, flv*N)
-
-  s.Ul = eye(G, flv*N, flv*N)
-  s.Ur = eye(G, flv*N, flv*N)
-  s.Tl = eye(G, flv*N, flv*N)
-  s.Tr = eye(G, flv*N, flv*N)
-  s.Dl = ones(Float64, flv*N)
-  s.Dr = ones(Float64, flv*N)
-
-  s.delta_i = zeros(G, flv, flv)
-  s.M = zeros(G, flv, flv)
-
+function allocate_global_update!(mc)
+  @stackshortcuts
   # Global update backup
   s.gb_u_stack = zero(s.u_stack)
   s.gb_d_stack = zero(s.d_stack)
@@ -140,57 +123,110 @@ function initialize_stack(mc::AbstractDQMC)
   s.gb_greens = zero(s.greens)
   s.gb_log_det = 0. 
   s.gb_hsfield = zero(mc.p.hsfield)
+end
 
-  s.ranges = UnitRange[]
+function allocate_etgreens_stack!(mc)
+  @stackshortcuts
+  s.u_stack = zeros(G, flv*N, flv*N, s.n_elements)
+  s.d_stack = zeros(Float64, flv*N, s.n_elements)
+  s.t_stack = zeros(G, flv*N, flv*N, s.n_elements)
+end
 
-  for i in 1:s.n_elements - 1
-    push!(s.ranges, 1 + (i - 1) * safe_mult:i * safe_mult)
-  end
-
-  s.curr_U = zeros(G, flv*N, flv*N)
-  s.eV = spzeros(G, flv*N, flv*N)
-  s.eVop1 = zeros(G, flv, flv)
-  s.eVop2 = zeros(G, flv, flv)
-
-  # non-allocating multiplications
-  # calculate_greens
-  # s.U = zeros(G, flv*N, flv*N)
-  s.D = zeros(Float64, flv*N)
-  # s.T = zeros(G, flv*N, flv*N)
-  # s.u = zeros(G, flv*N, flv*N)
-  s.d = zeros(Float64, flv*N)
-  # s.t = zeros(G, flv*N, flv*N)
-  ## update_greens
-  s.A = s.greens[:,1:N:end]
-  s.B = s.greens[1:N:end,:]
-  s.AB = s.A * s.B
+function allocate_calc_detratio!(mc)
+  @stackshortcuts
   ## calc_detratio
+  s.M = zeros(G, flv, flv)
   s.Mtmp = s.eye_flv - s.greens[1:N:end,1:N:end]
   s.delta_i = zeros(G, size(s.eye_flv))
   s.Mtmp2 = zeros(G, size(s.eye_flv))
   s.eVop1eVop2 = zeros(G, size(s.eye_flv))
-  ## multiply_B
-  s.tmp = zeros(G, flv*N, flv*N)
-  s.Bl = zeros(G, flv*N, flv*N)
-  ## calculate_greens
-  s.tmp2 = zeros(G, flv*N, flv*N)
+  s.eVop1 = zeros(G, flv, flv)
+  s.eVop2 = zeros(G, flv, flv)
+end
 
+function allocate_calc_greens!(mc)
+  @stackshortcuts
+  s.Ul = eye(G, flv*N, flv*N)
+  s.Ur = eye(G, flv*N, flv*N)
+  s.Tl = eye(G, flv*N, flv*N)
+  s.Tr = eye(G, flv*N, flv*N)
+  s.Dl = ones(Float64, flv*N)
+  s.Dr = ones(Float64, flv*N)
+end
+
+function allocate_update_greens!(mc)
+  @stackshortcuts
+  ## update_greens
+  s.A = s.greens[:,1:N:end]
+  s.B = s.greens[1:N:end,:]
+  s.AB = s.A * s.B
+end
+
+function allocate_propagate!(mc)
+  @stackshortcuts
+  s.greens_temp = zeros(G, flv*N, flv*N)
+end
+
+function _initialize_stack(mc::AbstractDQMC)
+  @stackshortcuts
+  s.n_elements = convert(Int, mc.p.slices / safe_mult) + 1
+  
+  s.ranges = UnitRange[]
+  for i in 1:s.n_elements - 1
+    push!(s.ranges, 1 + (i - 1) * safe_mult:i * safe_mult)
+  end
+
+  s.eye_flv = eye(flv,flv)
+  s.eye_full = eye(flv*N,flv*N)
+  s.ones_vec = ones(flv*N)
+
+  s.greens = zeros(G, flv*N, flv*N)
+
+  # interaction matrix
   s.C = zeros(G, N)
   s.S = zeros(G, N)
   s.R = zeros(G, N)
+  s.eV = spzeros(G, flv*N, flv*N)
 
-  ## propagate
-  s.greens_temp = zeros(G, flv*N, flv*N)
-
-  ## MeasStack
+  # init empty meas stack
   s.meas = MeasStack{G}()
-  # only initialize MeasStack fields that we need during regular DQMC here.
-  allocate_etpc!(mc)
+
+  # slice matrix
+  cbtype(mc) === CBFalse && (s.Bl = zeros(G, flv*N, flv*N))
+
+  # unsure about those
+  s.curr_U = zeros(G, flv*N, flv*N) # used in tdgf, add_slice_sequence_ and propagate
+  s.D = zeros(Float64, flv*N) # used in calc_greens in mc (below) and in calc greens in fermion meas.
+  s.d = zeros(Float64, flv*N) # same as above
+  s.tmp = zeros(G, flv*N, flv*N)
+  s.tmp2 = zeros(G, flv*N, flv*N)
+end
+
+function initialize_stack(mc::AbstractDQMC)
+  @mytimeit mc.a.to "initialize_stack" begin
+    _initialize_stack(mc)
+
+    # allocate for dqmc
+    allocate_etgreens_stack!(mc)
+    allocate_global_update!(mc)
+    allocate_calc_detratio!(mc)  
+    allocate_calc_greens!(mc)
+    allocate_update_greens!(mc)
+    allocate_propagate!(mc)
+
+    # allocate for measurements during dqmc
+    allocate_etpc!(mc)
 
   end #timeit
 
   nothing
 end
+
+
+
+
+
+
 
 
 function build_stack(mc::AbstractDQMC)

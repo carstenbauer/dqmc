@@ -80,6 +80,23 @@ end
 
 
 
+# -------------------------------------------------------
+#              Initialize stack for meas
+# -------------------------------------------------------
+function initialize_stack(mc::AbstractDQMC, mp::MeasParams)
+  @mytimeit mc.a.to "initialize_stack" begin
+    _initialize_stack(mc)
+
+    # allocate for measurement run based on todos
+    mp.doetpc && allocate_etpc!(mc)
+
+  end #timeit
+
+  nothing
+end
+
+
+
 
 
 # -------------------------------------------------------
