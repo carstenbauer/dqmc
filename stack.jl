@@ -9,30 +9,37 @@ mutable struct MeasStack{G<:Number} # G = GreensEltype
 end
 
 mutable struct Stack{G<:Number} # G = GreensEltype
-  u_stack::Array{G, 3}
-  d_stack::Matrix{Float64}
-  t_stack::Array{G, 3}
+  n_elements::Int
+  ranges::Array{UnitRange, 1}
+  current_slice::Int # running internally over 0:p.slices+1, where 0 and p.slices+1 are artifcial to prepare next sweep direction.
+  direction::Int
 
-  Ul::Matrix{G}
-  Ur::Matrix{G}
-  Dl::Vector{Float64}
-  Dr::Vector{Float64}
-  Tl::Matrix{G}
-  Tr::Matrix{G}
+  eye_flv::Matrix{Float64}
+  eye_full::Matrix{Float64}
+  ones_vec::Vector{Float64}
 
   greens::Matrix{G}
   log_det::Float64 # contains logdet of greens_{p.slices+1} === greens_1
                             # after we calculated a fresh greens in propagate()
+  
+  C::Vector{G}
+  S::Vector{G}
+  R::Vector{G}
+  eV::SparseMatrixCSC{G,Int64}
 
-  delta_i::Matrix{G}
-  M::Matrix{G}
+  meas::MeasStack{G}
+  Bl::Matrix{G}
 
-  ranges::Array{UnitRange, 1}
-  n_elements::Int
-  current_slice::Int # running internally over 0:p.slices+1, where 0 and p.slices+1 are artifcial to prepare next sweep direction.
-  direction::Int
-
-  # -------- Global update backup
+  # unsure about those -> always allocate them
+  curr_U::Matrix{G}
+  D::Vector{Float64}
+  U::Matrix{G}
+  T::Matrix{G}
+  d::Vector{Float64}
+  tmp::Matrix{G}
+  tmp2::Matrix{G}
+  
+  # global update
   gb_u_stack::Array{G, 3}
   gb_d_stack::Matrix{Float64}
   gb_t_stack::Array{G, 3}
@@ -41,39 +48,36 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   gb_log_det::Float64
 
   gb_hsfield::Array{Float64, 3}
-  # --------
 
+  # etgreens stack
+  u_stack::Array{G, 3}
+  d_stack::Matrix{Float64}
+  t_stack::Array{G, 3}
 
-  #### Array allocations
-  curr_U::Matrix{G}
-  eV::SparseMatrixCSC{G,Int64}
+  # calc detratio
+  delta_i::Matrix{G}
+  M::Matrix{G}
   eVop1::Matrix{G}
   eVop2::Matrix{G}
-  eye_flv::Matrix{Float64}
-  eye_full::Matrix{Float64}
-  ones_vec::Vector{Float64}
-
-  U::Matrix{G}
-  D::Vector{Float64}
-  T::Matrix{G}
-  # u::Matrix{G}
-  d::Vector{Float64}
-  # t::Matrix{G}
-
-  greens_temp::Matrix{G}
-
-  A::Matrix{G}
-  B::Matrix{G}
-  AB::Matrix{G}
   eVop1eVop2::Matrix{G}
   Mtmp::Matrix{G}
   Mtmp2::Matrix{G}
-  tmp::Matrix{G}
-  Bl::Matrix{G}
-  tmp2::Matrix{G}
-  C::Vector{G}
-  S::Vector{G}
-  R::Vector{G}
+
+  # calc greens
+  Ul::Matrix{G}
+  Ur::Matrix{G}
+  Dl::Vector{Float64}
+  Dr::Vector{Float64}
+  Tl::Matrix{G}
+  Tr::Matrix{G}
+
+  # update greens
+  A::Matrix{G}
+  B::Matrix{G}
+  AB::Matrix{G}
+
+  # propagate
+  greens_temp::Matrix{G}
 
 
   #### Allocations for measurements (won't be initialized for dqmc)
@@ -94,7 +98,6 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   Gt0::Vector{Matrix{G}}
   G0t::Vector{Matrix{G}}
 
-  meas::MeasStack{G}
 
 
   Stack{G}() where G = new{G}()
@@ -200,6 +203,8 @@ function _initialize_stack(mc::AbstractDQMC)
   s.d = zeros(Float64, flv*N) # same as above
   s.tmp = zeros(G, flv*N, flv*N)
   s.tmp2 = zeros(G, flv*N, flv*N)
+  s.U = zeros(G, flv*N, flv*N)
+  s.T = zeros(G, flv*N, flv*N)
 end
 
 function initialize_stack(mc::AbstractDQMC)
