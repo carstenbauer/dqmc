@@ -1,3 +1,6 @@
+using Distributions
+using LightXML
+
 mutable struct Params
   lattice_file::String
   hoppings::String # nearest neighbor
