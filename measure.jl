@@ -176,7 +176,7 @@ end
 # -------------------------------------------------------
 #                      MEASUREMENTS
 # -------------------------------------------------------
-function measure(mp::MeasParams, p::Params confs::AbstractArray{Float64, 4})
+function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
   const num_confs = size(confs, ndims(confs))
   const nsweeps = num_confs * p.write_every_nth
 
