@@ -4,13 +4,13 @@ println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
 
 
-# try
-#   # Single core simulation
-#   BLAS.set_num_threads(1)
-#   ENV["OMP_NUM_THREADS"] = 1
-#   ENV["MKL_NUM_THREADS"] = 1
-#   ENV["JULIA_NUM_THREADS"] = 1
-# end
+try
+  # Single core simulation
+  BLAS.set_num_threads(1)
+  ENV["OMP_NUM_THREADS"] = 1
+  ENV["MKL_NUM_THREADS"] = 1
+  ENV["JULIA_NUM_THREADS"] = 1
+end
 
 
 # -------------------------------------------------------
