@@ -5,11 +5,18 @@ println("Hostname: ", gethostname())
 
 
 try
+  nthreads = parse(Int, ENV["OMP_NUM_THREADS"])
+  BLAS.set_num_threads(nthreads)
+  ENV["MKL_NUM_THREADS"] = nthreads
+  ENV["JULIA_NUM_THREADS"] = 1
+  println("Using $(nthreads) threads for BLAS, OMP, and MKL.")
+catch err
   # Single core simulation
   BLAS.set_num_threads(1)
   ENV["OMP_NUM_THREADS"] = 1
   ENV["MKL_NUM_THREADS"] = 1
   ENV["JULIA_NUM_THREADS"] = 1
+  println("Using single thread for BLAS, OMP, and MKL.")
 end
 
 
