@@ -80,10 +80,24 @@ end
 # check if there is a resumable running file
 if isfile(output_file)
   try
-    jldopen(output_file) do f
-      if HDF5.has(f.plain, "resume") && HDF5.has(f.plain, "obs/configurations/count") && read(f["obs/configurations/count"]) > 0 && read(f["GIT_BRANCH_DQMC"]) == branch
-        p.resume = true
+    f = jldopen(output_file)
+    if HDF5.has(f.plain, "resume") && HDF5.has(f.plain, "obs/configurations/count") && read(f["GIT_BRANCH_DQMC"]) == branch
+      nconfs = read(f["obs/configurations/count"])
+      pmeasurements = read(f["params/measurements"])
+      pwrite_every_nth = read(f["params/write_every_nth"])
+      measurements = nconfs * pwrite_every_nth
+
+      close(f);
+
+      if measurements >= pmeasurements
+        mv(output_file, output_file[1:end-8])
+        println("Nothing to do here. There are already $(nconfs) configurations present.")
+        exit();
+      else
+        (nconfs > 0) && (p.resume = true);
       end
+    else
+      close(f)
     end
   end
 end

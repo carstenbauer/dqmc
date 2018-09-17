@@ -321,7 +321,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
       # if s.current_slice == 1 && s.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
       if s.current_slice == p.slices && s.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
         dumping = (length(boson_action)+1)%cs == 0
-        dumping && println("Dumping...")
+        dumping && println("Dumping... (2*i=$(2*i))")
         add!(boson_action, p.boson_action)
 
         add!(configurations, p.hsfield)
