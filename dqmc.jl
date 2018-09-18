@@ -75,7 +75,8 @@ if "WALLTIMELIMIT" in keys(ENV)
 end
 
 # mv old .out.h5 to .out.h5.running (and then try to resume below)
-(isfile(output_file[1:end-8]) && !isfile(output_file)) && mv(output_file[1:end-8], output_file)
+# (isfile(output_file[1:end-8]) && !isfile(output_file)) && mv(output_file[1:end-8], output_file)
+isfile(output_file[1:end-8]) && begin println("Nothing to do here. Found .out.h5 file."); exit(); end
 
 # check if there is a resumable running file
 if isfile(output_file)
