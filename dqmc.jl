@@ -79,26 +79,28 @@ end
 
 # check if there is a resumable running file
 if isfile(output_file)
+  alreadydone = false
+  resumable = false
   try
-    f = jldopen(output_file)
-    if HDF5.has(f.plain, "resume") && HDF5.has(f.plain, "obs/configurations/count") && read(f["GIT_BRANCH_DQMC"]) == branch
-      nconfs = read(f["obs/configurations/count"])
-      pmeasurements = read(f["params/measurements"])
-      pwrite_every_nth = read(f["params/write_every_nth"])
-      measurements = nconfs * pwrite_every_nth
+    jldopen(output_file) do f
+      if HDF5.has(f.plain, "resume") && HDF5.has(f.plain, "obs/configurations/count") && read(f["GIT_BRANCH_DQMC"]) == branch
+        nconfs = read(f["obs/configurations/count"])
+        pmeasurements = read(f["params/measurements"])
+        pwrite_every_nth = read(f["params/write_every_nth"])
+        measurements = nconfs * pwrite_every_nth
 
-      close(f);
-
-      if measurements >= pmeasurements
-        mv(output_file, output_file[1:end-8])
-        println("Nothing to do here. There are already $(nconfs) configurations present.")
-        exit();
-      else
-        (nconfs > 0) && (p.resume = true);
+        (measurements >= pmeasurements) && (alreadydone = true)
+        (nconfs > 0) && (resumable = true)
       end
-    else
-      close(f)
     end
+  end
+
+  if alreadydone
+    mv(output_file, output_file[1:end-8])
+    println("Nothing to do here. There are already $(nconfs) configurations present.")
+    exit();
+  else
+    resumable && (p.resume = true);
   end
 end
 
@@ -106,26 +108,28 @@ if !p.resume
 
   # Start with a prethermalized conf?
   if isfile(p.output_file)
-    jldopen(output_file) do f
-      if HDF5.has(f.plain, "thermal_init")
-        println("Using thermal_init/conf as starting configuration.")
-        global const start_conf = read(f["thermal_init/conf"])
+    try
+      jldopen(output_file) do f
+        if HDF5.has(f.plain, "thermal_init")
+          println("Using thermal_init/conf as starting configuration.")
+          global const start_conf = read(f["thermal_init/conf"])
 
-        if HDF5.has(f.plain, "thermal_init/prethermalized")
-          p.prethermalized = read(f["thermal_init/prethermalized"])
-          println("Using thermal_init/prethermalized. Will do $(p.thermalization - p.prethermalized) ud-sweeps.")
-        end
+          if HDF5.has(f.plain, "thermal_init/prethermalized")
+            p.prethermalized = read(f["thermal_init/prethermalized"])
+            println("Using thermal_init/prethermalized. Will do $(p.thermalization - p.prethermalized) ud-sweeps.")
+          end
 
-        if HDF5.has(f.plain, "thermal_init/box")
-          box = read(f, "thermal_init/box")
-          p.box = Uniform(-box, box)
-          println("Using thermal_init/box.")
-        end
+          if HDF5.has(f.plain, "thermal_init/box")
+            box = read(f, "thermal_init/box")
+            p.box = Uniform(-box, box)
+            println("Using thermal_init/box.")
+          end
 
-        if HDF5.has(f.plain, "thermal_init/box_global")
-          box_global = read(f, "thermal_init/box_global")
-          p.box_global = Uniform(-box_global, box_global)
-          println("Using thermal_init/box_global.")
+          if HDF5.has(f.plain, "thermal_init/box_global")
+            box_global = read(f, "thermal_init/box_global")
+            p.box_global = Uniform(-box_global, box_global)
+            println("Using thermal_init/box_global.")
+          end
         end
       end
     end
