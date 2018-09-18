@@ -1,6 +1,6 @@
 # dqmc.jl called with arguments: whatever.in.xml
 start_time = now()
-println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
+println("\nStarted: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
 
 
@@ -79,6 +79,7 @@ end
 
 # check if there is a resumable running file
 if isfile(output_file)
+  println("\nFound old output file. Let's see if we can resume.")
   alreadydone = false
   resumable = false
   try
@@ -89,18 +90,23 @@ if isfile(output_file)
         pwrite_every_nth = read(f["params/write_every_nth"])
         measurements = nconfs * pwrite_every_nth
 
-        (measurements >= pmeasurements) && (alreadydone = true)
-        (nconfs > 0) && (resumable = true)
+        (measurements >= pmeasurements) && (global alreadydone = true)
+        (nconfs > 0) && (global resumable = true)
       end
     end
   end
 
   if alreadydone
     mv(output_file, output_file[1:end-8])
-    println("Nothing to do here. There are already $(nconfs) configurations present.")
+    println("Nothing to do here. There are already enough configurations present.")
     exit();
   else
-    resumable && (p.resume = true);
+    if resumable
+      println("Will resume.")
+      p.resume = true
+    else
+      println("Couldn't resume.")
+    end
   end
 end
 
