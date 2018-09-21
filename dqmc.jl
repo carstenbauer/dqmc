@@ -72,6 +72,8 @@ p.output_file = output_file
 xml2parameters!(p, input_xml)
 if "WALLTIMELIMIT" in keys(ENV)
   p.walltimelimit = wtl2DateTime(ENV["WALLTIMELIMIT"], start_time)
+else
+  contains(gethostname(), "jw") && (p.walltimelimit = wtl2DateTime("0-23:30:00", start_time)) # JUWELS
 end
 
 # mv old .out.h5 to .out.h5.running (and then try to resume below)
