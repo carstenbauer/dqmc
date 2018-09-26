@@ -1,10 +1,7 @@
 # -------------------------------------------------------
 #            Check input arguments
 # -------------------------------------------------------
-# measure.jl input args: runstable.jld [inputfile.meas.xml]
-#
-# If no meas.xml given (second argument is zero), we only measure standard bosonic stuff.
-length(ARGS) < 1 && error("input args: runstable.jld [inputfile.meas.xml]")
+length(ARGS) == 1 || error("input arg: prefix.meas.xml [or just prefix or prefix.in.xml or prefix.out.h5 (will use default settings)]")
 
 
 
@@ -32,8 +29,7 @@ end
 #                       Includes
 # -------------------------------------------------------
 include("dqmc_framework.jl")
-using Parameters, JLD, DataFrames
-
+using Parameters
 
 
 
@@ -54,29 +50,10 @@ using Parameters, JLD, DataFrames
   overwrite::Bool = false
   num_threads::Int = 1
   include_running::Bool = true
-  walltimelimit::Dates.DateTime = choose_walltimelimit(ENV)
 
-
-
-  # temporary variables (change per run)
-  dochi_dyn::Bool = chi_dyn
-  dochi_dyn_symm::Bool = chi_dyn_symm
-  dobinder::Bool = binder
-  doetpc::Bool = etpc
   outfile::String = ""
+  inxml::String = ""
 end
-
-donothing!(mp::MeasParams) = begin
-  for f in dofields
-    setfield!(mp, f, false)
-  end
-end
-doallrequested!(mp::MeasParams) = begin
-  @inbounds for (i,f) in enumerate(dofields)
-    setfield!(mp, f, dodefaults[i])
-  end
-end
-
 
 
 
@@ -88,7 +65,7 @@ function initialize_stack(mc::AbstractDQMC, mp::MeasParams)
     _initialize_stack(mc)
 
     # allocate for measurement run based on todos
-    mp.doetpc && allocate_etpc!(mc)
+    mp.etpc && allocate_etpc!(mc)
 
   end #timeit
 
@@ -100,86 +77,68 @@ end
 
 
 # -------------------------------------------------------
-#                   For each run ...
+#                        Main
 # -------------------------------------------------------
-function foreachrun(mp::MeasParams, rt::DataFrame)
-  for r in eachrow(rt) # for every selected run
-    inxml = r[:PATH] # path to file
-    cd(dirname(inxml))
-
-    # --------------- Find .out.h5 ----------------------
-    fpath = replace(inxml, ".in.xml", ".out.h5")
-    if !isfile(fpath)
-        fpath = replace(fpath, ".out.h5", ".out.h5.running")
-        isfile(fpath) || continue
-    end
-    fpathnice = replace(fpath, "/projects/ag-trebst/bauer/", "")
-    println(fpathnice); flush(STDOUT)
-
-
-    # ----------- Set .meas.h5 and todos ------------------
-    mp.outfile = replace(fpath, ".out.h5", ".meas.h5")
-    doallrequested!(mp)
-    if !endswith(mp.outfile, ".running")
-        # already measured
-        if !mp.overwrite
-          isfile(mp.outfile) && begin
-            println("Measurements found."); # only measure what isn't there yet
-            donothing!(mp)
-
-            todo = false
-            println("Checking...")
-            allobs = listobs(mp.outfile)
-
-            mp.chi_dyn && !("chi_dyn" in allobs) && (mp.dochi_dyn = true; todo = true)
-            mp.chi_dyn_symm && !("chi_dyn_symm" in allobs) && (mp.dochi_dyn_symm = true; todo = true)
-            mp.binder && !("binder" in allobs) && (mp.dobinder = true; todo = true)
-            mp.etpc && !("etpc_minus" in allobs) && (mp.doetpc = true; todo = true)
-            mp.etpc && !("etpc_plus" in allobs) && (mp.doetpc = true; todo = true)
-
-            todo || begin println("Already measured. Skipping."); continue end
-          end
-        end # measure everything requested (overwrite if necessary)
-
-        # maybe job finished in the mean time. is there an old .meas.h5.running? if so, delete it.
-        isfile(mp.outfile*".running") && rm(mp.outfile*".running")
-    end
-
-
-
-
-    # -------------- Load DQMC params/results -----------------
-    local confs;
-    local p;
-    try
-        # load configurations (TODO: what to actually load here?)
-        confs = ts_flat(fpath, "obs/configurations")
-
-        # load dqmc params
-        p = Params(); xml2parameters!(p, inxml, false);
-        # TODO: Probably even set up mc object here?
-    catch err
-        println("Failed to load dqmc params/results for $(fpathnice).")
-        println("Maybe it doesn't have any configurations yet?")
-        println("Error: $(err)")
-        println()
-    end
-
-    # --------------------- Measure -------------------------
-    measure(mp, p, confs)
-
-    println("Done.\n")
-    flush(STDOUT)
-
-    if now() >= mp.walltimelimit
-      println("Approaching wall-time limit. Safely exiting.")
-      exit(42)
-    end
+function main(mp::MeasParams)
+  # --------------- Find .out.h5 ----------------------
+  h5path = replace(mp.inxml, ".in.xml", ".out.h5")
+  if !isfile(h5path)
+      h5path = replace(h5path, ".out.h5", ".out.h5.running")
+      isfile(h5path) || error("Couldn't find .out.h5[.running] file.")
   end
+
+
+  # ----------- Set .meas.h5 and todos ------------------
+  mp.outfile = replace(h5path, ".out.h5", ".meas.h5")
+  if !endswith(mp.outfile, ".running")
+      # already measured
+      if !mp.overwrite
+        isfile(mp.outfile) && begin
+          println("Measurements found."); # only measure what isn't there yet
+
+          todo = false
+          println("Checking...")
+          allobs = listobs(mp.outfile)
+
+          mp.chi_dyn && !("chi_dyn" in allobs) && (mp.chi_dyn = true; todo = true)
+          mp.chi_dyn_symm && !("chi_dyn_symm" in allobs) && (mp.chi_dyn_symm = true; todo = true)
+          mp.binder && !("binder" in allobs) && (mp.binder = true; todo = true)
+          mp.etpc && !("etpc_minus" in allobs) && (mp.etpc = true; todo = true)
+          mp.etpc && !("etpc_plus" in allobs) && (mp.etpc = true; todo = true)
+
+          todo || begin println("Already measured."); return;  end
+        end
+      end # measure everything requested (overwrite if necessary)
+
+      # maybe job finished in the mean time. is there an old .meas.h5.running? if so, delete it.
+      isfile(mp.outfile*".running") && rm(mp.outfile*".running")
+  end
+
+
+
+
+  # -------------- Load DQMC params/results -----------------
+  local confs;
+  local p;
+  try
+      # load configurations (TODO: what to actually load here?)
+      confs = ts_flat(h5path, "obs/configurations")
+
+      # load dqmc params
+      p = Params(); xml2parameters!(p, mp.inxml, false);
+      # TODO: Probably even set up mc object here?
+  catch err
+      println("Failed to load dqmc params/results for $(h5path).")
+      println("Maybe it doesn't have any configurations yet?")
+      error(err)
+  end
+
+  # --------------------- Measure -------------------------
+  measure(mp, p, confs)
+
+  println("Done.\n")
+  flush(STDOUT)
 end
-
-
-
 
 
 
@@ -199,36 +158,34 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
 
   # ------------------- Allocate --------------------------
   # chi_dyn
-  mp.dochi_dyn_symm && (chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs))
-  mp.dochi_dyn && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
+  mp.chi_dyn_symm && (chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs))
+  mp.chi_dyn && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
   
   # binder
-  m2s = Vector{Float64}(num_confs)
-  m4s = Vector{Float64}(num_confs)
+  mp.binder && (m2s = Vector{Float64}(num_confs))
+  mp.binder && (m4s = Vector{Float64}(num_confs))
 
 
 
   # ----------------- Measure loop ------------------------
-  mp.dochi_dyn && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
+  mp.chi_dyn && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
   flush(STDOUT)
 
   @inbounds @views for i in 1:num_confs
 
       # chi_dyn
-      if mp.dochi_dyn
-        # chi_dyn
+      if mp.chi_dyn
         chi = measure_chi_dynamic(confs[:,:,:,i])
         add!(chi_dyn, chi)
 
-        if mp.dochi_dyn_symm
+        if mp.chi_dyn_symm
           chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
           add!(chi_dyn_symm, chi)
         end
       end
 
       # binder
-      if mp.dobinder
-        # binder
+      if mp.binder
         m = mean(confs[:,:,:,i],[2,3])
         m2s[i] = dot(m, m)
         m4s[i] = m2s[i]*m2s[i]
@@ -238,7 +195,7 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
 
 
   # ------------ Postprocessing   ----------------
-  if mp.dobinder
+  if mp.binder
     # binder postprocessing
     m2ev2 = mean(m2s)^2
     m4ev = mean(m4s)
@@ -251,10 +208,10 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
 
   # ------------ Export results   ----------------
   println("Calculating errors and exporting..."); flush(STDOUT)
-  mp.dochi_dyn && export_result(chi_dyn, mp.outfile, "obs/chi_dyn"; timeseries=true)
-  mp.dochi_dyn_symm && export_result(chi_dyn_symm, mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
+  mp.chi_dyn && export_result(chi_dyn, mp.outfile, "obs/chi_dyn"; timeseries=true)
+  mp.chi_dyn_symm && export_result(chi_dyn_symm, mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
 
-  mp.dobinder && export_result(binder, mp.outfile, "obs/binder", error=false) # jackknife for error
+  mp.binder && export_result(binder, mp.outfile, "obs/binder", error=false) # jackknife for error
 
   h5open(mp.outfile, "r+") do fout
     HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
@@ -274,29 +231,45 @@ end
 #                       Main
 # #######################################################
 # -------------------------------------------------------
-#           Parse meas.xml and runstable
+#           Parse ARGS and maybe .meas.xml
 # -------------------------------------------------------
-input_xml = length(ARGS) == 2 ? ARGS[2] : ""
 
+const arg = ARGS[1]
 
-# meas.xml: direct mapping of xml fields to kwargs
-if input_xml != ""
-  mpdict = xml2dict(input_xml, false)
-  kwargs = Dict([Symbol(lowercase(k))=>lowercase(v) for (k,v) in mpdict])
+if endswith(arg, ".meas.xml")
+  isfile(arg) || error("Meas input file $arg not found.")
+  # meas.xml: direct mapping of xml fields to kwargs
+  mpdict = xml2dict(arg, false)
+  kwargs_strings = Dict([Symbol(lowercase(k))=>lowercase(v) for (k,v) in mpdict])
+
+  kwargs = Dict()
+  for (k, v) in kwargs_strings
+    if v in ["true", "false"]
+      kwargs[k] = parse(Bool, v)
+    else
+      try
+        kwargs[k] = parse(Int64, v)
+      catch
+        kwargs[k] = v
+      end
+    end
+  end
+
   mp = MeasParams(; kwargs...)
+  mp.inxml = arg[1:end-9]*".in.xml"
 else
   mp = MeasParams()
+
+  if endswith(arg, ".in.xml")
+    mp.inxml = arg
+  else
+    # assume arg to be a simple prefix
+    mp.inxml = arg*".in.xml"
+  end
 end
 
-const dofields = Symbol.(filter(x->startswith(x, "do"), string.(fieldnames(MeasParams))))
-const dodefaults = getfield.(mp, Symbol.(replace.(string.(dofields), "do", "")))
+isfile(mp.inxml) || error("DQMC input file $(mp.inxml) not found.")
 
-# runstable
-try
-  global rt = load(ARGS[1], "runstable")
-catch
-  error("Couldn't load runstable.")
-end
 
 
 # set num threads
@@ -312,9 +285,7 @@ end
 # -------------------------------------------------------
 #                     Let's go
 # -------------------------------------------------------
-pwd_before = pwd()
-foreachrun(mp, rt)
-cd(pwd_before)
+main(mp)
 
 
 # -------------------------------------------------------
