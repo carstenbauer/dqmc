@@ -3,7 +3,7 @@
     
 Load `p` from XML file (e.g. `.in.xml`).
 """
-function xml2parameters!(p, input_xml::String, verbose=true)
+function xml2parameters!(p, input_xml::AbstractString, verbose=true)
   # READ INPUT XML
   params = Dict{Any, Any}()
   try
@@ -18,7 +18,7 @@ function xml2parameters!(p, input_xml::String, verbose=true)
   params
 end
 
-function xml2dict(fname::String, verbose::Bool=true)
+function xml2dict(fname::AbstractString, verbose::Bool=true)
   params = Dict{Any, Any}()
   xdoc = parse_file(fname)
   xroot = LightXML.root(xdoc)
@@ -38,7 +38,7 @@ function xml2dict(fname::String, verbose::Bool=true)
   return params
 end
 
-function paramset2xml(params::Dict, prefix::String)
+function paramset2xml(params::Dict, prefix::AbstractString)
   for (i, param_set) in enumerate(product(values(params)...))
     xdoc = XMLDocument()
     xroot = create_root(xdoc, "SIMULATION")
@@ -52,7 +52,7 @@ function paramset2xml(params::Dict, prefix::String)
   end
 end
 
-function params2xml(params::Dict, prefix::String, taskid::Int; overwrite=false, ext=".in.xml")
+function params2xml(params::Dict, prefix::AbstractString, taskid::Int; overwrite=false, ext=".in.xml")
   xdoc = XMLDocument()
   xroot = create_root(xdoc, "SIMULATION")
   pn = new_child(xroot, "PARAMETERS")
