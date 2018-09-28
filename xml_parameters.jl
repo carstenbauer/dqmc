@@ -52,7 +52,7 @@ function paramset2xml(params::Dict, prefix::String)
   end
 end
 
-function params2xml(params::Dict, prefix::String, taskid::Int; overwrite=false)
+function params2xml(params::Dict, prefix::String, taskid::Int; overwrite=false, ext=".in.xml")
   xdoc = XMLDocument()
   xroot = create_root(xdoc, "SIMULATION")
   pn = new_child(xroot, "PARAMETERS")
@@ -61,6 +61,6 @@ function params2xml(params::Dict, prefix::String, taskid::Int; overwrite=false)
     add_text(pc, string(p))
     set_attribute(pc, "name", string(k))
   end
-  of = prefix * ".task" * string(taskid) * ".in.xml"
+  of = prefix * ".task" * string(taskid) * ext
   (!isfile(of) || overwrite) && save_file(xdoc, of)
 end
