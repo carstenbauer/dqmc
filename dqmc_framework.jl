@@ -152,6 +152,8 @@ function run!(mc::DQMC)
   thermalize!(mc)
 
   h5open(mc.p.output_file, "r+") do f
+    HDF5.has(f, "resume/box") && o_delete(f, "resume/box")
+    HDF5.has(f, "resume/box_global") && o_delete(f, "resume/box_global")
     write(f, "resume/box", mc.p.box.b)
     write(f, "resume/box_global", mc.p.box_global.b)
   end

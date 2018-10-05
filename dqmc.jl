@@ -145,10 +145,17 @@ if !p.resume
   end
 
   # overwrite (potential) running file
-  jldopen(output_file, "w") do f
+  jldopen(output_file, isfile(p.output_file) ? "r+" : "w") do f
+    HDF5.has(f.plain, "GIT_COMMIT_DQMC") && o_delete(f.plain, "GIT_COMMIT_DQMC")
+    HDF5.has(f.plain, "GIT_BRANCH_DQMC") && o_delete(f.plain, "GIT_BRANCH_DQMC")
+    HDF5.has(f.plain, "RUNNING") && o_delete(f.plain, "RUNNING")
     f["GIT_COMMIT_DQMC"] = Git.head(dir=dirname(@__FILE__)).string
     f["GIT_BRANCH_DQMC"] = branch
     f["RUNNING"] = 1
+
+    # we will dump the parameters below
+    HDF5.has(f.plain, "params") && o_delete(f.plain, "params")
+    HDF5.has(f.plain, "obs") && o_delete(f.plain, "obs")
   end
 end
 
