@@ -220,7 +220,7 @@ function initialize_stack(mc::AbstractDQMC)
     allocate_propagate!(mc)
 
     # allocate for measurements during dqmc
-    allocate_etpc!(mc)
+    # allocate_etpc!(mc)
 
   end #timeit
 
