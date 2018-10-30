@@ -38,7 +38,7 @@ mutable struct Params
   Bfield::Bool # artificial magnetic field to reduce finite size effects
 
   output_file::String
-  write_every_nth::Int
+  write_every_nth::Int # measure after 'write_every_nth' up-down sweeps(!)
 
   all_checks::Bool # true: check for propagation instblts. and S_b consistency
 

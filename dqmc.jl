@@ -70,11 +70,7 @@ using JLD
 p = Params()
 p.output_file = output_file
 xml2parameters!(p, input_xml)
-if "WALLTIMELIMIT" in keys(ENV)
-  p.walltimelimit = wtl2DateTime(ENV["WALLTIMELIMIT"], start_time)
-else
-  contains(gethostname(), "jw") && (p.walltimelimit = wtl2DateTime("0-23:30:00", start_time)) # JUWELS
-end
+set_walltimelimit!(p, start_time)
 
 # mv old .out.h5 to .out.h5.running (and then try to resume below)
 # (isfile(output_file[1:end-8]) && !isfile(output_file)) && mv(output_file[1:end-8], output_file)

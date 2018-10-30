@@ -25,6 +25,7 @@ using Distributions
 using HDF5
 using LightXML
 using Iterators
+using Base.Dates
 
 # to avoid namespace conflict warnings
 import Distributions: params
@@ -296,8 +297,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
   println("Initial propagate: ", s.current_slice, " ", s.direction)
   propagate(mc)
 
-  cs = min(floor(Int, p.measurements/p.write_every_nth), 100)
-  p.edrun && (cs = 1000)
+  cs = choose_chunk_size(mc)
 
   configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/configurations")
   greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/greens")
@@ -357,7 +357,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
     end
     
     if now() >= p.walltimelimit
-      println("Approaching wall-time limit. Safely exiting.")
+      println("Approaching wall-time limit. Safely exiting. (i = $(i)). Current date: $(Dates.format(now(), "d.u yyyy HH:MM")).")
       exit(42)
     end
   end
@@ -404,7 +404,11 @@ Base.show(io::IO, m::MIME"text/plain", mc::DQMC) = print(io, mc)
 
 
 
-# Calculate DateTime where wall-time limit will be reached.
+"""
+Calculate DateTime where wall-time limit will be reached.
+
+Example call: wtl2DateTime("3-12:42:05", now())
+"""
 function wtl2DateTime(wts::AbstractString, start_time::DateTime)
   @assert contains(wts, "-")
   @assert contains(wts, ":")
@@ -418,4 +422,60 @@ function wtl2DateTime(wts::AbstractString, start_time::DateTime)
   start_time + Dates.Day(d) + Dates.Hour(h) + Dates.Minute(m) + Dates.Second(s)
 end
 
-choose_walltimelimit(ENV) = "WALLTIMELIMIT" in keys(ENV) ? wtl2DateTime(ENV["WALLTIMELIMIT"], start_time) : Dates.DateTime("2099", "YYYY") # effective infinity
+function set_walltimelimit!(p, start_time)
+  if "WALLTIMELIMIT" in keys(ENV)
+    p.walltimelimit = wtl2DateTime(ENV["WALLTIMELIMIT"], start_time)
+    @show ENV["WALLTIMELIMIT"]
+  elseif contains(gethostname(), "jw")
+    p.walltimelimit = wtl2DateTime("0-23:30:00", start_time) # JUWELS
+    println("Set JUWELS walltime limit, i.e. 0-23:30:00.")
+  end
+
+  nothing
+end
+
+
+"""
+
+    csheuristics(wctl, udsd, writeeverynth; maxcs=100)
+
+Find a reasonable value for the chunk size `cs` based on wallclocktime limit (DateTime),
+ud-sweep duration `udsd` (in seconds) and `writeeverynth` to avoid
+
+* non-progressing loop of resubmitting the simulation because we never make it to a dump
+* memory overflow (we use a maximum chunk size `maxcs`)
+* slowdown of simulation by IO (for too small chunk size)
+
+A value of 0 for `wctl` is interpreted as no wallclocktime limit and chunk size `maxcs` will be returned.
+"""
+function csheuristics(wctl::DateTime, udsd::Real, writeeverynth::Int; maxcs::Int=100)
+    wcts = (wctl - now()).value / 1000. # seconds till we hit the wctl
+    # wcts == 0.0 && (return maxcs) # no wallclocktime limit
+
+    num_uds = wcts/(udsd * writeeverynth) # Float64: number of add!s we will (in theory) perform in the given time
+    num_uds *= 0.92 # 8% buffer, i.e. things might take longer than expected.
+    cs = max(floor(Int, min(num_uds, 100)), 1)
+end
+
+
+"""
+Choose a apropriate chunk size for the given Monte Carlo simulation.
+"""
+function choose_chunk_size(mc::AbstractDQMC)
+    const p = mc.p
+    const to_udsweep = mc.a.to["udsweep"]
+
+    udsd = TimerOutputs.time(to_udsweep) *10.0^(-9)/TimerOutputs.ncalls(to_udsweep)
+    cs = csheuristics(p.walltimelimit, udsd, p.write_every_nth)
+    cs = min(cs, floor(Int, p.measurements/p.write_every_nth)) # cs musn't be larger than # measurements
+    p.edrun && (cs = 1000) # this should probably better set maxcs in csheuristics call
+
+    secs_to_dump = cs * p.write_every_nth * udsd
+    dump_date = now() + Millisecond(ceil(Int, secs_to_dump*1000))
+    println("Chose a chunk size of $cs. Should dump to file around $(formatdate(dump_date)). Walltime limit is $(formatdate(p.walltimelimit)).")
+
+    return cs
+end
+
+
+formatdate(d) = Dates.format(d, "d.u yyyy HH:MM")
