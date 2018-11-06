@@ -1,4 +1,4 @@
-if !isdefined(:input)
+if !(@isdefined input)
     if isfile("dqmc.in.xml")
         input = "dqmc.in.xml"
     else
@@ -14,6 +14,8 @@ p.output_file = "live.out.h5.running"
 xml2parameters!(p, input)
 
 mc = DQMC(p)
+
+
 init!(mc)
 
 # const l = mc.l;

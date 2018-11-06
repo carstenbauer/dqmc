@@ -1,5 +1,5 @@
 # load comparison data
-using JLD
+using JLD, LinearAlgebra, SparseArrays
 global const randconf = load("O3.jld", "randconf")
 
 
