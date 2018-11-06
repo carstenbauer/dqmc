@@ -16,7 +16,7 @@ function decompose_udt(A::AbstractMatrix{C}) where C<:Number
   @views p[p] = collect(1:length(p))
   # D = abs.(real(diag(triu(R))))
   D = abs.(real(diag(F.R)))
-  T = (sparse(Diagonal(1 ./ D)) * F.R)[:, p]
+  T = (Diagonal(1 ./ D) * F.R)[:, p]
   return F.Q, D, T
 end
 

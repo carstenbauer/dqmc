@@ -48,10 +48,10 @@ end
 
   interaction_matrix_exp_op!(mc,p.hsfield[:,i,s.current_slice],-1.,s.eVop1) #V1i
   interaction_matrix_exp_op!(mc,new_op,1.,s.eVop2) #V2i
-  A_mul_B!(s.eVop1eVop2, s.eVop1, s.eVop2)
+  mul!(s.eVop1eVop2, s.eVop1, s.eVop2)
   s.delta_i .= s.eVop1eVop2 .- s.eye_flv
   s.Mtmp .= s.eye_flv .- s.greens[i:l.sites:end,i:l.sites:end]
-  A_mul_B!(s.Mtmp2, s.delta_i, s.Mtmp)
+  mul!(s.Mtmp2, s.delta_i, s.Mtmp)
   s.M .= s.eye_flv .+ s.Mtmp2
 
   end #timeit
@@ -80,10 +80,10 @@ end
   end
 
   s.A *= inv(s.M)
-  A_mul_B!(s.B, s.delta_i, s.greens[i:l.sites:end,:])
+  mul!(s.B, s.delta_i, s.greens[i:l.sites:end,:])
 
   # benchmark: most of time (>90% is spend below)
-  A_mul_B!(s.AB, s.A, s.B)
+  mul!(s.AB, s.A, s.B)
   
   # more explicit way of doing s.greens .+= s.AB
   @inbounds @simd for i in eachindex(g)

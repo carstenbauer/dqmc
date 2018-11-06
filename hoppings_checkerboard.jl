@@ -22,16 +22,16 @@ function build_four_site_hopping_matrix_exp(mc::AbstractDQMC{CBAssaad}, corners:
   l = mc.l
 
   pc = Int(floor(l.sites/4))
-  chkr_hop_4site = Array{SparseMatrixCSC, 3}(pc,2,2) # i, group (A, B), hopping flavor (tx, ty)
-  chkr_hop_4site_inv = Array{SparseMatrixCSC, 3}(pc,2,2)
+  chkr_hop_4site = Array{SparseMatrixCSC, 3}(undef,pc,2,2) # i, group (A, B), hopping flavor (tx, ty)
+  chkr_hop_4site_inv = Array{SparseMatrixCSC, 3}(undef,pc,2,2)
 
   # build explicitly based on analytic form (only without mag field)
   for tflv in 1:2
     for g in 1:2
       for c in 1:pc
 
-        chkr_hop_4site[c,g,tflv] = speye(l.sites)
-        chkr_hop_4site_inv[c,g,tflv] = speye(l.sites)
+        chkr_hop_4site[c,g,tflv] = sparse(1.0I, l.sites, l.sites)
+        chkr_hop_4site_inv[c,g,tflv] = sparse(1.0I, l.sites, l.sites)
 
         # Tijmn where i ist bottom left and i<j<m<n.
         i = corners[g][c]
@@ -93,23 +93,23 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBAssaad})
   eTy_B_inv = foldl(*,chkr_hop_4site_inv[:,2,2])
 
   if p.opdim == 3
-    eT_A_half = cat([1,2],eTx_A_half,eTy_A_half,eTx_A_half,eTy_A_half)
-    eT_B_half = cat([1,2],eTx_B_half,eTy_B_half,eTx_B_half,eTy_B_half)
-    eT_A_half_inv = cat([1,2],eTx_A_half_inv,eTy_A_half_inv,eTx_A_half_inv,eTy_A_half_inv)
-    eT_B_half_inv = cat([1,2],eTx_B_half_inv,eTy_B_half_inv,eTx_B_half_inv,eTy_B_half_inv)
-    eT_A = cat([1,2],eTx_A,eTy_A,eTx_A,eTy_A)
-    eT_B = cat([1,2],eTx_B,eTy_B,eTx_B,eTy_B)
-    eT_A_inv = cat([1,2],eTx_A_inv,eTy_A_inv,eTx_A_inv,eTy_A_inv)
-    eT_B_inv = cat([1,2],eTx_B_inv,eTy_B_inv,eTx_B_inv,eTy_B_inv)
+    eT_A_half = cat(eTx_A_half,eTy_A_half,eTx_A_half,eTy_A_half, dims=(1,2))
+    eT_B_half = cat(eTx_B_half,eTy_B_half,eTx_B_half,eTy_B_half, dims=(1,2))
+    eT_A_half_inv = cat(eTx_A_half_inv,eTy_A_half_inv,eTx_A_half_inv,eTy_A_half_inv, dims=(1,2))
+    eT_B_half_inv = cat(eTx_B_half_inv,eTy_B_half_inv,eTx_B_half_inv,eTy_B_half_inv, dims=(1,2))
+    eT_A = cat(eTx_A,eTy_A,eTx_A,eTy_A, dims=(1,2))
+    eT_B = cat(eTx_B,eTy_B,eTx_B,eTy_B, dims=(1,2))
+    eT_A_inv = cat(eTx_A_inv,eTy_A_inv,eTx_A_inv,eTy_A_inv, dims=(1,2))
+    eT_B_inv = cat(eTx_B_inv,eTy_B_inv,eTx_B_inv,eTy_B_inv, dims=(1,2))
   else
-    eT_A_half = cat([1,2],eTx_A_half,eTy_A_half)
-    eT_B_half = cat([1,2],eTx_B_half,eTy_B_half)
-    eT_A_half_inv = cat([1,2],eTx_A_half_inv,eTy_A_half_inv)
-    eT_B_half_inv = cat([1,2],eTx_B_half_inv,eTy_B_half_inv)
-    eT_A = cat([1,2],eTx_A,eTy_A)
-    eT_B = cat([1,2],eTx_B,eTy_B)
-    eT_A_inv = cat([1,2],eTx_A_inv,eTy_A_inv)
-    eT_B_inv = cat([1,2],eTx_B_inv,eTy_B_inv)
+    eT_A_half = cat(eTx_A_half,eTy_A_half, dims=(1,2))
+    eT_B_half = cat(eTx_B_half,eTy_B_half, dims=(1,2))
+    eT_A_half_inv = cat(eTx_A_half_inv,eTy_A_half_inv, dims=(1,2))
+    eT_B_half_inv = cat(eTx_B_half_inv,eTy_B_half_inv, dims=(1,2))
+    eT_A = cat(eTx_A,eTy_A, dims=(1,2))
+    eT_B = cat(eTx_B,eTy_B, dims=(1,2))
+    eT_A_inv = cat(eTx_A_inv,eTy_A_inv, dims=(1,2))
+    eT_B_inv = cat(eTx_B_inv,eTy_B_inv, dims=(1,2))
   end
 
   l.chkr_hop_half = [eT_A_half, eT_B_half]
@@ -130,7 +130,8 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBAssaad})
 
   hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
-  r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
+  idcs = (LinearIndices(hop_mat_exp_chkr))[findall(x->x==zero(x), hop_mat_exp_chkr)]
+  r[idcs] .= 0
   println("Checkerboard - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
   # println("Checkerboard - exact (eff rel):\t\t", maximum(r))
 end

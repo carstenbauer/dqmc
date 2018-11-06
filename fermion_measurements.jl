@@ -320,18 +320,18 @@ function calc_Bchain(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.
   @assert 0 < stop <= mc.p.slices
   @assert start <= stop
 
-  U = eye(G, flv*N, flv*N)
+  U = Matrix{G}(I, flv*N, flv*N)
   D = ones(Float64, flv*N)
-  T = eye(G, flv*N, flv*N)
+  T = Matrix{G}(I, flv*N, flv*N)
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
   for k in start:stop
     if mod(k,safe_mult) == 0 || k == stop # always decompose in the end
       multiply_B_left!(mc,k,U)
-      scale!(U, D)
+      rmul!(U, Diagonal(D))
       U, Tnew = decompose_udt!(U, D)
-      A_mul_B!(mc.s.tmp, Tnew, T)
+      mul!(mc.s.tmp, Tnew, T)
       T .=  mc.s.tmp
       svs[:,svc] = log.(D)
       svc += 1
@@ -352,18 +352,18 @@ function calc_Bchain_inv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int
   @assert 0 < stop <= mc.p.slices
   @assert start <= stop
 
-  U = eye(G, flv*N, flv*N)
+  U = Matrix{G}(I, flv*N, flv*N)
   D = ones(Float64, flv*N)
-  T = eye(G, flv*N, flv*N)
+  T = Matrix{G}(I, flv*N, flv*N)
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
   for k in reverse(start:stop)
     if mod(k,safe_mult) == 0 || k == start # always decompose in the end
       multiply_B_inv_left!(mc,k,U)
-      scale!(U, D)
+      rmul!(U, Diagonal(D))
       U, Tnew = decompose_udt!(U, D)
-      A_mul_B!(mc.s.tmp, Tnew, T)
+      mul!(mc.s.tmp, Tnew, T)
       T .=  mc.s.tmp
       svs[:,svc] = log.(D)
       svc += 1
@@ -384,18 +384,18 @@ function calc_Bchain_dagger(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::
   @assert 0 < stop <= mc.p.slices
   @assert start <= stop
 
-  U = eye(G, flv*N, flv*N)
+  U = Matrix{G}(I, flv*N, flv*N)
   D = ones(Float64, flv*N)
-  T = eye(G, flv*N, flv*N)
+  T = Matrix{G}(I, flv*N, flv*N)
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
   for k in reverse(start:stop)
     if mod(k,safe_mult) == 0 || k == start # always decompose in the end
       multiply_daggered_B_left!(mc,k,U)
-      scale!(U, D)
+      rmul!(U, Diagonal(D))
       U, Tnew = decompose_udt!(U, D)
-      A_mul_B!(mc.s.tmp, Tnew, T)
+      mul!(mc.s.tmp, Tnew, T)
       T .=  mc.s.tmp
       svs[:,svc] = log.(D)
       svc += 1
@@ -411,7 +411,7 @@ function calc_greens(mc::AbstractDQMC, slice::Int=mc.s.current_slice, safe_mult:
   s = mc.s
   calc_greens_helper(mc, slice, safe_mult)
 
-  scale!(s.d, s.U)
+  lmul!(Diagonal(s.d), s.U)
   return s.T * s.U
 end
 function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int=mc.s.current_slice, safe_mult::Int=mc.p.safe_mult)
@@ -420,15 +420,15 @@ function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int=mc.s.current_slice,
 
   ldet = real(log(complex(det(s.U))) + sum(log.(s.d)) + log(complex(det(s.T))))
 
-  scale!(s.d, s.U)
+  lmul!(Diagonal(s.d), s.U)
   return s.T * s.U, ldet
 end
 function calc_greens_udt(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   s = mc.s
   calc_greens_helper(mc, slice, safe_mult)
 
-  # greens = s.T * spdiagm(s.d) * s.U
-  scale!(s.d, s.U)
+  # greens = s.T * Diagonal(s.d) * s.U
+  lmul!(Diagonal(s.d), s.U)
   U, T = decompose_udt!(s.U, s.d)
   return s.T*U, copy(s.d), T
 end
@@ -446,9 +446,9 @@ function calc_greens_helper(mc::AbstractDQMC, slice::Int, safe_mult::Int)
   if slice-1 >= 1
     Ul, Dl, Tl = calc_Bchain(mc,1,slice-1, safe_mult)
   else
-    Ul = eye(G, flv*N)
+    Ul = Matrix{G}(I, flv*N, flv*N)
     Dl = ones(Float64, flv*N)
-    Tl = eye(G, flv*N)
+    Tl = Matrix{G}(I, flv*N, flv*N)
   end
 
   # calculate greens
@@ -456,22 +456,22 @@ function calc_greens_helper(mc::AbstractDQMC, slice::Int, safe_mult::Int)
   tmp = mc.s.tmp
   tmp2 = mc.s.tmp2
 
-  A_mul_Bc!(tmp, Tl, Tr)
-  scale!(tmp, Dr)
-  scale!(Dl, tmp)
+  mul!(tmp, Tl, adjoint(Tr))
+  rmul!(tmp, Diagonal(Dr))
+  lmul!(Diagonal(Dl), tmp)
   s.U, s.T = decompose_udt!(tmp, s.D)
 
-  A_mul_B!(tmp, Ul, s.U)
+  mul!(tmp, Ul, s.U)
   s.U .= tmp
-  A_mul_Bc!(tmp2, s.T, Ur)
+  mul!(tmp2, s.T, adjoint(Ur))
   s.T .= tmp2
-  Ac_mul_B!(tmp, s.U, inv(s.T))
+  mul!(tmp, adjoint(s.U), inv(s.T))
   tmp[diagind(tmp)] .+= s.D
   u, t = decompose_udt!(tmp, s.d)
 
-  A_mul_B!(tmp, t, s.T)
+  mul!(tmp, t, s.T)
   s.T = inv(tmp)
-  A_mul_B!(tmp, s.U, u)
+  mul!(tmp, s.U, u)
   s.U = adjoint(tmp)
   s.d .= 1 ./ s.d
 
@@ -495,17 +495,17 @@ function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int
   @assert 0 < stop <= slices
   @assert start <= stop
 
-  U = eye(G, flv*N, flv*N)
+  U = Matrix{G}(I, flv*N, flv*N)
   D = ones(Float64, flv*N)
-  Vt = eye(G, flv*N, flv*N)
-  Vtnew = eye(G, flv*N, flv*N)
+  Vt = Matrix{G}(I, flv*N, flv*N)
+  Vtnew = Matrix{G}(I, flv*N, flv*N)
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
   for k in start:stop
     if mod(k,safe_mult) == 0
       multiply_B_left!(mc,k,U)
-      U *= spdiagm(D)
+      U *= Diagonal(D)
       U, D, Vtnew = decompose_udv!(U)
       # not yet in-place
       Vt =  Vtnew * Vt
@@ -531,17 +531,17 @@ function calc_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int
   if slice-1 >= 1
     Ul, Dl, Vtl = calc_Bchain_udv(mc,1,slice-1,safe_mult)
   else
-    Ul = eye(G, flv*N)
+    Ul = Matrix{G}(I, flv*N, flv*N)
     Dl = ones(Float64, flv*N)
-    Vtl = eye(G, flv*N)
+    Vtl = Matrix{G}(I, flv*N, flv*N)
   end
 
   # Calculate Greens function
   tmp = Vtl * Ur
-  inner = adjoint(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
+  inner = adjoint(Vtr * Ul) + Diagonal(Dl) * tmp * Diagonal(Dr)
   I = decompose_udv!(inner)
   U = adjoint(I[3] * Vtr)
-  D = spdiagm(1 ./ I[2])
+  D = Diagonal(1 ./ I[2])
   Vt = adjoint(Ul * I[1])
   return U*D*Vt, sum(log.(diag(D)))
 end
@@ -557,11 +557,11 @@ function effective_greens2greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
 
   @inbounds @views begin
       for i in reverse(1:n_groups)
-        A_mul_B!(tmp, greens, chkr_hop_half_minus[i])
+        mul!(tmp, greens, chkr_hop_half_minus[i])
         greens .= tmp
       end
       for i in reverse(1:n_groups)
-        A_mul_B!(tmp, chkr_hop_half_plus[i], greens)
+        mul!(tmp, chkr_hop_half_plus[i], greens)
         greens .= tmp
       end
   end
@@ -575,11 +575,11 @@ function effective_greens2greens!(mc::DQMC_CBTrue, U::AbstractMatrix, T::Abstrac
 
   @inbounds @views begin
       for i in reverse(1:n_groups)
-        A_mul_B!(tmp, T, chkr_hop_half_minus[i])
+        mul!(tmp, T, chkr_hop_half_minus[i])
         T .= tmp
       end
       for i in reverse(1:n_groups)
-        A_mul_B!(tmp, chkr_hop_half_plus[i], U)
+        mul!(tmp, chkr_hop_half_plus[i], U)
         U .= tmp
       end
   end
@@ -592,11 +592,11 @@ function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
 
   @inbounds @views begin
       for i in 1:n_groups
-        A_mul_B!(tmp, greens, chkr_hop_half_plus[i])
+        mul!(tmp, greens, chkr_hop_half_plus[i])
         greens .= tmp
       end
       for i in 1:n_groups
-        A_mul_B!(tmp, chkr_hop_half_minus[i], greens)
+        mul!(tmp, chkr_hop_half_minus[i], greens)
         greens .= tmp
       end
   end
@@ -607,8 +607,8 @@ function effective_greens2greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
   eTplus = mc.l.hopping_matrix_exp_inv
   tmp = mc.s.tmp
 
-  A_mul_B!(tmp, greens, eTminus)
-  A_mul_B!(greens, eTplus, tmp)
+  mul!(tmp, greens, eTminus)
+  mul!(greens, eTplus, tmp)
   nothing
 end
 function effective_greens2greens!(mc::DQMC_CBFalse, U::AbstractMatrix, T::AbstractMatrix)
@@ -624,8 +624,8 @@ function greens2effective_greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
   eTplus = mc.l.hopping_matrix_exp_inv
   tmp = mc.s.tmp
 
-  A_mul_B!(tmp, greens, eTplus)
-  A_mul_B!(greens, eTminus, tmp)
+  mul!(tmp, greens, eTplus)
+  mul!(greens, eTminus, tmp)
   nothing
 end
 function effective_greens2greens(mc::AbstractDQMC, greens::AbstractMatrix)
@@ -650,7 +650,7 @@ end
 #   Ul, Dl, Tl = calc_Bchain(mc, 1, slice, safe_mult)
 #   U, D, T = multiply_safely(Ul, Dl, Tl, U, D, T)
 
-#   scale!(U, D)
+#   rmul!(U, Diagonal(D))
 #   return U*T
 # end
 
@@ -672,7 +672,7 @@ function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   U, D, T = inv_sum_udts(Ul, Dl, Tl, Ur, Dr, Tr)
   effective_greens2greens!(mc, U, T)
 
-  scale!(U, D)
+  rmul!(U, Diagonal(D))
   return U*T
 end
 
@@ -758,9 +758,9 @@ function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
 
     if i != 1
       if !rightmult
-        scale!(curr_U_or_T, d_stack[i-1])
+        rmul!(curr_U_or_T, Diagonal(d_stack[i-1]))
       else
-        scale!(d_stack[i-1], curr_U_or_T)
+        lmul!(Diagonal(d_stack[i-1]), curr_U_or_T)
       end
     end
 
@@ -772,15 +772,15 @@ function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
 
     if i == 1
       if !rightmult
-        A_mul_B!(t_stack[i], T, eye_full)
+        mul!(t_stack[i], T, eye_full)
       else
-        A_mul_B!(u_stack[i], eye_full, U)
+        mul!(u_stack[i], eye_full, U)
       end
     else
       if !rightmult
-        A_mul_B!(t_stack[i], T, t_stack[i-1])
+        mul!(t_stack[i], T, t_stack[i-1])
       else
-        A_mul_B!(u_stack[i], u_stack[i-1], U)
+        mul!(u_stack[i], u_stack[i-1], U)
       end
     end
   end
@@ -946,22 +946,22 @@ function test_stacks()
 
 
   # test left multiplications
-  B2 = BT0_u_stack[3] * spdiagm(BT0_d_stack[3]) * BT0_t_stack[3];
-  U, D, T = calc_Bchain(mc, 1, mc.s.ranges[3][end]); B1 = U*spdiagm(D)*T;
+  B2 = BT0_u_stack[3] * Diagonal(BT0_d_stack[3]) * BT0_t_stack[3];
+  U, D, T = calc_Bchain(mc, 1, mc.s.ranges[3][end]); B1 = U*Diagonal(D)*T;
   compare(B1, B2) # this is exactly the same
 
-  B2 = BBetaTInv_u_stack[3] * spdiagm(BBetaTInv_d_stack[3]) * BBetaTInv_t_stack[3];
-  U, D, T = calc_Bchain_inv(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*spdiagm(D)*T;
+  B2 = BBetaTInv_u_stack[3] * Diagonal(BBetaTInv_d_stack[3]) * BBetaTInv_t_stack[3];
+  U, D, T = calc_Bchain_inv(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
   compare(B1, B2) # why is there a difference here at all?
 
 
   # test right multiplications
-  B2 = BT0Inv_u_stack[3] * spdiagm(BT0Inv_d_stack[3]) * BT0Inv_t_stack[3];
-  U, D, T = calc_Bchain_inv(mc, 1, mc.s.ranges[3][end]); B1 = U*spdiagm(D)*T;
+  B2 = BT0Inv_u_stack[3] * Diagonal(BT0Inv_d_stack[3]) * BT0Inv_t_stack[3];
+  U, D, T = calc_Bchain_inv(mc, 1, mc.s.ranges[3][end]); B1 = U*Diagonal(D)*T;
   compare(B1, B2)
 
-  B2 = BBetaT_u_stack[3] * spdiagm(BBetaT_d_stack[3]) * BBetaT_t_stack[3];
-  U, D, T = calc_Bchain(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*spdiagm(D)*T;
+  B2 = BBetaT_u_stack[3] * Diagonal(BBetaT_d_stack[3]) * BBetaT_t_stack[3];
+  U, D, T = calc_Bchain(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
   compare(B1, B2)
 
 
@@ -970,9 +970,9 @@ function test_stacks()
 
 
   # compare B(beta,1) from BT0 and BBetaT
-  BT0_full = BT0_u_stack[end] * spdiagm(BT0_d_stack[end]) * BT0_t_stack[end];
-  BBetaT_full = BBetaT_u_stack[1] * spdiagm(BBetaT_d_stack[1]) * BBetaT_t_stack[1];
-  U, D, T = calc_Bchain(mc, 1, mc.s.ranges[end][end]); BBeta0 = U*spdiagm(D)*T;
+  BT0_full = BT0_u_stack[end] * Diagonal(BT0_d_stack[end]) * BT0_t_stack[end];
+  BBetaT_full = BBetaT_u_stack[1] * Diagonal(BBetaT_d_stack[1]) * BBetaT_t_stack[1];
+  U, D, T = calc_Bchain(mc, 1, mc.s.ranges[end][end]); BBeta0 = U*Diagonal(D)*T;
   compare(BT0_full, BBeta0)
   compare(BBetaT_full, BBeta0) # we have (large) abs errors here. maybe it's still ok
 
@@ -992,14 +992,14 @@ function test_stacks()
   i = floor(Int, nr/2)
 
   U = BBetaT_t_stack[i+1] * BT0_u_stack[i]
-  scale!(U, BT0_d_stack[i])
-  scale!(BBetaT_d_stack[i+1], U)
+  rmul!(U, Diagonal(BT0_d_stack[i]))
+  lmul!(Diagonal(BBetaT_d_stack[i+1]), U)
   u,d,t = decompose_udt(U)
   u = BBetaT_u_stack[i+1] * u
   t = t * BT0_t_stack[i]
-  Bfull = u * spdiagm(d) * t
+  Bfull = u * Diagonal(d) * t
   Bfull_d = copy(d)
-  U, D, T = calc_Bchain(mc, 1, mc.p.slices); Bfull2 = U * spdiagm(D) * T;
+  U, D, T = calc_Bchain(mc, 1, mc.p.slices); Bfull2 = U * Diagonal(D) * T;
   Bfull2_d = copy(D)
   compare(Bfull, Bfull2) # max absdiff: 7.7e+03, max reldiff: 3.4e+01
   compare(Bfull_d, Bfull2_d) # max absdiff: 9.2e+03, max reldiff: 2.3e-13
@@ -1013,7 +1013,7 @@ end
 function check_unitarity(u_stack)
   for i in 1:length(u_stack)
     U = u_stack[i]
-    !isapprox(U * adjoint(U), eye(U)) && (return false)
+    !isapprox(U * adjoint(U), I) && (return false) # I was eye(U)
   end
   return true
 end
@@ -1057,9 +1057,9 @@ end
 
 # function inv_sum(U1,D1,T1,U2,D2,T2)
 #   m1 = T1 * inv(T2)
-#   scale!(D1, m1)
+#   lmul!(Diagonal(D1), m1)
 #   m2 = adjoint(U1) * U2
-#   scale!(m2, D2)
+#   rmul!(m2, Diagonal(D2))
 
 #   u,d,t = decompose_udt(m1+m2)
 
@@ -1067,6 +1067,6 @@ end
 #   B = 1 ./ d
 #   C = adjoint(U1*u)
 
-#   scale!(B, C)
+#   lmul!(Diagonal(B), C)
 #   return A*C
 # end

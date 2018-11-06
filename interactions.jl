@@ -82,7 +82,7 @@ end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
 function interaction_matrix_exp_op(mc::AbstractDQMC, op::Vector{Float64}, power::Float64=1.)
-  eVop = Matrix{geltype(mc)}(mc.p.flv,mc.p.flv)
+  eVop = Matrix{geltype(mc)}(undef,mc.p.flv,mc.p.flv)
   interaction_matrix_exp_op!(mc,op,power,eVop)
   return eVop
 end

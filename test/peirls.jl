@@ -10,7 +10,7 @@
     p = mc.p
     l = mc.l
     L = mc.l.L
-    phis = Matrix{Array{Float64}}(2,2) # colidx = flavor, rowidx = spin 
+    phis = Matrix{Array{Float64}}(undef,2,2) # colidx = flavor, rowidx = spin 
     for f in 1:2
       for s in 1:2
         phis[s,f] = permutedims(reshape(l.peirls[s,f], (L,L,L,L)), [2,1,4,3])

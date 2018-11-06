@@ -139,7 +139,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         @test isapprox(mc.s.greens, load("O3.jld", "afterupdate_greens"))
 
         # TODO: test full local update
-        srand(123456789) # set seed
+        Random.seed!(123456789) # set seed
         @test local_updates(mc) == 0.6875 # acc. rate
         @test isapprox(mc.s.greens, load("O3.jld", "afterlocal_greens"))
         @test isapprox(mc.p.hsfield, load("O3.jld", "afterlocal_hsfield"))
@@ -149,7 +149,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
 
     @testset "global updates" begin
         # TODO
-        # srand(123456789)
+        # Random.seed!(123456789)
         # hsfield = copy(mc.p.hsfield)
         # global_update_perform_shift!(mc)
         # randsite = rand(1:mc.l.sites)
@@ -235,7 +235,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         multiply_B_inv_right!(mc, 3, A)
         @test isapprox(A, Aorig)
 
-        A = eye(geltype(mc), size(mc.s.greens)...)
+        A = Matrix{geltype(mc)}(I, size(mc.s.greens)...)
         Aorig = copy(A)
         multiply_B_left!(mc, 3, A)
         multiply_B_inv_right!(mc, 3, A)
