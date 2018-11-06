@@ -406,14 +406,14 @@ function calc_Bchain_dagger(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::
 end
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its singular values in a stable manner
-function calc_greens(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
+function calc_greens(mc::AbstractDQMC, slice::Int=mc.s.current_slice, safe_mult::Int=mc.p.safe_mult)
   const s = mc.s
   calc_greens_helper(mc, slice, safe_mult)
 
   scale!(s.d, s.U)
   return s.T * s.U
 end
-function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
+function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int=mc.s.current_slice, safe_mult::Int=mc.p.safe_mult)
   const s = mc.s
   calc_greens_helper(mc, slice, safe_mult)
 

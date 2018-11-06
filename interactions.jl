@@ -2,7 +2,7 @@
 function interaction_matrix_exp(mc::AbstractDQMC, slice::Int, power::Float64=1.)
   const G = geltype(mc)
 
-  eV = zeros(G, mc.p.flv * mc.l.sites, mc.p.flv * mc.l.sites)
+  eV = spzeros(G, mc.p.flv * mc.l.sites, mc.p.flv * mc.l.sites)
   interaction_matrix_exp!(mc, slice, power, eV)
   return eV
 end
@@ -108,7 +108,7 @@ function interaction_matrix_exp_op!(mc::AbstractDQMC{C,G}, op::Vector{Float64}, 
   eVop[2,1] = conj(Sii)
   eVop[2,2] = Cii
 
-  if p.opdim == 3
+  if mc.p.opdim == 3
     eVop[1,3] = zero(G)
     eVop[1,4] = Rii
 
