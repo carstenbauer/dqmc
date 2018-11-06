@@ -1,8 +1,8 @@
 function local_updates(mc::AbstractDQMC)
-  const p = mc.p
-  const s = mc.s
-  const l = mc.l
-  const a = mc.a
+  p = mc.p
+  s = mc.s
+  l = mc.l
+  a = mc.a
 
   acc_rat = 0.0
   @inbounds for i in 1:l.sites
@@ -40,9 +40,9 @@ end
 
 
 @inline function calc_detratio(mc::AbstractDQMC, i::Int, new_op::Vector{Float64})
-  const p = mc.p
-  const s = mc.s
-  const l = mc.l
+  p = mc.p
+  s = mc.s
+  l = mc.l
 
   @mytimeit mc.a.to "calc_detratio" begin
 
@@ -59,11 +59,11 @@ end
 end
 
 @inline function update_greens!(mc::AbstractDQMC, i::Int)
-  const p = mc.p
-  const s = mc.s
-  const l = mc.l
-  const g = mc.s.greens
-  const ab = mc.s.AB
+  p = mc.p
+  s = mc.s
+  l = mc.l
+  g = mc.s.greens
+  ab = mc.s.AB
 
   @mytimeit mc.a.to "update_greens!" begin
 
@@ -97,15 +97,15 @@ end
 
 
 # function get_full_delta(mc,i)
-#   const delta_i = mc.s.delta_i
-#   const N = mc.l.sites
+#   delta_i = mc.s.delta_i
+#   N = mc.l.sites
 #   Delta = zeros(mc.s.greens)
 #   Delta[i:N:end, i:N:end] = delta_i
 #   return Delta
 # end
 
 # function cols2mat(mc,cols,i)
-#   const N = mc.l.sites
+#   N = mc.l.sites
 #   mat = zeros(mc.s.greens)
 #   mat[:,i:N:end] .= cols
 #   return mat
@@ -125,13 +125,13 @@ end
 
 
 # function update_greens_max!(mc::AbstractDQMC, i::Int, cols, colsTimesG)
-#   const G = geltype(mc)
-#   const N = mc.l.sites
-#   const flv = mc.p.flv
-#   const g = mc.s.greens
-#   const delta_i = mc.s.delta_i
+#   G = geltype(mc)
+#   N = mc.l.sites
+#   flv = mc.p.flv
+#   g = mc.s.greens
+#   delta_i = mc.s.delta_i
 
-#   const site = i
+#   site = i
 
 #   # Calculate (1-G)*Delta
 #   # The result is a (sparse) matrix with just a bunch of non-zero columns.
@@ -258,7 +258,7 @@ end
 #   # // [O(N^2)]
 #   # MatData gTimesInvRows(MatrixSizeFactor*pars.N,
 #   #                       MatrixSizeFactor*pars.N);
-#   # const auto& G = g;
+#   # auto& G = g;
 #   # for (uint32_t col = 0; col < MatrixSizeFactor*pars.N; ++col) {
 #   #     for (uint32_t row = 0; row < MatrixSizeFactor*pars.N; ++row) {
 #   #         gTimesInvRows(row, col) =
@@ -276,10 +276,10 @@ end
 # end
 
 # function perform_update_greens!(mc,i,cols,colsTimesG)
-#   const N = mc.l.sites
-#   const flv = mc.p.flv
-#   const g = mc.s.greens
-#   const site = i
+#   N = mc.l.sites
+#   flv = mc.p.flv
+#   g = mc.s.greens
+#   site = i
 
 #   # Compute G' = [I + (I - G)*Delta]^(-1) * G = [I + cols] * G
 #   # [O(N^2)]

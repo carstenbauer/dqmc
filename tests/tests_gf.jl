@@ -101,11 +101,11 @@ function calculate_greens_and_det_and_svs_udv(p::Params, l::Lattice, slice::Int)
 
   # Calculate Greens function
   tmp = Vtl * Ur
-  inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
+  inner = adjoint(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
   I = decompose_udv!(inner)
-  U = ctranspose(I[3] * Vtr)
+  U = adjoint(I[3] * Vtr)
   D = spdiagm(1./I[2])
-  Vt = ctranspose(Ul * I[1])
+  Vt = adjoint(Ul * I[1])
   return (U*D*Vt, det(U)*det(D)*det(Vt), diag(D))
 end
 

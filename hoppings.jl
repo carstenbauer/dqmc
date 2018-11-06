@@ -1,6 +1,6 @@
 function init_hopping_matrices(mc::AbstractDQMC)
-  const p = mc.p
-  const l = mc.l
+  p = mc.p
+  l = mc.l
 
   if p.Bfield
     init_peirls_phases(mc)
@@ -14,8 +14,8 @@ function init_hopping_matrices(mc::AbstractDQMC)
 end
 
 function init_hopping_matrix_exp(mc::AbstractDQMC)::Void
-  const p = mc.p
-  const l = mc.l
+  p = mc.p
+  l = mc.l
 
   println("Initializing hopping exponentials")
   !p.Bfield || warn("You should be using `init_hopping_matrix_exp_Bfield()` or set p.Bfield = false!")
@@ -94,9 +94,9 @@ end
 
 function init_peirls_phases(mc::AbstractDQMC)
   println("Initializing Peirls phases (Bfield)")
-  const l = mc.l
-  const L = mc.l.L
-  const p = mc.p
+  l = mc.l
+  L = mc.l.L
+  p = mc.p
 
   B = zeros(2,2) # colidx = flavor, rowidx = spin up,down
   if p.Bfield
@@ -170,9 +170,9 @@ function init_peirls_phases(mc::AbstractDQMC)
 end
 
 function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)::Void  
-  const p = mc.p
-  const l = mc.l
-  const H = heltype(mc)
+  p = mc.p
+  l = mc.l
+  H = heltype(mc)
 
   println("Initializing hopping exponentials (Bfield)")
   p.Bfield || warn("You should be using `init_hopping_matrix_exp()` or set p.Bfield = true!")
@@ -184,7 +184,7 @@ function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)::Void
 
   for f in 1:2
     for s in 1:2
-      T[s,f] = convert(Matrix{H}, diagm(fill(f==1?-p.mu1:-p.mu2,l.sites)))
+      T[s,f] = convert(Matrix{H}, diagm(fill(f == 1 ? -p.mu1 : -p.mu2,l.sites)))
 
       # Nearest neighbor hoppings
       if p.hoppings != "none"

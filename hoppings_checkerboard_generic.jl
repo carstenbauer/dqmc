@@ -1,5 +1,5 @@
 function build_checkerboard(mc::AbstractDQMC{CBGeneric})
-  const l = mc.l
+  l = mc.l
 
   l.groups = UnitRange[]
   edges_used = zeros(Int64, l.n_bonds)
@@ -32,29 +32,29 @@ end
 
 
 # helper to cutoff numerical zeros
-rem_eff_zeros!(X::AbstractArray) = map!(e->abs.(e)<1e-15?zero(e):e,X,X)
+rem_eff_zeros!(X::AbstractArray) = map!(e -> abs.(e) < 1e-15 ? zero(e) : e,X,X)
 
 function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
-  const l = mc.l
-  const p = mc.p
-  const H = heltype(mc)
+  l = mc.l
+  p = mc.p
+  H = heltype(mc)
 
   println("Initializing hopping exponentials (Checkerboard, generic)")
 
   build_checkerboard(mc)
 
-  const n_groups = l.n_groups
+  n_groups = l.n_groups
   eT_half = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
   eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
   eT = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
   eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
 
-  const U = [0.0, 1.0]
-  const R = [1.0, 0.0]
-  const UR = [1.0, 1.0]
-  const DR = [1.0, -1.0]
-  const UU = [0.0, 2.0]
-  const RR = [2.0, 0.0]
+  U = [0.0, 1.0]
+  R = [1.0, 0.0]
+  UR = [1.0, 1.0]
+  DR = [1.0, -1.0]
+  UU = [0.0, 2.0]
+  RR = [2.0, 0.0]
 
   for f in 1:2
     for s in 1:2
@@ -138,11 +138,11 @@ function fold_chkr_grps(mc::AbstractDQMC{CBGeneric})
   # Continue in the same spirit with remaining chkr matrices until we visited them all.
   #
   # Massive(!) speed improvement!!
-  const l = mc.l
-  const H = heltype(mc)
-  const flv = mc.p.flv
-  const N = mc.l.sites
-  const SPARSITY_LIMIT = mc.p.sparsity_limit
+  l = mc.l
+  H = heltype(mc)
+  flv = mc.p.flv
+  N = mc.l.sites
+  SPARSITY_LIMIT = mc.p.sparsity_limit
 
   @show SPARSITY_LIMIT
 
@@ -205,15 +205,15 @@ end
 #### WITH ARTIFICIAL B-FIELD
 
 function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
-  const l = mc.l
-  const p = mc.p
-  const H = heltype(mc)
+  l = mc.l
+  p = mc.p
+  H = heltype(mc)
 
   println("Initializing hopping exponentials (Bfield, Checkerboard, generic)")
 
   build_checkerboard(mc)
 
-  const n_groups = l.n_groups
+  n_groups = l.n_groups
   eT_half = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
   eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
   eT = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
@@ -225,12 +225,12 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
     B[1,2] = B[2,1] = - 2 * pi / l.sites
   end
 
-  const U = [0.0, 1.0]
-  const R = [1.0, 0.0]
-  const UR = [1.0, 1.0]
-  const DR = [1.0, -1.0]
-  const UU = [0.0, 2.0]
-  const RR = [2.0, 0.0]
+  U = [0.0, 1.0]
+  R = [1.0, 0.0]
+  UR = [1.0, 1.0]
+  DR = [1.0, -1.0]
+  UU = [0.0, 2.0]
+  RR = [2.0, 0.0]
 
   for f in 1:2
     for s in 1:2

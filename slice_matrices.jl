@@ -2,7 +2,7 @@
 #                        Generic
 # -------------------------------------------------------
 function slice_matrix(mc::AbstractDQMC, slice::Int, power::Float64=1.)
-  const a = mc.a
+  a = mc.a
 
   res = eye(heltype(mc), mc.p.flv*mc.l.sites)
 
@@ -23,10 +23,10 @@ end
 # -------------------------------------------------------
 # Beff(slice) = exp(−1/2∆τT)exp(−1/2∆τT)exp(−∆τV(slice))
 function slice_matrix!(mc::DQMC_CBFalse, slice::Int, power::Float64=1., Bl::AbstractMatrix=mc.s.Bl)
-  const eT = mc.l.hopping_matrix_exp
-  const eTinv = mc.l.hopping_matrix_exp_inv
-  const eV = mc.s.eV
-  const tmp = mc.s.tmp
+  eT = mc.l.hopping_matrix_exp
+  eTinv = mc.l.hopping_matrix_exp_inv
+  eV = mc.s.eV
+  tmp = mc.s.tmp
 
   interaction_matrix_exp!(mc, slice, power, eV)
   
@@ -99,9 +99,9 @@ end
 #  				Assaad checkerboard
 # -------------------------------------------------------
 function multiply_B_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  s = mc.s
+  a = mc.a
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_B_left!" begin
 
@@ -129,9 +129,9 @@ function multiply_B_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMat
 end
 
 function multiply_B_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  s = mc.s
+  a = mc.a
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_B_right!" begin
 
@@ -153,9 +153,9 @@ function multiply_B_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMa
 end
 
 function multiply_B_inv_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  s = mc.s
+  a = mc.a
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_B_inv_left!" begin
   
@@ -177,9 +177,9 @@ function multiply_B_inv_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::Abstrac
 end
 
 function multiply_B_inv_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  s = mc.s
+  a = mc.a
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_B_inv_right!" begin
   
@@ -201,9 +201,9 @@ function multiply_B_inv_right!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::Abstra
 end
 
 function multiply_daggered_B_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  s = mc.s
+  a = mc.a
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_daggered_B_left!" begin
   
@@ -215,7 +215,7 @@ function multiply_daggered_B_left!(mc::AbstractDQMC{CBAssaad}, slice::Int, M::Ab
   A_mul_B!(s.tmp, l.chkr_hop_half_dagger[2], M)
   M .= s.tmp
 
-  # s.eV == ctranspose(s.eV) and l.chkr_mu == ctranspose(s.chkr_mu)
+  # s.eV == adjoint(s.eV) and l.chkr_mu == adjoint(s.chkr_mu)
   A_mul_B!(s.tmp, l.chkr_mu, M)
   M .= s.tmp
   A_mul_B!(s.tmp, s.eV, M)
@@ -231,10 +231,10 @@ end
 #  				Generic checkerboard
 # -------------------------------------------------------
 function multiply_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const p = mc.p
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  p = mc.p
+  s = mc.s
+  a = mc.a
   @timeit a.to "multiply_B (combined)" begin
   @timeit a.to "multiply_B_left!" begin
 
@@ -268,10 +268,10 @@ function multiply_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMa
 end
 
 function multiply_B_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const p = mc.p
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  p = mc.p
+  s = mc.s
+  a = mc.a
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_B_right!" begin
 
@@ -299,10 +299,10 @@ function multiply_B_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractM
 end
 
 function multiply_B_inv_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const p = mc.p
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  p = mc.p
+  s = mc.s
+  a = mc.a
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_B_inv_left!" begin
   
@@ -330,10 +330,10 @@ function multiply_B_inv_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::Abstra
 end
 
 function multiply_B_inv_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const p = mc.p
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  p = mc.p
+  s = mc.s
+  a = mc.a
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_B_inv_right!" begin
   
@@ -361,10 +361,10 @@ function multiply_B_inv_right!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::Abstr
 end
 
 function multiply_daggered_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::AbstractMatrix{T}) where T<:Number
-  const l = mc.l
-  const p = mc.p
-  const s = mc.s
-  const a = mc.a
+  l = mc.l
+  p = mc.p
+  s = mc.s
+  a = mc.a
   @mytimeit a.to "multiply_B (combined)" begin
   @mytimeit a.to "multiply_daggered_B_left!" begin
     
@@ -382,7 +382,7 @@ function multiply_daggered_B_left!(mc::AbstractDQMC{CBGeneric}, slice::Int, M::A
   end
 
   interaction_matrix_exp!(mc, slice, 1., s.eV)
-  # s.eV == ctranspose(s.eV) and l.chkr_mu == ctranspose(s.chkr_mu)
+  # s.eV == adjoint(s.eV) and l.chkr_mu == adjoint(s.chkr_mu)
   A_mul_B!(s.tmp, l.chkr_mu, M)
   M .= s.tmp
   A_mul_B!(s.tmp, s.eV, M)

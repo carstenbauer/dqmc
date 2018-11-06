@@ -122,13 +122,13 @@ end
 #   svc = 1
 #   for k in reverse(start:stop)
 #     if mod(k,safe_mult) == 0
-#       U = ctranspose(slice_matrix_no_chkr(p,l,k)) * U * spdiagm(D)
+#       U = adjoint(slice_matrix_no_chkr(p,l,k)) * U * spdiagm(D)
 #       U, D, Tnew = decompose_udt(U)
 #       T =  Tnew * T
 #       svs[:,svc] = log.(D)
 #       svc += 1
 #     else
-#       U = ctranspose(slice_matrix_no_chkr(p,l,k)) * U
+#       U = adjoint(slice_matrix_no_chkr(p,l,k)) * U
 #     end
 #   end
 #   return (U,D,T,svs)
@@ -155,9 +155,9 @@ end
 
 #   # Calculate Greens function
 #   tmp = Vtl * Ur
-#   inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
+#   inner = adjoint(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
 #   I = decompose_udv!(inner)
-#   return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
+#   return adjoint(I[3] * Vtr) * spdiagm(1./I[2]) * adjoint(Ul * I[1])
 # end
 
 # function calculate_greens_udv_chkr(p::Params, l::Lattice, slice::Int)
@@ -175,9 +175,9 @@ end
 
 #   # Calculate Greens function
 #   tmp = Vtl * Ur
-#   inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
+#   inner = adjoint(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
 #   I = decompose_udv!(inner)
-#   return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
+#   return adjoint(I[3] * Vtr) * spdiagm(1./I[2]) * adjoint(Ul * I[1])
 # end
 
 # function calculate_greens_2udv(p::Params, l::Lattice, slice::Int)
@@ -202,9 +202,9 @@ end
 #   D = spdiagm(I[2])
 #   Vt = I[3] * Vtr
 
-#   F = decompose_udv!(ctranspose(Vt*U) + D)
+#   F = decompose_udv!(adjoint(Vt*U) + D)
 
-#   return ctranspose(F[3] * Vt) * spdiagm(1./F[2]) * ctranspose(U * F[1])
+#   return adjoint(F[3] * Vt) * spdiagm(1./F[2]) * adjoint(U * F[1])
 # end
 # # equivalent to version above with only one SVD decomp. up to max absdiff of ~1e-10
 
@@ -241,9 +241,9 @@ end
 
 #   # Calculate Greens function
 #   tmp = Vtl * Ur
-#   inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
+#   inner = adjoint(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
 #   I = decompose_udv!(inner)
-#   return ctranspose(I[3] * Vtr) * spdiagm(1./I[2]) * ctranspose(Ul * I[1])
+#   return adjoint(I[3] * Vtr) * spdiagm(1./I[2]) * adjoint(Ul * I[1])
 # end
 
 # function calculate_greens_qr(p::Params, l::Lattice, slice::Int)
@@ -259,16 +259,16 @@ end
 #     Tl = eye(Complex128, p.flv * l.sites)
 #   end
 
-#   tmp = Tl * ctranspose(Tr)
+#   tmp = Tl * adjoint(Tr)
 #   U, D, T = decompose_udt(spdiagm(Dl) * tmp * spdiagm(Dr))
 #   U = Ul * U
-#   T *= ctranspose(Ur)
+#   T *= adjoint(Ur)
 
-#   u, d, t = decompose_udt(/(ctranspose(U), T) + spdiagm(D))
+#   u, d, t = decompose_udt(/(adjoint(U), T) + spdiagm(D))
 
 #   ldet = 1/(prod(d))
 
-#   return \(t*T,spdiagm(1./d)*ctranspose(U * u))
+#   return \(t*T,spdiagm(1./d)*adjoint(U * u))
 
 # end
 

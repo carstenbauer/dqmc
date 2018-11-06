@@ -102,7 +102,7 @@ function init_lattice_from_filename(filename::String, l::Lattice)
 end
 
 function init_neighbors_table(mc::AbstractDQMC)
-  const l = mc.l
+  l = mc.l
 
   println("Initializing neighbor-tables")
   sql = reshape(1:l.sites, l.L, l.L)
@@ -141,12 +141,12 @@ end
 Periodic boundary conditions in imaginary time
 """
 function init_time_neighbors_table(mc::AbstractDQMC)
-  const l = mc.l
-  const p = mc.p
+  l = mc.l
+  p = mc.p
 
   l.time_neighbors = zeros(Int64, 2, p.slices)
   for s in 1:p.slices
-    l.time_neighbors[1,s] = s==p.slices?1:s+1
-    l.time_neighbors[2,s] = s==1?p.slices:s-1
+    l.time_neighbors[1,s] = s == p.slices ? 1 : s+1
+    l.time_neighbors[2,s] = s == 1 ? p.slices : s-1
   end
 end

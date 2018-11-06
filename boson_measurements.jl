@@ -4,8 +4,8 @@
 
 # χ(qy,qx,iw) = C(qy, qx, iw) * Δτ/(N*M)
 function measure_chi_dynamic(conf::AbstractArray{Float64, 3}; Δτ::Float64=0.1)
-  const N = size(conf, 2)
-  const M = size(conf, 3)
+  N = size(conf, 2)
+  M = size(conf, 3)
   Δτ/(N*M) * measure_phi_correlations(conf)
 end
 

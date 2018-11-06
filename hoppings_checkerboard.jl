@@ -18,8 +18,8 @@ function find_four_site_hopping_corners(l::Lattice)
 end
 
 function build_four_site_hopping_matrix_exp(mc::AbstractDQMC{CBAssaad}, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
-  const p = mc.p
-  const l = mc.l
+  p = mc.p
+  l = mc.l
 
   pc = Int(floor(l.sites/4))
   chkr_hop_4site = Array{SparseMatrixCSC, 3}(pc,2,2) # i, group (A, B), hopping flavor (tx, ty)
@@ -63,8 +63,8 @@ function build_four_site_hopping_matrix_exp(mc::AbstractDQMC{CBAssaad}, corners:
 end
 
 function init_checkerboard_matrices(mc::AbstractDQMC{CBAssaad})
-  const p = mc.p
-  const l = mc.l
+  p = mc.p
+  l = mc.l
 
   println("Initializing hopping exponentials (Checkerboard)")
   pc = Int(floor(l.sites/4))
@@ -114,10 +114,10 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBAssaad})
 
   l.chkr_hop_half = [eT_A_half, eT_B_half]
   l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
-  l.chkr_hop_half_dagger = [ctranspose(eT_A_half), ctranspose(eT_B_half)]
+  l.chkr_hop_half_dagger = [adjoint(eT_A_half), adjoint(eT_B_half)]
   l.chkr_hop = [eT_A, eT_B]
   l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
-  l.chkr_hop_dagger = [ctranspose(eT_A), ctranspose(eT_B)]
+  l.chkr_hop_dagger = [adjoint(eT_A), adjoint(eT_B)]
 
   muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
   muv = repeat(muv, outer=[Int(p.flv/2)])
@@ -139,8 +139,8 @@ end
 #### WITH ARTIFICIAL B-FIELD
 
 function build_four_site_hopping_matrix_Bfield(mc::AbstractDQMC{CBAssaad}, corner::Int,f::Int,s::Int)
-  const l = mc.l
-  const H = heltype(mc)
+  l = mc.l
+  H = heltype(mc)
 
   sites_clockwise = [corner, l.neighbors[1,corner], l.neighbors[1,l.neighbors[2,corner]], l.neighbors[2,corner]]
   shift_sites_clockwise = circshift(sites_clockwise,-1)
@@ -163,9 +163,9 @@ function build_four_site_hopping_matrix_Bfield(mc::AbstractDQMC{CBAssaad}, corne
 end
 
 function build_four_site_hopping_matrix_exp_Bfield(mc::AbstractDQMC{CBAssaad}, corners::Tuple{Array{Int64,1},Array{Int64,1}}, prefac::Float64=0.5)
-  const p = mc.p
-  const l = mc.l
-  const H = heltype(mc)
+  p = mc.p
+  l = mc.l
+  H = heltype(mc)
 
   B = zeros(2,2) # rowidx = spin up,down, colidx = flavor
   if p.Bfield
@@ -198,9 +198,9 @@ function build_four_site_hopping_matrix_exp_Bfield(mc::AbstractDQMC{CBAssaad}, c
 end
 
 function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBAssaad})
-  const p = mc.p
-  const l = mc.l
-  const H = heltype(mc)
+  p = mc.p
+  l = mc.l
+  H = heltype(mc)
 
   println("Initializing hopping exponentials (Bfield, Checkerboard)")
   # pc = Int(floor(l.sites/4))
@@ -248,10 +248,10 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBAssaad})
 
   l.chkr_hop_half = [eT_A_half, eT_B_half]
   l.chkr_hop_half_inv = [eT_A_half_inv, eT_B_half_inv]
-  l.chkr_hop_half_dagger = [ctranspose(eT_A_half), ctranspose(eT_B_half)]
+  l.chkr_hop_half_dagger = [adjoint(eT_A_half), adjoint(eT_B_half)]
   l.chkr_hop = [eT_A, eT_B]
   l.chkr_hop_inv = [eT_A_inv, eT_B_inv]
-  l.chkr_hop_dagger = [ctranspose(eT_A), ctranspose(eT_B)]
+  l.chkr_hop_dagger = [adjoint(eT_A), adjoint(eT_B)]
 
   muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
   muv = repeat(muv, outer=[Int(p.flv/2)])

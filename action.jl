@@ -1,6 +1,6 @@
 function calc_boson_action(mc::AbstractDQMC, hsfield::Array{Float64,3}=mc.p.hsfield)
-  const p = mc.p
-  const l = mc.l
+  p = mc.p
+  l = mc.l
 
   S = 0.0
 
@@ -9,7 +9,7 @@ function calc_boson_action(mc::AbstractDQMC, hsfield::Array{Float64,3}=mc.p.hsfi
 
     # temporal gradient
     t = h - circshift(h, (0,0,0,-1))
-    S += 0.5/p.delta_tau * 1./p.c^2 * dot(t,t);
+    S += 0.5/p.delta_tau * 1/p.c^2 * dot(t,t);
 
     # spatial gradient
     # Count only top and right neighbor (avoid overcounting)
@@ -55,8 +55,8 @@ end
 Calculate Delta_S_boson = S_boson' - S_boson
 """
 function calc_boson_action_diff(mc::AbstractDQMC, site::Int, slice::Int, new_op::Vector{Float64})
-  const p = mc.p
-  const l = mc.l
+  p = mc.p
+  l = mc.l
   
   @mytimeit mc.a.to "calc_boson_action_diff" begin
   dS = 0.0

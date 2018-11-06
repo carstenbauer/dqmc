@@ -9,8 +9,8 @@ abstract type CBAssaad <: CBTrue end
 
 abstract type AbstractDQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number} end
 
-isdefined(:DQMC_CBTrue) || (global const DQMC_CBTrue = AbstractDQMC{C} where C<:CBTrue)
-isdefined(:DQMC_CBFalse) || (global const DQMC_CBFalse = AbstractDQMC{C} where C<:CBFalse)
+(@isdefined DQMC_CBTrue) || (global const DQMC_CBTrue = AbstractDQMC{C} where C<:CBTrue)
+(@isdefined DQMC_CBFalse) || (global const DQMC_CBFalse = AbstractDQMC{C} where C<:CBFalse)
 
 
 
@@ -20,18 +20,22 @@ isdefined(:DQMC_CBFalse) || (global const DQMC_CBFalse = AbstractDQMC{C} where C
 using Helpers
 using MonteCarloObservable
 using TimerOutputs
-using FFTW # v.0.6 naming bug
+# using FFTW # do we have to using this?
 using Distributions
 using HDF5
 using LightXML
-using Iterators
-using Base.Dates
+
+# using Iterators
+using Dates
+using LinearAlgebra
+using SparseArrays
+using Printf
 
 # to avoid namespace conflict warnings
 import Distributions: params
 import LightXML: root, name
 
-isdefined(:TIMING) || (global const TIMING = false)
+(@isdefined TIMING) || (global const TIMING = false)
 macro mytimeit(exprs...)
     if TIMING
         return :(@timeit($(esc.(exprs)...)))
@@ -125,7 +129,7 @@ function init!(mc::DQMC)
   init!(mc, rand(mc.p.opdim,mc.l.sites,mc.p.slices), false)
 end
 function init!(mc::DQMC, start_conf, init_seed=true)
-  const a = mc.a
+  a = mc.a
   @mytimeit a.to "init mc" begin
   init_seed && srand(mc.p.seed); # init RNG
 
@@ -166,7 +170,7 @@ function run!(mc::DQMC)
 end
 
 function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
-  const p = mc.p
+  p = mc.p
 
   # Init hsfield
   println("\nLoading last HS field")
@@ -199,8 +203,8 @@ end
 
 
 function thermalize!(mc::DQMC)
-  const a = mc.a
-  const p = mc.p
+  a = mc.a
+  p = mc.p
 
   a.acc_rate = 0.0
   a.acc_rate_global = 0.0
@@ -286,10 +290,10 @@ end
 
 
 function measure!(mc::DQMC, prevmeasurements=0)
-  const a = mc.a
-  const l = mc.l
-  const p = mc.p
-  const s = mc.s
+  a = mc.a
+  l = mc.l
+  p = mc.p
+  s = mc.s
 
   initialize_stack(mc)
   println("Renewing stack")
@@ -366,10 +370,10 @@ function measure!(mc::DQMC, prevmeasurements=0)
 end
 
 function update(mc::DQMC, i::Int)
-  const p = mc.p
-  const s = mc.s
-  const l = mc.l
-  const a = mc.a
+  p = mc.p
+  s = mc.s
+  l = mc.l
+  a = mc.a
 
   propagate(mc)
 
@@ -462,8 +466,8 @@ end
 Choose a apropriate chunk size for the given Monte Carlo simulation.
 """
 function choose_chunk_size(mc::AbstractDQMC)
-    const p = mc.p
-    const to_udsweep = mc.a.to["udsweep"]
+    p = mc.p
+    to_udsweep = mc.a.to["udsweep"]
 
     udsd = TimerOutputs.time(to_udsweep) *10.0^(-9)/TimerOutputs.ncalls(to_udsweep)
     cs = csheuristics(p.walltimelimit, udsd, p.write_every_nth)

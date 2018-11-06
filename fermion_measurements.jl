@@ -24,8 +24,8 @@ Example: half-filling of spin 1/2 fermions on a lattice corresponds to `n=0.5`.
 function occupation(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
   n = mean(1 .- diag(greens))
   # only per site:
-  # const N = mc.l.sites
-  # const M = mc.p.slices
+  # N = mc.l.sites
+  # M = mc.p.slices
   # n = 1/(N*M) * sum(1 .- diag(greens))
   real(n)
 end
@@ -37,8 +37,8 @@ end
 #         Equal time pairing correlations
 # -------------------------------------------------------
 function allocate_etpc!(mc)
-  const L = mc.p.L
-  const meas = mc.s.meas
+  L = mc.p.L
+  meas = mc.s.meas
 
   meas.etpc_evs = zeros(Float64,4,L,L)
   meas.etpc_minus = zeros(Float64,L,L)
@@ -60,11 +60,11 @@ Details:
 - we do not mean over τ_0=0 (τ not shown above).
 """
 function etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
-  const L = mc.p.L
-  const G = geltype(mc)
-  const ev = mc.s.meas.etpc_evs
-  const Pm = mc.s.meas.etpc_minus # d-wave
-  const Pp = mc.s.meas.etpc_plus # s-wave
+  L = mc.p.L
+  G = geltype(mc)
+  ev = mc.s.meas.etpc_evs
+  Pm = mc.s.meas.etpc_minus # d-wave
+  Pp = mc.s.meas.etpc_plus # s-wave
 
   fill!(Pm, 0.)
   fill!(Pp, 0.)
@@ -109,13 +109,13 @@ where j ∈ 1:4 corresponds to (j1, j2, j3, j4) ∈ ((xd,xu,xu,xd), (xd,xu,yu,yd
 r=(x,y), and we mean over r_0.
 """
 function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
-  const L = mc.p.L
-  const N = mc.l.sites
-  const etpc_ev = mc.s.meas.etpc_evs
+  L = mc.p.L
+  N = mc.l.sites
+  etpc_ev = mc.s.meas.etpc_evs
 
   # we only need four combinations of j1,j2,j3,j4 for etpc_ev
-  const xu, yd, xd, yu = 1,2,3,4
-  const js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
+  xu, yd, xd, yu = 1,2,3,4
+  js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
 
   fill!(etpc_ev, 0.)
   sql = reshape(collect(1:N),L,L)
@@ -210,10 +210,10 @@ Get column/row idx of particular flv ∈ (xu, yd, xd, yu) and site ∈ 1:N in Gr
 Access full (4*N, 4*N) Green's function for any OPDIM efficiently.
 """
 @inline function G(mc, i, j, greens=mc.s.greens)
-  const gt = eltype(greens)
-  const N = mc.l.sites
-  const opdim = mc.p.opdim
-  const half = 2*N
+  gt = eltype(greens)
+  N = mc.l.sites
+  opdim = mc.p.opdim
+  half = 2*N
 
   @inbounds if opdim == 3
     return greens[i,j]
@@ -239,8 +239,8 @@ end
 Construct full (4*N, 4*N) Green's function for any OPDIM efficiently.
 """
 function fullG(mc, greens=mc.s.greens)
-  const gt = eltype(greens)
-  const N = mc.l.sites
+  gt = eltype(greens)
+  N = mc.l.sites
   g = zeros(gt, 4*N, 4*N)
 
   @inbounds for j in 1:4*N
@@ -261,25 +261,26 @@ end
 # -------------------------------------------------------
 # Go from xup, ydown, xdown, yup -> xup, yup, xdown, ydown
 function permute_greens(greens::AbstractMatrix)
-  const perm = [1,4,3,2] # flv*spin: xup, ydown, xdown, yup -> xup, yup, xdown, ydown
-  const N = Int(sqrt(length(greens))/4)
+  perm = [1,4,3,2] # flv*spin: xup, ydown, xdown, yup -> xup, yup, xdown, ydown
+  N = Int(sqrt(length(greens))/4)
   return reshape(reshape(greens, (N,4,N,4))[:,perm,:,perm], (4*N,4*N)); # rfs1, rfs2
 end
 
 # Assuming translational invariance go to momentum space Greens function (k, fs1, fs2)
 try
   eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
-  eval(Expr(:toplevel, parse("@pyimport numpy as np")))
+  eval(Expr(:toplevel, Meta.parse("@pyimport numpy as np")))
+catch
 end
 function fft_greens(greens::AbstractMatrix)
   if !isdefined(:PyCall)
     eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
-    eval(Expr(:toplevel, parse("@pyimport numpy as np")))
+    eval(Expr(:toplevel, Meta.parse("@pyimport numpy as np")))
     println("Loaded PyCall. Please execute again.")
     return
   end
 
-  const L = Int(sqrt(sqrt(length(greens))/4))
+  L = Int(sqrt(sqrt(length(greens))/4))
   g = reshape(greens, (L,L,4,L,L,4)); # y1, x1, fs1, y2, x2, fs2
   g = fft(g, (1,2))*1/L; # ky1, kx1, fs1, y2, x2, fs2
   g = fft(g, (4,5))*1/L; # ky1, kx1, fs1, ky2, kx2, fs2
@@ -309,11 +310,11 @@ end
 """
 QR DECOMPOSITION: Calculate effective(!) Green's function (direct, i.e. without stack)
 """
-# Calculate Ul, Dl, Tl =B(stop) ... B(start)
 function calc_Bchain(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
-  const flv = mc.p.flv
-  const N = mc.l.sites
-  const G = geltype(mc)
+  # Calculate Ul, Dl, Tl =B(stop) ... B(start)
+  flv = mc.p.flv
+  N = mc.l.sites
+  G = geltype(mc)
 
   @assert 0 < start <= mc.p.slices
   @assert 0 < stop <= mc.p.slices
@@ -343,9 +344,9 @@ end
 
 # Calculate Ul, Dl, Tl = [B(stop) ... B(start)]^(-1) = B(start)^(-1) ... B(stop)^(-1)
 function calc_Bchain_inv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
-  const flv = mc.p.flv
-  const N = mc.l.sites
-  const G = geltype(mc)
+  flv = mc.p.flv
+  N = mc.l.sites
+  G = geltype(mc)
 
   @assert 0 < start <= mc.p.slices
   @assert 0 < stop <= mc.p.slices
@@ -375,9 +376,9 @@ end
 
 # Calculate (Ur, Dr, Tr)' = B(stop) ... B(start)  => Ur,Dr, Tr = B(start)' ... B(stop)'
 function calc_Bchain_dagger(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
-  const flv = mc.p.flv
-  const N = mc.l.sites
-  const G = geltype(mc)
+  flv = mc.p.flv
+  N = mc.l.sites
+  G = geltype(mc)
 
   @assert 0 < start <= mc.p.slices
   @assert 0 < stop <= mc.p.slices
@@ -407,14 +408,14 @@ end
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its singular values in a stable manner
 function calc_greens(mc::AbstractDQMC, slice::Int=mc.s.current_slice, safe_mult::Int=mc.p.safe_mult)
-  const s = mc.s
+  s = mc.s
   calc_greens_helper(mc, slice, safe_mult)
 
   scale!(s.d, s.U)
   return s.T * s.U
 end
 function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int=mc.s.current_slice, safe_mult::Int=mc.p.safe_mult)
-  const s = mc.s
+  s = mc.s
   calc_greens_helper(mc, slice, safe_mult)
 
   ldet = real(log(complex(det(s.U))) + sum(log.(s.d)) + log(complex(det(s.T))))
@@ -423,7 +424,7 @@ function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int=mc.s.current_slice,
   return s.T * s.U, ldet
 end
 function calc_greens_udt(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
-  const s = mc.s
+  s = mc.s
   calc_greens_helper(mc, slice, safe_mult)
 
   # greens = s.T * spdiagm(s.d) * s.U
@@ -434,9 +435,9 @@ end
 
 # result in s.T, s.U and s.d
 function calc_greens_helper(mc::AbstractDQMC, slice::Int, safe_mult::Int)
-  const flv = mc.p.flv
-  const N = mc.l.sites
-  const G = geltype(mc)
+  flv = mc.p.flv
+  N = mc.l.sites
+  G = geltype(mc)
 
   # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
   Ur, Dr, Tr = calc_Bchain_dagger(mc,slice,mc.p.slices, safe_mult)
@@ -451,9 +452,9 @@ function calc_greens_helper(mc::AbstractDQMC, slice::Int, safe_mult::Int)
   end
 
   # calculate greens
-  const s = mc.s
-  const tmp = mc.s.tmp
-  const tmp2 = mc.s.tmp2
+  s = mc.s
+  tmp = mc.s.tmp
+  tmp2 = mc.s.tmp2
 
   A_mul_Bc!(tmp, Tl, Tr)
   scale!(tmp, Dr)
@@ -471,8 +472,8 @@ function calc_greens_helper(mc::AbstractDQMC, slice::Int, safe_mult::Int)
   A_mul_B!(tmp, t, s.T)
   s.T = inv(tmp)
   A_mul_B!(tmp, s.U, u)
-  s.U = ctranspose(tmp)
-  s.d .= 1./s.d
+  s.U = adjoint(tmp)
+  s.d .= 1 ./ s.d
 
   nothing
 end
@@ -482,13 +483,13 @@ end
 """
 SVD DECOMPOSITION: Calculate effective(!) Green's function (direct, i.e. without stack)
 """
-# Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
-# Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
 function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
-  const flv = mc.p.flv
-  const slices = mc.p.slices
-  const N = mc.l.sites
-  const G = geltype(mc)
+  # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
+  # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
+  flv = mc.p.flv
+  slices = mc.p.slices
+  N = mc.l.sites
+  G = geltype(mc)
 
   @assert 0 < start <= slices
   @assert 0 < stop <= slices
@@ -519,9 +520,9 @@ end
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its logdet in a stable manner
 function calc_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
-  const flv = mc.p.flv
-  const N = mc.l.sites
-  const G = geltype(mc)
+  flv = mc.p.flv
+  N = mc.l.sites
+  G = geltype(mc)
 
   # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
   Ur, Dr, Vtr = calc_Bchain_udv(mc,slice,mc.p.slices,safe_mult)
@@ -537,11 +538,11 @@ function calc_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int
 
   # Calculate Greens function
   tmp = Vtl * Ur
-  inner = ctranspose(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
+  inner = adjoint(Vtr * Ul) + spdiagm(Dl) * tmp * spdiagm(Dr)
   I = decompose_udv!(inner)
-  U = ctranspose(I[3] * Vtr)
-  D = spdiagm(1./I[2])
-  Vt = ctranspose(Ul * I[1])
+  U = adjoint(I[3] * Vtr)
+  D = spdiagm(1 ./ I[2])
+  Vt = adjoint(Ul * I[1])
   return U*D*Vt, sum(log.(diag(D)))
 end
 
@@ -549,10 +550,10 @@ end
 #    Effective Green's function -> Green's function
 # -------------------------------------------------------
 function effective_greens2greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
-  const chkr_hop_half_minus = mc.l.chkr_hop_half
-  const chkr_hop_half_plus = mc.l.chkr_hop_half_inv
-  const n_groups = mc.l.n_groups
-  const tmp = mc.s.tmp
+  chkr_hop_half_minus = mc.l.chkr_hop_half
+  chkr_hop_half_plus = mc.l.chkr_hop_half_inv
+  n_groups = mc.l.n_groups
+  tmp = mc.s.tmp
 
   @inbounds @views begin
       for i in reverse(1:n_groups)
@@ -567,10 +568,10 @@ function effective_greens2greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   nothing
 end
 function effective_greens2greens!(mc::DQMC_CBTrue, U::AbstractMatrix, T::AbstractMatrix)
-  const chkr_hop_half_minus = mc.l.chkr_hop_half
-  const chkr_hop_half_plus = mc.l.chkr_hop_half_inv
-  const n_groups = mc.l.n_groups
-  const tmp = mc.s.tmp
+  chkr_hop_half_minus = mc.l.chkr_hop_half
+  chkr_hop_half_plus = mc.l.chkr_hop_half_inv
+  n_groups = mc.l.n_groups
+  tmp = mc.s.tmp
 
   @inbounds @views begin
       for i in reverse(1:n_groups)
@@ -585,9 +586,9 @@ function effective_greens2greens!(mc::DQMC_CBTrue, U::AbstractMatrix, T::Abstrac
   nothing
 end
 function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
-  const chkr_hop_half_minus = mc.l.chkr_hop_half
-  const chkr_hop_half_plus = mc.l.chkr_hop_half_inv
-  const n_groups = mc.l.n_groups
+  chkr_hop_half_minus = mc.l.chkr_hop_half
+  chkr_hop_half_plus = mc.l.chkr_hop_half_inv
+  n_groups = mc.l.n_groups
 
   @inbounds @views begin
       for i in 1:n_groups
@@ -602,26 +603,26 @@ function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   nothing
 end
 function effective_greens2greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
-  const eTminus = mc.l.hopping_matrix_exp
-  const eTplus = mc.l.hopping_matrix_exp_inv
-  const tmp = mc.s.tmp
+  eTminus = mc.l.hopping_matrix_exp
+  eTplus = mc.l.hopping_matrix_exp_inv
+  tmp = mc.s.tmp
 
   A_mul_B!(tmp, greens, eTminus)
   A_mul_B!(greens, eTplus, tmp)
   nothing
 end
 function effective_greens2greens!(mc::DQMC_CBFalse, U::AbstractMatrix, T::AbstractMatrix)
-  const eTminus = mc.l.hopping_matrix_exp
-  const eTplus = mc.l.hopping_matrix_exp_inv
+  eTminus = mc.l.hopping_matrix_exp
+  eTplus = mc.l.hopping_matrix_exp_inv
 
   T .= T * eTminus
   U .= eTplus * U
   nothing
 end
 function greens2effective_greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
-  const eTminus = mc.l.hopping_matrix_exp
-  const eTplus = mc.l.hopping_matrix_exp_inv
-  const tmp = mc.s.tmp
+  eTminus = mc.l.hopping_matrix_exp
+  eTplus = mc.l.hopping_matrix_exp_inv
+  tmp = mc.s.tmp
 
   A_mul_B!(tmp, greens, eTplus)
   A_mul_B!(greens, eTminus, tmp)
@@ -683,8 +684,8 @@ end
 
 
 
-global const LEFT = true
-global const RIGHT = false
+global LEFT = true
+global RIGHT = false
 """
 Calculate UDVs at safe_mult time slices of
 dir = LEFT: 
@@ -701,14 +702,14 @@ inv=true:   [B(beta, tau)]^-1 = B(tau)^-1 * B(tau+1)^-1 * ... B(beta)^-1  # mult
 udv[i] = from mc.s.ranges[i][1] to mc.p.slices (beta)
 """
 function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
-  const G = geltype(mc)
-  const flv = mc.p.flv
-  const N = mc.l.sites
-  const nranges= length(mc.s.ranges)
-  const curr_U_or_T = mc.s.curr_U
-  const eye_full = mc.s.eye_full
-  const ones_vec = mc.s.ones_vec
-  const ranges = mc.s.ranges
+  G = geltype(mc)
+  flv = mc.p.flv
+  N = mc.l.sites
+  nranges= length(mc.s.ranges)
+  curr_U_or_T = mc.s.curr_U
+  eye_full = mc.s.eye_full
+  ones_vec = mc.s.ones_vec
+  ranges = mc.s.ranges
   
   u_stack = [zeros(G, flv*N, flv*N) for _ in 1:nranges]
   d_stack = [zeros(Float64, flv*N) for _ in 1:nranges]
@@ -793,14 +794,14 @@ end
 
 
 function calc_tdgfs!(mc)
-  const G = geltype(mc)
-  const M = mc.p.slices
-  const N = mc.l.sites
-  const flv = mc.p.flv
-  const Nflv = N * flv
-  const safe_mult = mc.p.safe_mult
-  const eye_full = mc.s.eye_full
-  const ones_vec = mc.s.ones_vec
+  G = geltype(mc)
+  M = mc.p.slices
+  N = mc.l.sites
+  flv = mc.p.flv
+  Nflv = N * flv
+  safe_mult = mc.p.safe_mult
+  eye_full = mc.s.eye_full
+  ones_vec = mc.s.ones_vec
 
   # allocate matrices if not yet done
   try
@@ -811,8 +812,8 @@ function calc_tdgfs!(mc)
     mc.s.G0t = [zeros(G, Nflv, Nflv) for _ in 1:M]
   end
 
-  const Gt0 = mc.s.Gt0
-  const G0t = mc.s.G0t
+  Gt0 = mc.s.Gt0
+  G0t = mc.s.G0t
 
   # ---- first, calculate Gt0 and G0t only at safe_mult slices 
   # right mult (Gt0)
@@ -863,8 +864,8 @@ end
 # Given Gt0 and G0t at safe mult slices (mc.s.ranges[i][1])
 # propagate to all other slices.
 function fill_tdgf!(mc, Gt0, G0t)
-  const safe_mult = mc.p.safe_mult
-  const M = mc.p.slices
+  safe_mult = mc.p.safe_mult
+  M = mc.p.slices
 
   safe_mult_taus = 1:safe_mult:M
   @inbounds for tau in 1:M
@@ -885,8 +886,8 @@ end
 
 
 function test_Gt0()
-  const eye_full = mc.s.eye_full
-  const ones_vec = mc.s.ones_vec
+  eye_full = mc.s.eye_full
+  ones_vec = mc.s.ones_vec
 
   Gt0 = zeros(G, Nflv, Nflv)
 
@@ -1012,7 +1013,7 @@ end
 function check_unitarity(u_stack)
   for i in 1:length(u_stack)
     U = u_stack[i]
-    !isapprox(U * ctranspose(U), eye(U)) && (return false)
+    !isapprox(U * adjoint(U), eye(U)) && (return false)
   end
   return true
 end
@@ -1057,14 +1058,14 @@ end
 # function inv_sum(U1,D1,T1,U2,D2,T2)
 #   m1 = T1 * inv(T2)
 #   scale!(D1, m1)
-#   m2 = ctranspose(U1) * U2
+#   m2 = adjoint(U1) * U2
 #   scale!(m2, D2)
 
 #   u,d,t = decompose_udt(m1+m2)
 
 #   A = inv(t*T2)
-#   B = 1./d
-#   C = ctranspose(U1*u)
+#   B = 1 ./ d
+#   C = adjoint(U1*u)
 
 #   scale!(B, C)
 #   return A*C

@@ -188,10 +188,10 @@ Calculates G(slice) using s.Ur,s.Dr,s.Vtr=B(M) ... B(slice) and s.Ul,s.Dl,s.Vtl=
 """
 function calculate_greens(s::Stack, p::Params, l::Lattice)
   tmp = s.Vtl * s.Ur
-  inner = ctranspose(s.Vtr * s.Ul) + spdiagm(s.Dl) * tmp * spdiagm(s.Dr)
+  inner = adjoint(s.Vtr * s.Ul) + spdiagm(s.Dl) * tmp * spdiagm(s.Dr)
   s.U, s.D, s.Vt = decompose_udv!(inner)
   s.greens_inv_svs = s.D
-  s.greens = ctranspose(s.Vt * s.Vtr) * spdiagm(1./s.D) * ctranspose(s.Ul * s.U)
+  s.greens = adjoint(s.Vt * s.Vtr) * spdiagm(1./s.D) * adjoint(s.Ul * s.U)
 end
 
 

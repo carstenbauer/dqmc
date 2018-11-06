@@ -16,8 +16,8 @@ end
 end
 
 function global_update(mc::AbstractDQMC)
-  const p = mc.p
-  const s = mc.s
+  p = mc.p
+  s = mc.s
 
   @assert (s.current_slice == p.slices) && (s.direction == -1)
 

@@ -109,11 +109,11 @@ end
 
 
 @def stackshortcuts begin
-  const s = mc.s
-  const N = mc.l.sites
-  const flv = mc.p.flv
-  const safe_mult = mc.p.safe_mult
-  const G = geltype(mc)
+  s = mc.s
+  N = mc.l.sites
+  flv = mc.p.flv
+  safe_mult = mc.p.safe_mult
+  G = geltype(mc)
 end
 
 
@@ -235,9 +235,9 @@ end
 
 
 function build_stack(mc::AbstractDQMC)
-  const p = mc.p
-  const s = mc.s
-  const a = mc.a
+  p = mc.p
+  s = mc.s
+  a = mc.a
 
   @mytimeit a.to "build_stack" begin
 
@@ -262,8 +262,8 @@ end
 Updates stack[idx+1] based on stack[idx]
 """
 function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
-  const s = mc.s
-  const a = mc.a
+  s = mc.s
+  a = mc.a
 
   copy!(s.curr_U, s.u_stack[:, :, idx])
 
@@ -283,8 +283,8 @@ end
 Updates stack[idx] based on stack[idx+1]
 """
 function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
-  const s = mc.s
-  const a = mc.a
+  s = mc.s
+  a = mc.a
 
   copy!(s.curr_U, s.u_stack[:, :, idx + 1])
 
@@ -322,10 +322,10 @@ end
 Calculates G(slice) using s.Ur,s.Dr,s.Tr=B(slice)' ... B(M)' and s.Ul,s.Dl,s.Tl=B(slice-1) ... B(1)
 """
 function calculate_greens(mc::AbstractDQMC)
-  const s = mc.s
-  const tmp = mc.s.tmp
-  const tmp2 = mc.s.tmp2
-  const a = mc.a
+  s = mc.s
+  tmp = mc.s.tmp
+  tmp2 = mc.s.tmp2
+  a = mc.a
   @mytimeit a.to "calculate_greens" begin
 
   A_mul_Bc!(tmp, s.Tl, s.Tr)
@@ -344,8 +344,8 @@ function calculate_greens(mc::AbstractDQMC)
   A_mul_B!(tmp, t, s.T)
   s.T = inv(tmp)
   A_mul_B!(tmp, s.U, u)
-  s.U = ctranspose(tmp)
-  s.d .= 1./s.d
+  s.U = adjoint(tmp)
+  s.d .= 1 ./ s.d
 
   copy!(tmp2, s.U)
   scale!(s.d, tmp2)
@@ -355,19 +355,19 @@ function calculate_greens(mc::AbstractDQMC)
 end
 
 # function calculate_greens_old(mc::AbstractDQMC)
-#   const s = mc.s
+#   s = mc.s
 
-#   tmp = s.Tl * ctranspose(s.Tr)
+#   tmp = s.Tl * adjoint(s.Tr)
 #   s.U, s.D, s.T = decompose_udt(spdiagm(s.Dl) * tmp * spdiagm(s.Dr))
 #   s.U = s.Ul * s.U
-#   s.T *= ctranspose(s.Ur)
+#   s.T *= adjoint(s.Ur)
 
-#   u, s.d, t = decompose_udt(ctranspose(s.U) * inv(s.T) + spdiagm(s.D))
+#   u, s.d, t = decompose_udt(adjoint(s.U) * inv(s.T) + spdiagm(s.D))
 
 #   s.T = inv(t * s.T)
 #   s.U *= u
-#   s.U = ctranspose(s.U)
-#   s.d = 1./s.d
+#   s.U = adjoint(s.U)
+#   s.d = 1 ./ s.d
 
 #   s.greens = s.T * spdiagm(s.d) * s.U
 #   nothing
@@ -378,7 +378,7 @@ end
 Only reasonable immediately after calculate_greens() because it depends on s.U, s.d and s.T!
 """
 function calculate_logdet(mc::AbstractDQMC)
-  const s = mc.s
+  s = mc.s
 
   if mc.p.opdim == 1
     s.log_det = real(log(complex(det(s.U))) + sum(log.(s.d)) + log(complex(det(s.T))))
@@ -392,8 +392,8 @@ end
 # Propagation
 ################################################################################
 function propagate(mc::AbstractDQMC)
-  const s = mc.s
-  const p = mc.p
+  s = mc.s
+  p = mc.p
 
   if s.direction == 1
     if mod(s.current_slice, p.safe_mult) == 0

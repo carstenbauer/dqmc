@@ -1,6 +1,6 @@
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
 function interaction_matrix_exp(mc::AbstractDQMC, slice::Int, power::Float64=1.)
-  const G = geltype(mc)
+  G = geltype(mc)
 
   eV = spzeros(G, mc.p.flv * mc.l.sites, mc.p.flv * mc.l.sites)
   interaction_matrix_exp!(mc, slice, power, eV)
@@ -11,14 +11,14 @@ end
 function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1., eV::AbstractSparseMatrix=mc.s.eV)
   @mytimeit mc.a.to "interactions (combined)" begin
   @mytimeit mc.a.to "interaction_matrix_exp!" begin
-  const p = mc.p
-  const l = mc.l
-  const N = l.sites
-  const G = geltype(mc)
+  p = mc.p
+  l = mc.l
+  N = l.sites
+  G = geltype(mc)
 
-  const C = mc.s.C
-  const S = mc.s.S
-  const R = mc.s.R
+  C = mc.s.C
+  S = mc.s.S
+  R = mc.s.R
 
   # C = zeros(G, N) #1, 1)
   # S = zeros(G, N) #1, 2)
