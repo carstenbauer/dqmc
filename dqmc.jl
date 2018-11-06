@@ -1,4 +1,5 @@
 # dqmc.jl called with arguments: whatever.in.xml
+using Dates, LinearAlgebra
 start_time = now()
 println("\nStarted: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
@@ -6,13 +7,13 @@ println("Hostname: ", gethostname())
 
 try
   nthreads = parse(Int, ENV["OMP_NUM_THREADS"])
-  BLAS.set_num_threads(nthreads)
+  LinearAlgebra.BLAS.set_num_threads(nthreads)
   ENV["MKL_NUM_THREADS"] = nthreads
   ENV["JULIA_NUM_THREADS"] = 1
   println("Using $(nthreads) threads for BLAS, OMP, and MKL.")
 catch err
   # Single core simulation
-  BLAS.set_num_threads(1)
+  LinearAlgebra.BLAS.set_num_threads(1)
   ENV["OMP_NUM_THREADS"] = 1
   ENV["MKL_NUM_THREADS"] = 1
   ENV["JULIA_NUM_THREADS"] = 1
@@ -32,14 +33,14 @@ elseif length(ARGS) == 2
   # ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]
   prefix = convert(String, ARGS[1])
   idx = 1
-  try idx = parse(Int, ARGS[2]); end # SLURM_ARRAY_TASK_ID 
+  try global idx = parse(Int, ARGS[2]); catch end # SLURM_ARRAY_TASK_ID 
   output_file = prefix * ".task" * string(idx) * ".out.h5.running"
 
   println("Prefix is ", prefix, " and idx is ", idx)
   input_xml = prefix * ".task" * string(idx) * ".in.xml"
 else
   input_xml = "dqmc.in.xml"
-  output_file = input_xml[1:searchindex(input_xml, ".in.xml")-1]*".out.h5.running"
+  output_file = input_xml[1:first(findfirst(".in.xml", input_xml))-1]*".out.h5.running"
 end
 
 # hdf5 write test/ dump git commit
@@ -47,11 +48,11 @@ using Git
 branch = Git.branch(dir=dirname(@__FILE__)).string[1:end-1]
 if branch != "master"
   println("!!!Not on branch master but \"$(branch)\"!!!")
-  flush(STDOUT)
+  flush(stdout)
 end
 
 # TIMING parameter "hack"
-using LightXML, Iterators
+using LightXML #, Iterators
 include("xml_parameters.jl")
 params = xml2dict(input_xml, false)
 haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) && (global const TIMING = true)
@@ -93,6 +94,7 @@ if isfile(output_file)
         (nconfs > 0) && (global resumable = true)
       end
     end
+  catch
   end
 
   if alreadydone
@@ -117,7 +119,7 @@ if !p.resume
       jldopen(output_file) do f
         if HDF5.has(f.plain, "thermal_init")
           println("Using thermal_init/conf as starting configuration.")
-          global const start_conf = read(f["thermal_init/conf"])
+          global start_conf = read(f["thermal_init/conf"])
 
           if HDF5.has(f.plain, "thermal_init/prethermalized")
             p.prethermalized = read(f["thermal_init/prethermalized"])
@@ -137,6 +139,7 @@ if !p.resume
           end
         end
       end
+    catch
     end
   end
 
@@ -191,10 +194,10 @@ println()
 println("HoppingEltype = ", heltype(mc))
 println("GreensEltype = ", geltype(mc))
 println()
-@printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000./60.)
+@printf("It took %.2f minutes to prepare everything. \n", (now() - start_time).value/1000/60)
 
 if !mc.p.resume
-  if isdefined(:start_conf)
+  if @isdefined start_conf
     init!(mc, start_conf)
   else
     init!(mc)

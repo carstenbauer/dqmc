@@ -13,7 +13,7 @@ function init_hopping_matrices(mc::AbstractDQMC)
   nothing
 end
 
-function init_hopping_matrix_exp(mc::AbstractDQMC)::Void
+function init_hopping_matrix_exp(mc::AbstractDQMC)
   p = mc.p
   l = mc.l
 
@@ -104,7 +104,7 @@ function init_peirls_phases(mc::AbstractDQMC)
     B[1,2] = B[2,1] = - 2 * pi / l.sites
   end
 
-  l.peirls = Matrix{Matrix{Float64}}(2,2) # colidx = flavor, rowidx = spin up,down
+  l.peirls = Matrix{Matrix{Float64}}(undef, 2,2) # colidx = flavor, rowidx = spin up,down
   for f in 1:2 # flv
     for s in 1:2 # spin
       phis = fill(NaN, L, L, L, L)
@@ -169,7 +169,7 @@ function init_peirls_phases(mc::AbstractDQMC)
   end
 end
 
-function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)::Void  
+function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)
   p = mc.p
   l = mc.l
   H = heltype(mc)
@@ -177,14 +177,14 @@ function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)::Void
   println("Initializing hopping exponentials (Bfield)")
   p.Bfield || warn("You should be using `init_hopping_matrix_exp()` or set p.Bfield = true!")
 
-  T = Matrix{Matrix{H}}(2,2) # colidx = flavor, rowidx = spin up,down
+  T = Matrix{Matrix{H}}(undef, 2,2) # colidx = flavor, rowidx = spin up,down
 
   hor_nb = [2,4]
   ver_nb = [1,3]
 
   for f in 1:2
     for s in 1:2
-      T[s,f] = convert(Matrix{H}, diagm(fill(f == 1 ? -p.mu1 : -p.mu2,l.sites)))
+      T[s,f] = convert(Matrix{H}, diagm(0 => fill(f == 1 ? -p.mu1 : -p.mu2,l.sites)))
 
       # Nearest neighbor hoppings
       if p.hoppings != "none"
@@ -235,15 +235,15 @@ function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)::Void
     end
   end
 
-  eT_minus = map(Ti -> expm(-0.5 * p.delta_tau * Ti), T)
-  eT_plus = map(Ti -> expm(0.5 * p.delta_tau * Ti), T)
+  eT_minus = map(Ti -> exp(-0.5 * p.delta_tau * Ti), T)
+  eT_plus = map(Ti -> exp(0.5 * p.delta_tau * Ti), T)
 
   if p.opdim == 3
-    l.hopping_matrix_exp = cat([1,2], eT_minus[1,1], eT_minus[2,2], eT_minus[2,1], eT_minus[1,2])
-    l.hopping_matrix_exp_inv = cat([1,2], eT_plus[1,1], eT_plus[2,2], eT_plus[2,1], eT_plus[1,2])
+    l.hopping_matrix_exp = cat(eT_minus[1,1], eT_minus[2,2], eT_minus[2,1], eT_minus[1,2], dims=(1,2))
+    l.hopping_matrix_exp_inv = cat(eT_plus[1,1], eT_plus[2,2], eT_plus[2,1], eT_plus[1,2], dims=(1,2))
   else # O(1) and O(2)
-    l.hopping_matrix_exp = cat([1,2], eT_minus[1,1], eT_minus[2,2])
-    l.hopping_matrix_exp_inv = cat([1,2], eT_plus[1,1], eT_plus[2,2])
+    l.hopping_matrix_exp = cat(eT_minus[1,1], eT_minus[2,2], dims=(1,2))
+    l.hopping_matrix_exp_inv = cat(eT_plus[1,1], eT_plus[2,2], dims=(1,2))
   end
 
   return nothing

@@ -30,6 +30,7 @@ using Dates
 using LinearAlgebra
 using SparseArrays
 using Printf
+using Random
 
 # to avoid namespace conflict warnings
 import Distributions: params
@@ -102,11 +103,11 @@ DQMC(p::Params) = begin
   println()
 
   ### SET DATATYPES
-  G = Complex128
-  H = Complex128
+  G = ComplexF64
+  H = ComplexF64
   if !p.Bfield
     H = Float64;
-    G = p.opdim > 1 ? Complex128 : Float64; # O(1) -> real GF
+    G = p.opdim > 1 ? ComplexF64 : Float64; # O(1) -> real GF
   end
 
   mc = DQMC{CB,G,H}(p, Lattice{H}(), Stack{G}(), Analysis())
@@ -125,13 +126,13 @@ end
 #                  Monte Carlo
 # -------------------------------------------------------
 function init!(mc::DQMC)
-  srand(mc.p.seed); # init RNG
+  Random.seed!(mc.p.seed); # init RNG
   init!(mc, rand(mc.p.opdim,mc.l.sites,mc.p.slices), false)
 end
 function init!(mc::DQMC, start_conf, init_seed=true)
   a = mc.a
   @mytimeit a.to "init mc" begin
-  init_seed && srand(mc.p.seed); # init RNG
+  init_seed && Random.seed!(mc.p.seed); # init RNG
 
   # Init hsfield
   println("\nInitializing HS field")
@@ -153,7 +154,7 @@ end
 
 function run!(mc::DQMC)
   println("\n\nMC Thermalize - ", mc.p.thermalization*2)
-  flush(STDOUT)
+  flush(stdout)
   thermalize!(mc)
 
   h5open(mc.p.output_file, "r+") do f
@@ -164,7 +165,7 @@ function run!(mc::DQMC)
   end
 
   println("\n\nMC Measure - ", mc.p.measurements*2)
-  flush(STDOUT)
+  flush(stdout)
   measure!(mc)
   nothing
 end
@@ -186,7 +187,7 @@ function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
   end
 
   println("\n\nMC Measure (resuming) - ", p.measurements*2, " (total $((p.measurements + prevmeasurements)*2))")
-  flush(STDOUT)
+  flush(stdout)
   measure!(mc, prevmeasurements)
 
   nothing
@@ -219,7 +220,7 @@ function thermalize!(mc::DQMC)
     end
     udswdur = toq()
     @printf("\tsweep duration: %.4fs\n", udswdur/2)
-    flush(STDOUT)
+    flush(stdout)
 
     if mod(i, 10) == 0
       a.acc_rate = a.acc_rate / (10 * 2 * p.slices)
@@ -253,7 +254,7 @@ function thermalize!(mc::DQMC)
       a.acc_rate = 0.0
       a.acc_rate_global = 0.0
       println()
-      flush(STDOUT)
+      flush(stdout)
     end
 
     # Save thermal configuration for "resume"
@@ -341,7 +342,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
 
         dumping && saverng(p.output_file; group="resume/rng")
         dumping && println("Dumping block of $cs datapoints was a success")
-        flush(STDOUT)
+        flush(stdout)
       end
     end
 
@@ -357,7 +358,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
       end
       a.acc_rate = 0.0
       a.acc_rate_global = 0.0
-      flush(STDOUT)
+      flush(stdout)
     end
     
     if now() >= p.walltimelimit
@@ -400,7 +401,7 @@ Base.summary(mc::DQMC) = "DQMC"
 function Base.show(io::IO, mc::DQMC{C}) where C<:Checkerboard
   print(io, "DQMC of O($(mc.p.opdim)) model\n")
   print(io, "r = ", mc.p.r, ", λ = ", mc.p.lambda, ", c = ", mc.p.c, ", u = ", mc.p.u, "\n")
-  print(io, "Beta: ", mc.p.beta, " (T ≈ $(round(1/mc.p.beta, 3)))", "\n")
+  print(io, "Beta: ", mc.p.beta, " (T ≈ $(round(1/mc.p.beta, digits=3)))", "\n")
   print(io, "Checkerboard: ", C, "\n")
   print(io, "B-field: ", mc.p.Bfield)
 end
@@ -414,8 +415,8 @@ Calculate DateTime where wall-time limit will be reached.
 Example call: wtl2DateTime("3-12:42:05", now())
 """
 function wtl2DateTime(wts::AbstractString, start_time::DateTime)
-  @assert contains(wts, "-")
-  @assert contains(wts, ":")
+  @assert occursin("-", wts)
+  @assert occursin(":", wts)
   @assert length(wts) >= 10
 
   tmp = split(wts, "-")
@@ -430,7 +431,7 @@ function set_walltimelimit!(p, start_time)
   if "WALLTIMELIMIT" in keys(ENV)
     p.walltimelimit = wtl2DateTime(ENV["WALLTIMELIMIT"], start_time)
     @show ENV["WALLTIMELIMIT"]
-  elseif contains(gethostname(), "jw")
+  elseif occursin("jw", gethostname())
     p.walltimelimit = wtl2DateTime("0-23:30:00", start_time) # JUWELS
     println("Set JUWELS walltime limit, i.e. 0-23:30:00.")
   end

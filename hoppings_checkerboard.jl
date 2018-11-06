@@ -121,10 +121,10 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBAssaad})
 
   muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
   muv = repeat(muv, outer=[Int(p.flv/2)])
-  l.chkr_mu_half = spdiagm(exp.(-0.5*p.delta_tau * -muv))
-  l.chkr_mu_half_inv = spdiagm(exp.(0.5*p.delta_tau * -muv))
-  l.chkr_mu = spdiagm(exp.(-p.delta_tau * -muv))
-  l.chkr_mu_inv = spdiagm(exp.(p.delta_tau * -muv))
+  l.chkr_mu_half = sparse(Diagonal(exp.(-0.5*p.delta_tau * -muv)))
+  l.chkr_mu_half_inv = sparse(Diagonal(exp.(0.5*p.delta_tau * -muv)))
+  l.chkr_mu = sparse(Diagonal(exp.(-p.delta_tau * -muv)))
+  l.chkr_mu_inv = sparse(Diagonal(exp.(p.delta_tau * -muv)))
 
   l.n_groups = 2
 
@@ -175,8 +175,8 @@ function build_four_site_hopping_matrix_exp_Bfield(mc::AbstractDQMC{CBAssaad}, c
 
   pc = Int(floor(l.sites/4))
 
-  chkr_hop_4site = Array{SparseMatrixCSC{H, Int}, 4}(pc,2,2,2) # i, group (A, B), spin (up, down), flavor (x, y)
-  chkr_hop_4site_inv = Array{SparseMatrixCSC{H, Int}, 4}(pc,2,2,2)
+  chkr_hop_4site = Array{SparseMatrixCSC{H, Int}, 4}(undef, pc,2,2,2) # i, group (A, B), spin (up, down), flavor (x, y)
+  chkr_hop_4site_inv = Array{SparseMatrixCSC{H, Int}, 4}(undef, pc,2,2,2)
 
   # build numerically (due to mag field)
   for f in 1:2
@@ -186,8 +186,8 @@ function build_four_site_hopping_matrix_exp_Bfield(mc::AbstractDQMC{CBAssaad}, c
 
           fac = -prefac * p.delta_tau
           
-          chkr_hop_4site[c,g,s,f] = sparse(rem_eff_zeros!(expm(fac * full(build_four_site_hopping_matrix_Bfield(mc,corners[g][c],f,s)))))
-          chkr_hop_4site_inv[c,g,s,f] = sparse(rem_eff_zeros!(expm(-fac * full(build_four_site_hopping_matrix_Bfield(mc,corners[g][c],f,s)))))
+          chkr_hop_4site[c,g,s,f] = sparse(rem_eff_zeros!(exp(fac * Matrix(build_four_site_hopping_matrix_Bfield(mc,corners[g][c],f,s)))))
+          chkr_hop_4site_inv[c,g,s,f] = sparse(rem_eff_zeros!(exp(-fac * Matrix(build_four_site_hopping_matrix_Bfield(mc,corners[g][c],f,s)))))
 
         end
       end
@@ -210,10 +210,10 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBAssaad})
   chkr_hop_4site_half, chkr_hop_4site_half_inv = build_four_site_hopping_matrix_exp_Bfield(mc, corners, 0.5)
   chkr_hop_4site, chkr_hop_4site_inv = build_four_site_hopping_matrix_exp_Bfield(mc, corners, 1.)
 
-  eT_half = Array{SparseMatrixCSC{H, Int}, 3}(2,2,2) # group (A, B), spin (up, down), flavor (x, y)
-  eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(2,2,2)
-  eT = Array{SparseMatrixCSC{H, Int}, 3}(2,2,2)
-  eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(2,2,2)
+  eT_half = Array{SparseMatrixCSC{H, Int}, 3}(undef,2,2,2) # group (A, B), spin (up, down), flavor (x, y)
+  eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(undef,2,2,2)
+  eT = Array{SparseMatrixCSC{H, Int}, 3}(undef,2,2,2)
+  eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(undef,2,2,2)
 
   for g in 1:2
     for f in 1:2
@@ -227,23 +227,23 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBAssaad})
   end
 
   if p.opdim == 3
-    eT_A_half = cat([1,2], eT_half[1,1,1], eT_half[1,2,2], eT_half[1,2,1], eT_half[1,1,2])
-    eT_B_half = cat([1,2], eT_half[2,1,1], eT_half[2,2,2], eT_half[2,2,1], eT_half[2,1,2])
-    eT_A_half_inv = cat([1,2], eT_half_inv[1,1,1], eT_half_inv[1,2,2], eT_half_inv[1,2,1], eT_half_inv[1,1,2])
-    eT_B_half_inv = cat([1,2], eT_half_inv[2,1,1], eT_half_inv[2,2,2], eT_half_inv[2,2,1], eT_half_inv[2,1,2])
-    eT_A = cat([1,2], eT[1,1,1], eT[1,2,2], eT[1,2,1], eT[1,1,2])
-    eT_B = cat([1,2], eT[2,1,1], eT[2,2,2], eT[2,2,1], eT[2,1,2])
-    eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2], eT_inv[1,2,1], eT_inv[1,1,2])
-    eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2])    
+    eT_A_half = cat(eT_half[1,1,1], eT_half[1,2,2], eT_half[1,2,1], eT_half[1,1,2], dims=(1,2))
+    eT_B_half = cat(eT_half[2,1,1], eT_half[2,2,2], eT_half[2,2,1], eT_half[2,1,2], dims=(1,2))
+    eT_A_half_inv = cat(eT_half_inv[1,1,1], eT_half_inv[1,2,2], eT_half_inv[1,2,1], eT_half_inv[1,1,2], dims=(1,2))
+    eT_B_half_inv = cat(eT_half_inv[2,1,1], eT_half_inv[2,2,2], eT_half_inv[2,2,1], eT_half_inv[2,1,2], dims=(1,2))
+    eT_A = cat(eT[1,1,1], eT[1,2,2], eT[1,2,1], eT[1,1,2], dims=(1,2))
+    eT_B = cat(eT[2,1,1], eT[2,2,2], eT[2,2,1], eT[2,1,2], dims=(1,2))
+    eT_A_inv = cat(eT_inv[1,1,1], eT_inv[1,2,2], eT_inv[1,2,1], eT_inv[1,1,2], dims=(1,2))
+    eT_B_inv = cat(eT_inv[2,1,1], eT_inv[2,2,2], eT_inv[2,2,1], eT_inv[2,1,2], dims=(1,2)) 
   else # O(2) and O(1) model
-    eT_A_half = cat([1,2], eT_half[1,1,1], eT_half[1,2,2])
-    eT_B_half = cat([1,2], eT_half[2,1,1], eT_half[2,2,2])
-    eT_A_half_inv = cat([1,2], eT_half_inv[1,1,1], eT_half_inv[1,2,2])
-    eT_B_half_inv = cat([1,2], eT_half_inv[2,1,1], eT_half_inv[2,2,2])
-    eT_A = cat([1,2], eT[1,1,1], eT[1,2,2])
-    eT_B = cat([1,2], eT[2,1,1], eT[2,2,2])
-    eT_A_inv = cat([1,2], eT_inv[1,1,1], eT_inv[1,2,2])
-    eT_B_inv = cat([1,2], eT_inv[2,1,1], eT_inv[2,2,2])
+    eT_A_half = cat(eT_half[1,1,1], eT_half[1,2,2], dims=(1,2))
+    eT_B_half = cat(eT_half[2,1,1], eT_half[2,2,2], dims=(1,2))
+    eT_A_half_inv = cat(eT_half_inv[1,1,1], eT_half_inv[1,2,2], dims=(1,2))
+    eT_B_half_inv = cat(eT_half_inv[2,1,1], eT_half_inv[2,2,2], dims=(1,2))
+    eT_A = cat(eT[1,1,1], eT[1,2,2], dims=(1,2))
+    eT_B = cat(eT[2,1,1], eT[2,2,2], dims=(1,2))
+    eT_A_inv = cat(eT_inv[1,1,1], eT_inv[1,2,2], dims=(1,2))
+    eT_B_inv = cat(eT_inv[2,1,1], eT_inv[2,2,2], dims=(1,2))
   end
 
   l.chkr_hop_half = [eT_A_half, eT_B_half]
@@ -255,16 +255,17 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBAssaad})
 
   muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
   muv = repeat(muv, outer=[Int(p.flv/2)])
-  l.chkr_mu_half = spdiagm(exp.(-0.5*p.delta_tau * -muv))
-  l.chkr_mu_half_inv = spdiagm(exp.(0.5*p.delta_tau * -muv))
-  l.chkr_mu = spdiagm(exp.(-p.delta_tau * -muv))
-  l.chkr_mu_inv = spdiagm(exp.(p.delta_tau * -muv))
+  l.chkr_mu_half = sparse(Diagonal(exp.(-0.5*p.delta_tau * -muv)))
+  l.chkr_mu_half_inv = sparse(Diagonal(exp.(0.5*p.delta_tau * -muv)))
+  l.chkr_mu = sparse(Diagonal(exp.(-p.delta_tau * -muv)))
+  l.chkr_mu_inv = sparse(Diagonal(exp.(p.delta_tau * -muv)))
 
   l.n_groups = 2
 
   hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
-  r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
+  idcs = (LinearIndices(hop_mat_exp_chkr))[findall(x -> x == zero(x), hop_mat_exp_chkr)]
+  r[idcs] .= 0
   println("Checkerboard (Bfield) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
   # println("Checkerboard (Bfield) - exact (eff rel):\t\t", maximum(r))
 end

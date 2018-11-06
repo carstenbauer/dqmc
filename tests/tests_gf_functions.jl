@@ -148,9 +148,9 @@ end
 #   if slice-1 >= 1
 #     Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
 #   else
-#     Ul = eye(Complex128, p.flv * l.sites)
+#     Ul = eye(ComplexF64, p.flv * l.sites)
 #     Dl = ones(Float64, p.flv * l.sites)
-#     Vtl = eye(Complex128, p.flv * l.sites)
+#     Vtl = eye(ComplexF64, p.flv * l.sites)
 #   end
 
 #   # Calculate Greens function
@@ -168,9 +168,9 @@ end
 #   if slice-1 >= 1
 #     Ul, Dl, Vtl = calculate_slice_matrix_chain_udv_chkr(p,l,1,slice-1)
 #   else
-#     Ul = eye(Complex128, p.flv * l.sites)
+#     Ul = eye(ComplexF64, p.flv * l.sites)
 #     Dl = ones(Float64, p.flv * l.sites)
-#     Vtl = eye(Complex128, p.flv * l.sites)
+#     Vtl = eye(ComplexF64, p.flv * l.sites)
 #   end
 
 #   # Calculate Greens function
@@ -188,9 +188,9 @@ end
 #   if slice-1 >= 1
 #     Ul, Dl, Vtl = calculate_slice_matrix_chain_udv(p,l,1,slice-1)
 #   else
-#     Ul = eye(Complex128, p.flv * l.sites)
+#     Ul = eye(ComplexF64, p.flv * l.sites)
 #     Dl = ones(Float64, p.flv * l.sites)
-#     Vtl = eye(Complex128, p.flv * l.sites)
+#     Vtl = eye(ComplexF64, p.flv * l.sites)
 #   end
 
 #   # Calculate Greens function
@@ -217,7 +217,7 @@ end
 #   if slice-1 >= 1
 #     Bl = calculate_slice_matrix_chain_naive(p,l,1,slice-1)[1]
 #   else
-#     Bl = eye(Complex128, p.flv * l.sites)
+#     Bl = eye(ComplexF64, p.flv * l.sites)
 #   end
 
 #   # Calculate Greens function
@@ -235,7 +235,7 @@ end
 #   if slice-1 >= 1
 #     Bl = calculate_slice_matrix_chain_naive(p,l,1,slice-1)[1]
 #   else
-#     Bl = eye(Complex128, p.flv * l.sites)
+#     Bl = eye(ComplexF64, p.flv * l.sites)
 #   end
 #   Ul, Dl, Vtl = decompose_udv!(Bl)
 
@@ -254,9 +254,9 @@ end
 #   if slice-1 >= 1
 #     Ul, Dl, Tl = calculate_slice_matrix_chain_qr(p,l,1,slice-1)
 #   else
-#     Ul = eye(Complex128, p.flv * l.sites)
+#     Ul = eye(ComplexF64, p.flv * l.sites)
 #     Dl = ones(Float64, p.flv * l.sites)
-#     Tl = eye(Complex128, p.flv * l.sites)
+#     Tl = eye(ComplexF64, p.flv * l.sites)
 #   end
 
 #   tmp = Tl * adjoint(Tr)

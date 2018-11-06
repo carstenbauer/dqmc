@@ -45,7 +45,7 @@ for cb in [false, true]
 			@show L
 			@show B
 			@show CB
-			flush(STDOUT)
+			flush(stdout)
 
 			# check if we have that already
 			x = @from i in df begin
@@ -57,7 +57,7 @@ for cb in [false, true]
 			measure(mc,p,df,B,L,CB,cb)
 
 			println("Dumping...")
-			flush(STDOUT)
+			flush(stdout)
 			save("df.jld", "df", df)
 		end
 	end

@@ -132,6 +132,12 @@ git-tree-sha1 = "b8045033701c3b10bf2324d7203404be7aef88ba"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.5.3"
 
+[[Git]]
+deps = ["BinDeps", "Compat", "Homebrew", "Libdl"]
+git-tree-sha1 = "e3ad799bea351b09be745d395acb498a317c17bf"
+uuid = "d7ba0133-e1db-5d97-8f8c-041e4b3a1eb2"
+version = "0.2.0"
+
 [[HDF5]]
 deps = ["BinDeps", "Blosc", "Distributed", "Homebrew", "Libdl", "LinearAlgebra", "Mmap", "Pkg", "Test", "WinRPM"]
 git-tree-sha1 = "8c3bcdb44db436cd20106e2381e1c1ac96aa0ee3"

@@ -80,7 +80,7 @@ function init_lattice_from_filename(filename::String, l::Lattice)
   println("\nLoading lattice with ", l.sites , " sites")
   l.bonds = zeros(l.n_bonds, 4)
   l.bond_vecs = zeros(l.n_bonds, l.dim)
-  v = Vector{Float64}(l.dim)
+  v = Vector{Float64}(undef, l.dim)
   for (i, edge) in enumerate(edges)
     src = 0
     trg = 0

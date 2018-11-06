@@ -19,14 +19,14 @@
         B[1,2] = B[2,1] = - 2 * pi / l.sites
 
         # Flux check
-        fluxes_nn = zeros(Complex128, L, L)
-        fluxes_nnn_1 = zeros(Complex128, L, L)
-        fluxes_nnn_2 = zeros(Complex128, L, L)
-        fluxes_nnn_3 = zeros(Complex128, L, L)
-        fluxes_nnn_4 = zeros(Complex128, L, L)
-        fluxes_nnnn = zeros(Complex128, L, L)
-        fluxes_mixed_1 = zeros(Complex128, L, L)
-        fluxes_mixed_2 = zeros(Complex128, L, L)
+        fluxes_nn = zeros(ComplexF64, L, L)
+        fluxes_nnn_1 = zeros(ComplexF64, L, L)
+        fluxes_nnn_2 = zeros(ComplexF64, L, L)
+        fluxes_nnn_3 = zeros(ComplexF64, L, L)
+        fluxes_nnn_4 = zeros(ComplexF64, L, L)
+        fluxes_nnnn = zeros(ComplexF64, L, L)
+        fluxes_mixed_1 = zeros(ComplexF64, L, L)
+        fluxes_mixed_2 = zeros(ComplexF64, L, L)
 
         for x in 1:L
             for y in 1:L

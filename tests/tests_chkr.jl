@@ -45,7 +45,7 @@ function test_slice_matrix_chkr_speed(p::Params, l::Lattice, samples::Int=100)
   println("Sample size: ", samples)
   t = 0.
   t_chkr = 0.
-  A = eye(Complex128, p.flv*l.sites)
+  A = eye(ComplexF64, p.flv*l.sites)
   for k in 1:samples
     t += (@timed slice_matrix_no_chkr(p,l,200))[2]
     t_chkr += (@timed slice_matrix(p,l,200))[2]
@@ -120,7 +120,7 @@ function test_greens_chkr_speed(p::Params, l::Lattice, samples::Int=10)
   println("Sample size: ", samples)
   t = 0.
   t_chkr = 0.
-  A = eye(Complex128, p.flv*l.sites)
+  A = eye(ComplexF64, p.flv*l.sites)
   for k in 1:samples
     t += (@timed measure_greens_and_logdet_no_chkr(p,l))[2]
     t_chkr += (@timed measure_greens_and_logdet(p,l))[2]

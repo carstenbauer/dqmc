@@ -727,12 +727,12 @@ function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
   @inbounds for (i, rngidx) in enumerate(rng)
 
     if i == 1
-      copy!(curr_U_or_T, eye_full)
+      copyto!(curr_U_or_T, eye_full)
     else
       if !rightmult
-        copy!(curr_U_or_T, u_stack[i-1])
+        copyto!(curr_U_or_T, u_stack[i-1])
       else
-        copy!(curr_U_or_T, t_stack[i-1])
+        copyto!(curr_U_or_T, t_stack[i-1])
       end
     end
 

@@ -36,7 +36,7 @@ function decompose_udt!(A::AbstractMatrix{C}, D) where C<:Number
   @views F[:p][F[:p]] = 1:length(F[:p])
   D .= abs.(real(diag(F[:R])))
   R = full(F[:R])
-  scale!(1 ./ D, R)
+  lmul!(Diagonal(1 ./ D), R)
   return full(F[:Q]), R[:, F[:p]] # Q, (D is modified in-place), T 
 end
 
@@ -92,7 +92,7 @@ end
 # Calculates (UDVd)^-1, where U, D, Vd come from SVD decomp.
 function inv_udv(U,D,Vd)
   m = adjoint(Vd)
-  scale!(m, 1 ./ D)
+  rmul!(m, Diagonal(1 ./ D))
   res = similar(m)
   mul!(res,m,adjoint(U))
   res
@@ -102,7 +102,7 @@ end
 function inv_udt(U,D,T)
   m = inv(T)
   res = similar(m)
-  scale!(m, 1 ./ D)
+  rmul!(m, Diagonal(1 ./ D))
   mul!(res, m, adjoint(U))
   res
 end
@@ -117,7 +117,7 @@ function inv_one_plus_udv(U,D,Vd)
   d = 1 ./ I[2]
   vd = adjoint(I[1])
 
-  scale!(u,d)
+  rmul!(u,Diagonal(d))
   u*vd
 end
 
@@ -130,7 +130,7 @@ function inv_one_plus_udv_alt(U,D,Vd)
 
   t1 = adjoint(vd*Vd)
   t2 = adjoint(U*u)
-  scale!(t1, 1 ./ d)
+  rmul!(t1, Diagonal(1 ./ d))
   t1*t2
 end
 
@@ -144,20 +144,20 @@ function inv_one_plus_udv_scalettar(U,D,Vd)
   Dpinv = 1 ./ Dp
 
   l = adjoint(Vd)
-  scale!(l, Dpinv)
+  rmul!(l, Diagonal(Dpinv))
 
   r = copy(U)
-  scale!(r, Dm)
+  rmul!(r, Diagonal(Dm))
 
   u, d, vd = decompose_udv!(l+r)
 
   m = inv_udv(u,d,vd)
-  scale!(Dpinv, m)
+  lmul!(Diagonal(Dpinv), m)
   u, d, vd = decompose_udv!(m)
 
   mul!(adjoint(m), Vd, u)
   # return m, d, vd
-  scale!(m, d)
+  rmul!(m, Diagonal(d))
   m*vd
 end
 
@@ -169,7 +169,7 @@ function inv_one_plus_udt(U,D,T)
   u = U*u
   t = t*T
   tinv = inv(t)
-  scale!(tinv, 1 ./ d)
+  rmul!(tinv, Diagonal(1 ./ d))
   tinv*adjoint(u)
 end
 
@@ -186,7 +186,7 @@ function inv_one_plus_udt!(mc, res, U,D,T)
   mul!(u, U, utmp)
   mul!(t, ttmp, T)
   tinv = inv(t)
-  scale!(tinv, 1 ./ d)
+  rmul!(tinv, Diagonal(1 ./ d))
   mul!(res, tinv, adjoint(u))
   nothing
 end
@@ -194,11 +194,11 @@ end
 function UDV_to_mat!(mat, U, D, Vd, is_inv) 
     if !is_inv
         mat1 = copy(U)
-        scale!(mat1, D)
+        rmul!(mat1, Diagonal(D))
         mul!(mat,mat1,Vd)
     else #V D^(-1) Ud = (D^-1 *Vd)^(dagger) *Ud
         mat1 = copy(Vd)
-        scale!(1 ./ D, Vd)
+        lmul!(Diagonal(1 ./ D), Vd)
         mul!(mat,adjoint(mat1),adjoint(U))
     end  
 end
@@ -206,11 +206,11 @@ end
 function UDT_to_mat!(mat, U, D, T; inv=false) 
     if !inv
         mat1 = copy(U)
-        scale!(mat1, D)
+        rmul!(mat1, Diagonal(D))
         mul!(mat,mat1,T)
     else # (DT)^-1 * U^dagger
         mat1 = copy(T)
-        scale!(D, mat1)
+        lmul!(Diagonal(D), mat1)
         mat .= mat1 \ adjoint(U)
     end  
 end
@@ -218,8 +218,8 @@ end
 # multiplies two UDVds -> UDVd
 function mul_udvs(Ul,Dl,Vdl,Ur,Dr,Vdr)
   tmp = adjoint(Vdl)*Ur
-  scale!(tmp, Dr)
-  scale!(Dl, tmp)
+  rmul!(tmp, Diagonal(Dr))
+  lmul!(Diagonal(Dl), tmp)
   U, D, Vd = decompose_udv!(tmp)
   U = Ul*U
   Vd = Vd*Vdr
@@ -276,10 +276,10 @@ end
 # Calculates (UaDaTda + UbDbTdb)^-1
 function inv_sum_udts(Ua,Da,Ta,Ub,Db,Tb)
   m1 = Ta * inv(Tb)
-  scale!(Da, m1)
+  lmul!(Diagonal(Da), m1)
 
   m2 = adjoint(Ua) * Ub
-  scale!(m2, Db)
+  rmul!(m2, Diagonal(Db))
 
   u,d,t = decompose_udt(m1 + m2)
 
@@ -298,10 +298,10 @@ function inv_sum_udts!(mc, res, Ua,Da,Ta,Ub,Db,Tb)
   m2 = mc.s.tmp2
 
   mul!(m1, Ta, inv(Tb))
-  scale!(Da, m1)
+  lmul!(Diagonal(Da), m1)
 
   mul!(m2, adjoint(Ua), Ub)
-  scale!(m2, Db)
+  rmul!(m2, Diagonal(Db))
 
   u,t = decompose_udt!(m1 + m2, d)
 
@@ -309,7 +309,7 @@ function inv_sum_udts!(mc, res, Ua,Da,Ta,Ub,Db,Tb)
   mul!(m2, t, Tb)
 
   m3 = inv(m2)
-  scale!(m3, 1 ./ d)
+  rmul!(m3, Diagonal(1 ./ d))
   mul!(res, m3, adjoint(m1))
 
   nothing

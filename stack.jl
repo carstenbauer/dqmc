@@ -14,8 +14,8 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   current_slice::Int # running internally over 0:p.slices+1, where 0 and p.slices+1 are artifcial to prepare next sweep direction.
   direction::Int
 
-  eye_flv::Matrix{Float64}
-  eye_full::Matrix{Float64}
+  eye_flv::Matrix{Float64} # UPGRADE: Replace by dynamically sized I everywhere
+  eye_full::Matrix{Float64} # UPGRADE: Replace by dynamically sized I everywhere
   ones_vec::Vector{Float64}
 
   greens::Matrix{G}
@@ -149,10 +149,10 @@ end
 
 function allocate_calc_greens!(mc)
   @stackshortcuts
-  s.Ul = eye(G, flv*N, flv*N)
-  s.Ur = eye(G, flv*N, flv*N)
-  s.Tl = eye(G, flv*N, flv*N)
-  s.Tr = eye(G, flv*N, flv*N)
+  s.Ul = Matrix{G}(I, flv*N, flv*N)
+  s.Ur = Matrix{G}(I, flv*N, flv*N)
+  s.Tl = Matrix{G}(I, flv*N, flv*N)
+  s.Tr = Matrix{G}(I, flv*N, flv*N)
   s.Dl = ones(Float64, flv*N)
   s.Dr = ones(Float64, flv*N)
 end
@@ -179,8 +179,8 @@ function _initialize_stack(mc::AbstractDQMC)
     push!(s.ranges, 1 + (i - 1) * safe_mult:i * safe_mult)
   end
 
-  s.eye_flv = eye(flv,flv)
-  s.eye_full = eye(flv*N,flv*N)
+  s.eye_flv = Matrix{Float64}(I, flv, flv)
+  s.eye_full = Matrix{Float64}(I, flv*N,flv*N)
   s.ones_vec = ones(flv*N)
 
   s.greens = zeros(G, flv*N, flv*N)
@@ -265,16 +265,16 @@ function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
   s = mc.s
   a = mc.a
 
-  copy!(s.curr_U, s.u_stack[:, :, idx])
+  copyto!(s.curr_U, s.u_stack[:, :, idx])
 
   # println("Adding slice seq left $idx = ", s.ranges[idx])
   for slice in s.ranges[idx]
     multiply_B_left!(mc, slice, s.curr_U)
   end
 
-  @views scale!(s.curr_U, s.d_stack[:, idx])
+  @views rmul!(s.curr_U, Diagonal(s.d_stack[:, idx]))
   @mytimeit a.to "decompose_udt!" s.u_stack[:, :, idx + 1], T = @views decompose_udt!(s.curr_U, s.d_stack[:, idx + 1])
-  @views A_mul_B!(s.t_stack[:, :, idx + 1],  T, s.t_stack[:, :, idx])
+  @views mul!(s.t_stack[:, :, idx + 1],  T, s.t_stack[:, :, idx])
   nothing
 end
 
@@ -286,15 +286,15 @@ function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
   s = mc.s
   a = mc.a
 
-  copy!(s.curr_U, s.u_stack[:, :, idx + 1])
+  copyto!(s.curr_U, s.u_stack[:, :, idx + 1])
 
   for slice in reverse(s.ranges[idx])
     multiply_daggered_B_left!(mc, slice, s.curr_U)
   end
 
-  @views scale!(s.curr_U, s.d_stack[:, idx + 1])
+  @views rmul!(s.curr_U, Diagonal(s.d_stack[:, idx + 1]))
   @mytimeit a.to "decompose_udt!" s.u_stack[:, :, idx], T = @views decompose_udt!(s.curr_U, s.d_stack[:, idx])
-  @views A_mul_B!(s.t_stack[:, :, idx], T, s.t_stack[:, :, idx + 1])
+  @views mul!(s.t_stack[:, :, idx], T, s.t_stack[:, :, idx + 1])
   nothing
 end
 
@@ -328,28 +328,28 @@ function calculate_greens(mc::AbstractDQMC)
   a = mc.a
   @mytimeit a.to "calculate_greens" begin
 
-  A_mul_Bc!(tmp, s.Tl, s.Tr)
-  scale!(tmp, s.Dr)
-  scale!(s.Dl, tmp)
+  mul!(tmp, s.Tl, adjoint(s.Tr))
+  rmul!(tmp, Diagonal(s.Dr))
+  lmul!(Diagonal(s.Dl), tmp)
   @mytimeit a.to "decompose_udt!" s.U, s.T = decompose_udt!(tmp, s.D)
 
-  A_mul_B!(tmp, s.Ul, s.U)
+  mul!(tmp, s.Ul, s.U)
   s.U .= tmp
-  A_mul_Bc!(tmp2, s.T, s.Ur)
+  mul!(tmp2, s.T, adjoint(s.Ur))
   s.T .= tmp2
-  Ac_mul_B!(tmp, s.U, inv(s.T))
+  mul!(tmp, adjoint(s.U), inv(s.T))
   tmp[diagind(tmp)] .+= s.D
   @mytimeit a.to "decompose_udt!" u, t = decompose_udt!(tmp, s.d)
 
-  A_mul_B!(tmp, t, s.T)
+  mul!(tmp, t, s.T)
   s.T = inv(tmp)
-  A_mul_B!(tmp, s.U, u)
+  mul!(tmp, s.U, u)
   s.U = adjoint(tmp)
   s.d .= 1 ./ s.d
 
-  copy!(tmp2, s.U)
-  scale!(s.d, tmp2)
-  A_mul_B!(s.greens, s.T, tmp2)
+  copyto!(tmp2, s.U)
+  lmul!(Diagonal(s.d), tmp2)
+  mul!(s.greens, s.T, tmp2)
   end #timeit
   nothing
 end
@@ -417,7 +417,7 @@ function propagate(mc::AbstractDQMC)
         s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.t_stack[:, :, idx+1]
 
         if p.all_checks
-          copy!(s.greens_temp, s.greens)
+          copyto!(s.greens_temp, s.greens)
         end
 
         wrap_greens!(mc, s.greens_temp, s.current_slice - 1, 1)
@@ -470,7 +470,7 @@ function propagate(mc::AbstractDQMC)
         s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.t_stack[:, :, idx]
 
         if p.all_checks
-          copy!(s.greens_temp, s.greens)
+          copyto!(s.greens_temp, s.greens)
         end
 
         calculate_greens(mc)

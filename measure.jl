@@ -16,7 +16,7 @@ using Git
 branch = Git.branch(dir=dirname(@__FILE__)).string[1:end-1]
 if branch != "master"
   println("!!!Not on branch master but \"$(branch)\"!!!")
-  flush(STDOUT)
+  flush(stdout)
 end
 
 
@@ -137,7 +137,7 @@ function main(mp::MeasParams)
   measure(mp, p, confs)
 
   println("Done.\n")
-  flush(STDOUT)
+  flush(stdout)
 end
 
 
@@ -169,7 +169,7 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
 
   # ----------------- Measure loop ------------------------
   mp.chi_dyn && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
-  flush(STDOUT)
+  flush(stdout)
 
   @inbounds @views for i in 1:num_confs
 
@@ -207,7 +207,7 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
   
 
   # ------------ Export results   ----------------
-  println("Calculating errors and exporting..."); flush(STDOUT)
+  println("Calculating errors and exporting..."); flush(stdout)
   mp.chi_dyn && export_result(chi_dyn, mp.outfile, "obs/chi_dyn"; timeseries=true)
   mp.chi_dyn_symm && export_result(chi_dyn_symm, mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
 

@@ -29,8 +29,8 @@ p.output_file = output_file
 params = parse_inputxml(p, input_xml)
 
 ### SET DATATYPES
-global const HoppingType = p.Bfield ? Complex128 : Float64;
-global const GreensType = Complex128;
+global const HoppingType = p.Bfield ? ComplexF64 : Float64;
+global const GreensType = ComplexF64;
 println("HoppingType = ", HoppingType)
 println("GreensType = ", GreensType)
 
@@ -183,7 +183,7 @@ function MC_thermalize(s::Stack, p::Params, l::Lattice, a::Analysis)
         end
         a.acc_rate = 0.0
         a.acc_rate_global = 0.0
-        flush(STDOUT)
+        flush(stdout)
         tic()
       end
 
@@ -255,7 +255,7 @@ function MC_measure(s::Stack, p::Params, l::Lattice, a::Analysis)
               clear(configurations)
               clear(greens)
               println("Dumping block of $cs datapoints was a success")
-              flush(STDOUT)
+              flush(stdout)
             end
           end
         end
@@ -272,7 +272,7 @@ function MC_measure(s::Stack, p::Params, l::Lattice, a::Analysis)
         end
         a.acc_rate = 0.0
         a.acc_rate_global = 0.0
-        flush(STDOUT)
+        flush(stdout)
         tic()
       end
     end
