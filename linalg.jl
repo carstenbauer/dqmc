@@ -1,10 +1,6 @@
 #### SVD, i.e. UDV decomposition
 function decompose_udv!(A::Matrix{T}) where T<:Number
-
-  Base.LinAlg.LAPACK.gesvd!('A','A',A)
-
-  # F = svdfact!(A) # based on Base.LinAlg.LAPACK.gesdd!('A',A)
-  # return F[:U], F[:S], F[:Vt]
+  LinearAlgebra.LAPACK.gesvd!('A','A',A) # was gesdd! at some point
 end
 
 function decompose_udv(A::Matrix{T}) where T<:Number
@@ -15,12 +11,13 @@ end
 
 #### QR, i.e. UDT decomposition
 function decompose_udt(A::AbstractMatrix{C}) where C<:Number
-  Q, R, p = qr(A, Val{true}; thin=false)
+  F = qr(A, Val(true))
+  p = F.p
   @views p[p] = collect(1:length(p))
   # D = abs.(real(diag(triu(R))))
-  D = abs.(real(diag(R)))
-  T = (spdiagm(1 ./ D) * R)[:, p]
-  return Q, D, T
+  D = abs.(real(diag(F.R)))
+  T = (sparse(Diagonal(1 ./ D)) * F.R)[:, p]
+  return F.Q, D, T
 end
 
 # function decompose_udt!(A::AbstractMatrix{C}, D) where C<:Number
@@ -32,12 +29,12 @@ end
 # end
 
 function decompose_udt!(A::AbstractMatrix{C}, D) where C<:Number
-  F = qrfact!(A, Val{true})
-  @views F[:p][F[:p]] = 1:length(F[:p])
-  D .= abs.(real(diag(F[:R])))
-  R = full(F[:R])
+  F = qr!(A, Val(true))
+  @views F.p[F.p] = 1:length(F.p)
+  D .= abs.(real(diag(F.R)))
+  R = F.R
   lmul!(Diagonal(1 ./ D), R)
-  return full(F[:Q]), R[:, F[:p]] # Q, (D is modified in-place), T 
+  return Matrix(F.Q), R[:, F.p] # Q, (D is modified in-place), T  # was full(F.Q) before upgrade
 end
 
 

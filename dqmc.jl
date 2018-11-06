@@ -211,8 +211,8 @@ h5open(output_file, "r+") do f
   HDF5.o_delete(f, "RUNNING")
   f["RUNNING"] = 0
 end
-mv(output_file, output_file[1:end-8], remove_destination=true) # .out.h5.running -> .out.h5
+mv(output_file, output_file[1:end-8], force=true) # .out.h5.running -> .out.h5
 
 end_time = now()
 println("Ended: ", Dates.format(end_time, "d.u yyyy HH:MM"))
-@printf("Duration: %.2f minutes", (end_time - start_time).value/1000./60.)
+@printf("Duration: %.2f minutes", (end_time - start_time).value/1000/60)
