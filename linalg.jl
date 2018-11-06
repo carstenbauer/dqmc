@@ -57,19 +57,29 @@ function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
 end
 
 # See https://discourse.julialang.org/t/asymmetric-speed-of-in-place-sparse-dense-matrix-product/10256/3
-# UPGRADE: Check if this is still necessary!
-import Base.A_mul_B!
-function Base.A_mul_B!(Y::StridedMatrix{TY}, X::StridedMatrix{TX}, A::SparseMatrixCSC{TvA,TiA}) where {TY,TX,TvA,TiA}
-    mX, nX = size(X)
-    nX == A.m || throw(DimensionMismatch())
-    fill!(Y, 0) # can't assume that Y is initialized with zeros
-    rowval = A.rowval
-    nzval = A.nzval
-    @inbounds for multivec_row=1:mX, col = 1:A.n, k=A.colptr[col]:(A.colptr[col+1]-1)
-        Y[multivec_row, col] += X[multivec_row, rowval[k]] * nzval[k]
-    end
-    Y
-end
+# UPGRADE: This is the relevant method in LinearAlgebra. How to rewrite it for Mat * SparseMat?
+# import LinearAlgebra.mul!
+# mul!(C::StridedVecOrMat, A::SparseMatrixCSC, B::StridedVecOrMat) =
+#     mul!(C, A, B, one(eltype(B)), zero(eltype(C)))
+# function mul!(C::StridedVecOrMat, A::SparseMatrixCSC, B::StridedVecOrMat, α::Number, β::Number)
+#     A.n == size(B, 1) || throw(DimensionMismatch())
+#     A.m == size(C, 1) || throw(DimensionMismatch())
+#     size(B, 2) == size(C, 2) || throw(DimensionMismatch())
+#     nzv = A.nzval
+#     rv = A.rowval
+#     if β != 1
+#         β != 0 ? rmul!(C, β) : fill!(C, zero(eltype(C)))
+#     end
+#     for k = 1:size(C, 2)
+#         @inbounds for col = 1:A.n
+#             αxj = α*B[col,k]
+#             for j = A.colptr[col]:(A.colptr[col + 1] - 1)
+#                 C[rv[j], k] += nzv[j]*αxj
+#             end
+#         end
+#     end
+#     C
+# end
 
 
 

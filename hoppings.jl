@@ -20,8 +20,8 @@ function init_hopping_matrix_exp(mc::AbstractDQMC)
   println("Initializing hopping exponentials")
   !p.Bfield || warn("You should be using `init_hopping_matrix_exp_Bfield()` or set p.Bfield = false!")
 
-  Tx = diagm(fill(-p.mu1,l.sites))
-  Ty = diagm(fill(-p.mu2,l.sites))
+  Tx = diagm(0 => fill(-p.mu1,l.sites))
+  Ty = diagm(0 => fill(-p.mu2,l.sites))
   hor_nb = [2,4]
   ver_nb = [1,3]
 
@@ -76,17 +76,17 @@ function init_hopping_matrix_exp(mc::AbstractDQMC)
     end
   end
 
-  eTx_minus = expm(-0.5 * p.delta_tau * Tx)
-  eTy_minus = expm(-0.5 * p.delta_tau * Ty)
-  eTx_plus = expm(0.5 * p.delta_tau * Tx)
-  eTy_plus = expm(0.5 * p.delta_tau * Ty)
+  eTx_minus = exp(-0.5 * p.delta_tau * Tx)
+  eTy_minus = exp(-0.5 * p.delta_tau * Ty)
+  eTx_plus = exp(0.5 * p.delta_tau * Tx)
+  eTy_plus = exp(0.5 * p.delta_tau * Ty)
 
   if p.opdim == 3
-    l.hopping_matrix_exp = cat([1,2],eTx_minus,eTy_minus,eTx_minus,eTy_minus)
-    l.hopping_matrix_exp_inv = cat([1,2],eTx_plus,eTy_plus,eTx_plus,eTy_plus)
+    l.hopping_matrix_exp = cat(eTx_minus,eTy_minus,eTx_minus,eTy_minus, dims=(1,2))
+    l.hopping_matrix_exp_inv = cat(eTx_plus,eTy_plus,eTx_plus,eTy_plus, dims=(1,2))
   else # O(1) and O(2)
-    l.hopping_matrix_exp = cat([1,2],eTx_minus,eTy_minus)
-    l.hopping_matrix_exp_inv = cat([1,2],eTx_plus,eTy_plus)
+    l.hopping_matrix_exp = cat(eTx_minus,eTy_minus, dims=(1,2))
+    l.hopping_matrix_exp_inv = cat(eTx_plus,eTy_plus, dims=(1,2))
   end
 
   return nothing
