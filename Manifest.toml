@@ -133,10 +133,12 @@ uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.5.3"
 
 [[Git]]
-deps = ["BinDeps", "Compat", "Homebrew", "Libdl"]
-git-tree-sha1 = "e3ad799bea351b09be745d395acb498a317c17bf"
+deps = ["BinDeps", "Compat", "Homebrew"]
+git-tree-sha1 = "32fb4e9fb71dec78c8c1499e89a98493102f3da6"
+repo-rev = "v1.0"
+repo-url = "https://github.com/crstnbr/Git.jl"
 uuid = "d7ba0133-e1db-5d97-8f8c-041e4b3a1eb2"
-version = "0.2.0"
+version = "0.2.0+"
 
 [[HDF5]]
 deps = ["BinDeps", "Blosc", "Distributed", "Homebrew", "Libdl", "LinearAlgebra", "Mmap", "Pkg", "Test", "WinRPM"]
@@ -250,7 +252,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[MonteCarloObservable]]
 deps = ["Distributed", "EllipsisNotation", "HDF5", "JLD", "PyPlot", "Statistics", "StatsBase", "Test"]
-git-tree-sha1 = "a1829cfb6bd7560001a6c81d935b6fa85bd41053"
+git-tree-sha1 = "000faba4bc1c7f80d1c637de69ec8750cb822c3e"
 repo-rev = "v1.0"
 repo-url = "https://github.com/crstnbr/MonteCarloObservable.jl"
 uuid = "799dfad0-de95-11e8-06ce-1d94ff3d9ae8"

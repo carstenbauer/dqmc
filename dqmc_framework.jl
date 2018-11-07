@@ -214,11 +214,9 @@ function thermalize!(mc::DQMC)
 
   reset_timer!(a.to)
   for i in (p.prethermalized+1):p.thermalization
-    tic()
-    @timeit a.to "udsweep" for u in 1:2 * p.slices
+    udswdur = @elapsed @timeit a.to "udsweep" for u in 1:2 * p.slices
       update(mc, i)
     end
-    udswdur = toq()
     @printf("\tsweep duration: %.4fs\n", udswdur/2)
     flush(stdout)
 
