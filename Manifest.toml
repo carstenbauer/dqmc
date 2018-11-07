@@ -168,11 +168,6 @@ version = "0.7.0"
 deps = ["LinearAlgebra", "Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
-[[Iterators]]
-git-tree-sha1 = "6b5a31f893d8453ce65da5e8c25b9e125d1cdfa5"
-uuid = "a4bce56a-f44e-563f-a45f-5312daf41243"
-version = "0.3.1"
-
 [[JLD]]
 deps = ["Compat", "FileIO", "HDF5", "LegacyStrings", "Profile", "Random"]
 git-tree-sha1 = "92bf6378990058fb3471e13655a962991afda6b9"
