@@ -133,12 +133,10 @@ uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.5.3"
 
 [[Git]]
-deps = ["BinDeps", "Compat", "Homebrew"]
-git-tree-sha1 = "32fb4e9fb71dec78c8c1499e89a98493102f3da6"
-repo-rev = "v1.0"
-repo-url = "https://github.com/crstnbr/Git.jl"
+deps = ["BinDeps", "Homebrew", "Libdl", "Test", "VersionParsing"]
+git-tree-sha1 = "0419db5d174ec0fc26d67f05c7eaa010d4485e8a"
 uuid = "d7ba0133-e1db-5d97-8f8c-041e4b3a1eb2"
-version = "0.2.0+"
+version = "0.3.0"
 
 [[HDF5]]
 deps = ["BinDeps", "Blosc", "Distributed", "Homebrew", "Libdl", "LinearAlgebra", "Mmap", "Pkg", "Test", "WinRPM"]
@@ -172,9 +170,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JLD]]
 deps = ["Compat", "FileIO", "HDF5", "LegacyStrings", "Profile", "Random"]
-git-tree-sha1 = "92bf6378990058fb3471e13655a962991afda6b9"
+git-tree-sha1 = "95fd5d7f129918a75d0535aaaf5b8e235e6e0b0b"
 uuid = "4138dd39-2aa7-5051-a626-17a0bb65d9c8"
-version = "0.9.0"
+version = "0.9.1"
 
 [[JSON]]
 deps = ["Dates", "Distributed", "Mmap", "Sockets", "Test", "Unicode"]
