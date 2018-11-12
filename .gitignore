@@ -1,4 +1,3 @@
-*.xml
 **/*.h5
 **/*.running
 playground.jl
