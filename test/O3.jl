@@ -15,6 +15,24 @@ function mc_from_inxml(inxml::AbstractString)
     mc
 end
 
+# function rewrite()
+#     objs = Dict{String, Any}()
+
+#     jldopen("O3.jld", "r") do f
+#         objkeys = names(f)
+#         for k in objkeys
+#             objs[k] = read(f[k])
+#         end 
+#     end
+
+#     jldopen("O3new.jld", "w") do fout
+#         for (k, v) in objs
+#             fout[k] = v 
+#         end
+#     end
+#     nothing
+# end
+
 # set up minimal O3 simulation
 mc = mc_from_inxml("parameters/O3_generic_small_system.in.xml")
 mc_nob = mc_from_inxml("parameters/O3_no_bfield_small_system.in.xml")
@@ -268,3 +286,5 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
 
 
 end # O3 model
+
+nothing
