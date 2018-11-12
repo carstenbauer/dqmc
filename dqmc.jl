@@ -42,6 +42,7 @@ else
   input_xml = "dqmc.in.xml"
   output_file = input_xml[1:first(findfirst(".in.xml", input_xml))-1]*".out.h5.running"
 end
+@assert isfile(input_xml)
 
 # hdf5 write test/ dump git commit
 using Git
