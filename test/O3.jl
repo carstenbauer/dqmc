@@ -219,7 +219,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
                 propagate(mc)
             end
             propagate(mc) # we want to go in direction up
-            @test isapprox(mc.s.Ur, load("O3.jld", "Ur"))
+            @test isapprox(mc.s.Ur, load("O3.jld", "Ur")) # TODO: compare greens here?!
         end
     end
 
