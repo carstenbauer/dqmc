@@ -195,13 +195,13 @@ function deduce_remaining_parameters(p::Params)
       p.lattice_file = joinpath(ENV["LATTICES"], lat)
     else
       # try to deduce lattice path from hostname
-      if contains(hn, "cheops")
+      if occursin("cheops", hn)
         p.lattice_file = "/projects/ag-trebst/bauer/lattices/"*lat
-      elseif contains(hn, "fz-juelich") || contains(hn, "juwels")
+      elseif occursin("fz-juelich", hn) || occursin("juwels", hn)
         p.lattice_file = "/gpfs/homea/hku27/hku273/lattices/"*lat
-      elseif contains(hn, "thp")
+      elseif occursin("thp", hn)
         p.lattice_file = "/home/bauer/lattices/"*lat
-      elseif contains(hn, "thinkable")
+      elseif occursin("thinkable", hn)
         p.lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/"*lat
       else
         error("Unrecognized host. Can't deduce lattice file path.")
