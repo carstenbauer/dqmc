@@ -20,8 +20,7 @@ abstract type AbstractDQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<
 using Helpers
 using MonteCarloObservable
 using TimerOutputs
-# using FFTW # do we have to using this?
-using Distributions
+using FFTW
 using HDF5
 using LightXML
 
@@ -32,9 +31,6 @@ using SparseArrays
 using Printf
 using Random
 
-# to avoid namespace conflict warnings
-import Distributions: params
-import LightXML: root, name
 
 (@isdefined TIMING) || (global const TIMING = false)
 macro mytimeit(exprs...)
