@@ -160,8 +160,8 @@ function run!(mc::DQMC)
   h5open(mc.p.output_file, "r+") do f
     HDF5.has(f, "resume/box") && o_delete(f, "resume/box")
     HDF5.has(f, "resume/box_global") && o_delete(f, "resume/box_global")
-    write(f, "resume/box", mc.p.box.b)
-    write(f, "resume/box_global", mc.p.box_global.b)
+    write(f, "resume/box", mc.p.box)
+    write(f, "resume/box_global", mc.p.box_global)
   end
 
   println("\n\nMC Measure - ", mc.p.measurements*2)
@@ -182,8 +182,8 @@ function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
   h5open(p.output_file, "r") do f
     box = read(f, "resume/box")
     box_global = read(f, "resume/box_global")
-    p.box = Uniform(-box, box)
-    p.box_global = Uniform(-box_global, box_global)
+    p.box = box
+    p.box_global = box_global
   end
 
   println("\n\nMC Measure (resuming) - ", p.measurements*2, " (total $((p.measurements + prevmeasurements)*2))")
@@ -233,20 +233,20 @@ function thermalize!(mc::DQMC)
 
       # adaption (only during thermalization)
       if a.acc_rate < 0.5
-        @printf("\t\tshrinking box: %.2f\n", 0.9*p.box.b)
-        p.box = Uniform(-0.9*p.box.b,0.9*p.box.b)
+        @printf("\t\tshrinking box: %.2f\n", 0.9*p.box)
+        p.box = 0.9 * p.box
       else
-        @printf("\t\tenlarging box: %.2f\n", 1.1*p.box.b)
-        p.box = Uniform(-1.1*p.box.b,1.1*p.box.b)
+        @printf("\t\tenlarging box: %.2f\n", 1.1*p.box)
+        p.box = 1.1 * p.box
       end
 
       if p.global_updates
         if a.acc_global/a.prop_global < 0.5
-          @printf("\t\tshrinking box_global: %.2f\n", 0.9*p.box_global.b)
-          p.box_global = Uniform(-0.9*p.box_global.b,0.9*p.box_global.b)
+          @printf("\t\tshrinking box_global: %.2f\n", 0.9*p.box_global)
+          p.box_global = 0.9 * p.box_global
         else
-          @printf("\t\tenlarging box_global: %.2f\n", 1.1*p.box_global.b)
-          p.box_global = Uniform(-1.1*p.box_global.b,1.1*p.box_global.b)
+          @printf("\t\tenlarging box_global: %.2f\n", 1.1*p.box_global)
+          p.box_global = 1.1 * p.box_global
         end
       end
       a.acc_rate = 0.0
@@ -482,3 +482,16 @@ end
 
 
 formatdate(d) = Dates.format(d, "d.u yyyy HH:MM")
+
+
+"""
+Draw a random number from a uniform distribution over an interval [-b, b].
+"""
+@inline randuniform(b::Float64) = -b + 2 * b * rand() # taken from Distributions.jl: https://tinyurl.com/ycr9jnt4
+randuniform(b::Float64, d::Int) = begin
+    x = Vector{Float64}(undef, d)
+    @inbounds for k in Base.OneTo(d)
+      x[k] = randuniform(b)
+    end
+    x
+end

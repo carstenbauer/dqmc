@@ -11,9 +11,7 @@ function parameters2hdf5(p::Params, filename::String)
     field_value = getfield(p, field)
     field_type = typeof(field_value)
 
-    if field_type == Distributions.Uniform{Float64}
-      field_value = field_value.b
-    elseif field_type == Bool
+    if field_type == Bool
       # HDF5 1.8.x doesn't support Bool fields, use Int instead.
       field_value = Int(field_value)
     elseif field_type == Dates.DateTime
@@ -53,8 +51,6 @@ function hdf52parameters!(p::Params, input_h5::String)
           value = read(f["params/$(field_name)"])
           if field_name in ["global_updates", "chkr", "Bfield", "all_checks", "resume"] # handle Bools
             value = Bool(value)
-          elseif field_name in ["box", "box_global"] # handle Distributions
-            value = Distributions.Uniform{Float64}(-value, value)
           elseif field_name in ["walltimelimit"] # handle DateTimes
             value = Dates.DateTime(value)
           end

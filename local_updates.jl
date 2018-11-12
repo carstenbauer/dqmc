@@ -6,7 +6,7 @@ function local_updates(mc::AbstractDQMC)
 
   acc_rat = 0.0
   @inbounds for i in 1:l.sites
-    @views new_op = p.hsfield[:,i,s.current_slice] + rand(p.box, p.opdim)
+    @views new_op = p.hsfield[:,i,s.current_slice] + randuniform(p.box, p.opdim)
     exp_delta_S_boson = exp(- calc_boson_action_diff(mc, i, s.current_slice, new_op) )
     detratio = calc_detratio(mc,i,new_op)
 

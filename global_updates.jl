@@ -10,7 +10,7 @@ end
 @inline function global_update_perform_shift!(mc::AbstractDQMC)
     @inbounds @views begin
       @simd for k in 1:mc.p.opdim
-        mc.p.hsfield[k,:,:] .+= rand(mc.p.box_global)
+        mc.p.hsfield[k,:,:] .+= randuniform(mc.p.box_global)
       end
     end
 end

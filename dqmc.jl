@@ -128,13 +128,13 @@ if !p.resume
 
           if HDF5.has(f.plain, "thermal_init/box")
             box = read(f, "thermal_init/box")
-            p.box = Uniform(-box, box)
+            p.box = box
             println("Using thermal_init/box.")
           end
 
           if HDF5.has(f.plain, "thermal_init/box_global")
             box_global = read(f, "thermal_init/box_global")
-            p.box_global = Uniform(-box_global, box_global)
+            p.box_global = box_global
             println("Using thermal_init/box_global.")
           end
         end

@@ -27,8 +27,8 @@ mutable struct Params
   u::Float64
   flv::Int # flavors: GF matl_sites size flv*l.sites x flv*l.sites
 
-  box::Distributions.Uniform{Float64}
-  box_global::Distributions.Uniform{Float64}
+  box::Float64
+  box_global::Float64
 
   global_updates::Bool
   global_rate::Int64
@@ -55,7 +55,7 @@ mutable struct Params
     p.global_updates = true
     p.chkr = true
     p.Bfield = false
-    p.box = Uniform(-0.5,0.5)
+    p.box = 0.5
     p.box_global = p.box
     p.global_rate = 5
     p.write_every_nth = 1
@@ -156,13 +156,11 @@ function set_parameters(p::Params, params::Dict)
   haskey(params,"CHECKERBOARD") && (p.chkr = parse(Bool, lowercase(params["CHECKERBOARD"])))
   haskey(params,"BFIELD") && (p.Bfield = parse(Bool, lowercase(params["BFIELD"])))
   if haskey(params,"BOX_HALF_LENGTH")
-    len = parse(Float64, params["BOX_HALF_LENGTH"])
-    p.box = Uniform(-len,len)
+    p.box = parse(Float64, params["BOX_HALF_LENGTH"])
     p.box_global = p.box
   end
   if haskey(params,"BOX_GLOBAL_HALF_LENGTH")
-    len = parse(Float64, params["BOX_GLOBAL_HALF_LENGTH"])
-    p.box_global = Uniform(-len,len)
+    p.box_global = parse(Float64, params["BOX_GLOBAL_HALF_LENGTH"])
   end
   haskey(params,"GLOBAL_RATE") && (p.global_rate = parse(Int64, params["GLOBAL_RATE"]))
   haskey(params,"WRITE_EVERY_NTH") && (p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"]))
