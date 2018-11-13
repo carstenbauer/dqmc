@@ -27,7 +27,7 @@ end
 if length(ARGS) == 1
   # ARGS = ["whatever.in.xml"]
   input_xml = ARGS[1]
-  output_file = input_xml[1:searchindex(input_xml, ".in.xml")-1]*".out.h5.running"
+  output_file = input_xml[1:first(findfirst(".in.xml", input_xml))-1]*".out.h5.running"
 elseif length(ARGS) == 2
   # Backward compatibility
   # ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]

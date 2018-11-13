@@ -22,12 +22,14 @@ using MonteCarloObservable
 using TimerOutputs
 using FFTW
 using HDF5
+using JLD
 using LightXML
 
 # using Iterators
 using Dates
 using LinearAlgebra
 using SparseArrays
+using Statistics
 using Printf
 using Random
 
@@ -175,11 +177,18 @@ function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
   println("Initializing boson action\n")
   p.boson_action = calc_boson_action(mc)
 
-  h5open(p.output_file, "r") do f
+  jldopen(p.output_file, "r") do fjld
+    f = fjld.plain
     box = read(f, "resume/box")
     box_global = read(f, "resume/box_global")
     p.box = box
     p.box_global = box_global
+
+    if HDF5.has(f, "thermal_init/udsweep")
+      a.to = read(fjld, "thermal_init/udsweep")
+    else
+      @warn "Resuming measurements but couldn't find \"thermal_init/udsweep\" timer."
+    end
   end
 
   println("\n\nMC Measure (resuming) - ", p.measurements*2, " (total $((p.measurements + prevmeasurements)*2))")
@@ -209,6 +218,13 @@ function thermalize!(mc::DQMC)
   a.acc_global = 0
 
   reset_timer!(a.to)
+  if p.prethermalized > 0
+    # load old a.to["udsweep"] timer
+    jldopen(p.output_file, "r") do f
+      a.to = read(f["thermal_init/udsweep"])
+    end
+  end
+
   for i in (p.prethermalized+1):p.thermalization
     udswdur = @elapsed @timeit a.to "udsweep" for u in 1:2 * p.slices
       update(mc, i)
@@ -253,12 +269,15 @@ function thermalize!(mc::DQMC)
 
     # Save thermal configuration for "resume"
     if i%p.write_every_nth == 0
-      h5open(mc.p.output_file, "r+") do f
+      jldopen(mc.p.output_file, "r+") do fjld
+        f = fjld.plain
         HDF5.has(f, "thermal_init/conf") && HDF5.o_delete(f, "thermal_init/conf")
         HDF5.has(f, "thermal_init/prethermalized") && HDF5.o_delete(f, "thermal_init/prethermalized")
-        write(f, "thermal_init/conf", mc.p.hsfield)
-        write(f, "thermal_init/prethermalized", i)
-        (i == p.thermalization) && saverng(p.output_file; group="thermal_init/rng") # for future features
+        HDF5.has(f, "thermal_init/udsweep") && HDF5.o_delete(f, "thermal_init/udsweep")
+        write(fjld, "thermal_init/conf", mc.p.hsfield)
+        write(fjld, "thermal_init/prethermalized", i)
+        write(fjld, "thermal_init/udsweep", a.to["udsweep"])
+        (i == p.thermalization) && saverng(f; group="thermal_init/rng") # for future features
       end
     end
 
@@ -462,6 +481,10 @@ Choose a apropriate chunk size for the given Monte Carlo simulation.
 """
 function choose_chunk_size(mc::AbstractDQMC)
     p = mc.p
+    if !("udsweep" in keys(mc.a.to.inner_timers))
+      @warn "No \"udsweep\" timer found. Choosing default `cs=100`!! Job might never dump to disk!"
+      return 100
+    end
     to_udsweep = mc.a.to["udsweep"]
 
     udsd = TimerOutputs.time(to_udsweep) *10.0^(-9)/TimerOutputs.ncalls(to_udsweep)
@@ -490,4 +513,25 @@ randuniform(b::Float64, d::Int) = begin
       x[k] = randuniform(b)
     end
     x
+end
+
+
+
+"""
+Manual and incomplete(!) serializer for JLD.
+
+It only works for a single most inner timer for which `isempty(to.inner_timers) == true`.
+"""
+struct MyTimerOutputSerializer
+    td::TimerOutputs.TimeData
+    name::String
+end
+
+JLD.writeas(to::TimerOutput) = MyTimerOutputSerializer(to.accumulated_data, to.name)
+
+function JLD.readas(tos::MyTimerOutputSerializer)
+    to = TimerOutput()
+    @timeit to tos.name 3+3 # something, will overwrite it
+    to[tos.name].accumulated_data = tos.td
+    to
 end
