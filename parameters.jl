@@ -181,7 +181,7 @@ function deduce_remaining_parameters(p::Params)
   p.hsfield = zeros(p.opdim, 1, p.slices) # just to initialize it somehow
 
   if p.lattice_file != ""
-    p.L = parse(Int, p.lattice_file[findlast(collect(p.lattice_file), '_')+1:end-4])
+    p.L = parse(Int, p.lattice_file[findlast(isequal('_'), collect(p.lattice_file))+1:end-4])
   else
     hn = lowercase(gethostname())
     lat = ""

@@ -5,7 +5,7 @@ Save `p` to HDF5 file (e.g. `.out.h5`).
 """
 function parameters2hdf5(p::Params, filename::String)
   isfile(filename) ? f = h5open(filename, "r+") : f = h5open(filename, "w")
-  for i in 1:nfields(Params)
+  for i in 1:length(fieldnames(Params))
     field = fieldname(Params, i)
     field_name = string(field)
     field_value = getfield(p, field)

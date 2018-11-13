@@ -91,7 +91,7 @@ if isfile(output_file)
         pwrite_every_nth = read(f["params/write_every_nth"])
         measurements = nconfs * pwrite_every_nth
 
-        (measurements >= pmeasurements) && (global alreadydone = true)
+        (measurements >= pmeasurements) && (measurements >= p.measurements) && (global alreadydone = true)
         (nconfs > 0) && (global resumable = true)
       end
     end
@@ -180,7 +180,12 @@ else
   if prevmeasurements < lastmeasurements
     println("Finishing last run (i.e. overriding p.measurements)")
     p.measurements = lastmeasurements - prevmeasurements
+  elseif prevmeasurements < p.measurements
+    println("Extension run.")
+    p.measurements = p.measurements - prevmeasurements
   end
+  @show prevmeasurements
+  @show p.measurements
   global lastconf = confs[end]
 end
 
