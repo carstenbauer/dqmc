@@ -1,3 +1,4 @@
+dqmc.in.xml
 **/*.h5
 **/*.running
 playground.jl
