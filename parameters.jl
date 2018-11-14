@@ -1,4 +1,5 @@
 using LightXML
+using Dates
 
 mutable struct Params
   lattice_file::String
