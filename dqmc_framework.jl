@@ -444,6 +444,9 @@ function set_walltimelimit!(p, start_time)
   if "WALLTIMELIMIT" in keys(ENV)
     p.walltimelimit = wtl2DateTime(ENV["WALLTIMELIMIT"], start_time)
     @show ENV["WALLTIMELIMIT"]
+  elseif occursin("cheops", gethostname())
+    p.walltimelimit = wtl2DateTime("9-23:30:00", start_time) # CHEOPS
+    println("Set CHEOPS walltime limit, i.e. 9-23:30:00.")
   elseif occursin("jw", gethostname())
     p.walltimelimit = wtl2DateTime("0-23:30:00", start_time) # JUWELS
     println("Set JUWELS walltime limit, i.e. 0-23:30:00.")
