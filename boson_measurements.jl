@@ -26,14 +26,14 @@ end
 
 # Binder factors (m^2, m^4)
 function measure_binder_factors(conf::AbstractArray{Float64, 3})
-  m = mean(conf,[2,3]) # average over sites and timeslices
+  m = mean(conf,dims=(2,3)) # average over sites and timeslices
   m2 = dot(m,m)
   return (m2, m2*m2)
 end
 
 function measure_op(conf::AbstractArray{Float64, 3})
   mean_abs_op = mean(abs.(conf))
-  mean_op = vec(mean(conf,[2,3]))
+  mean_op = vec(mean(conf,dims=(2,3)))
   return mean_abs_op, mean_op
 end
 
@@ -45,7 +45,7 @@ function measure_phi_correlations(conf::AbstractArray{Float64, 3})
   phiFT .*= conj(phiFT)
   n = floor(Int, L/2+1)
   nt = floor(Int, slices/2+1)
-  return real(sum(phiFT,1))[1,:,1:n,1:nt] # sum over op components
+  return real(sum(phiFT,dims=1))[1,:,1:n,1:nt] # sum over op components
 end
 
 
@@ -103,10 +103,10 @@ function measure_binder(confs::AbstractArray{Float64, 4})
     N = size(confs, 2)
     M = size(confs, 3)
 
-    m2s = Vector{Float64}(num_confs)
-    m4s = Vector{Float64}(num_confs)
+    m2s = Vector{Float64}(undef, num_confs)
+    m4s = Vector{Float64}(undef, num_confs)
     @inbounds @views for i in 1:num_confs
-        m = mean(confs[:,:,:,i],[2,3])
+        m = mean(confs[:,:,:,i],dims=(2,3))
         m2s[i] = dot(m, m)
         m4s[i] = m2s[i]*m2s[i]
     end

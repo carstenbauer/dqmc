@@ -140,8 +140,8 @@ version = "0.2.1"
 
 [[Helpers]]
 deps = ["HDF5", "JLD", "LinearAlgebra", "Printf", "Random", "SparseArrays", "Statistics", "Test"]
-git-tree-sha1 = "4fd1a57f05aa9cd1d976d07fc7293249911d305e"
-repo-rev = "v0.7"
+git-tree-sha1 = "b652f77da5fdda501f399d5e74afcdd64d0ea838"
+repo-rev = "master"
 repo-url = "https://github.com/crstnbr/Helpers.jl"
 uuid = "4de40672-05fc-5661-aad9-eb3e0bf5aa76"
 version = "0.0.0"
@@ -238,11 +238,11 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[MonteCarloObservable]]
 deps = ["Distributed", "EllipsisNotation", "HDF5", "JLD", "PyPlot", "Statistics", "StatsBase", "Test"]
-git-tree-sha1 = "c875f674d5b37ddd9ea8354ed9737f08e59b0793"
-repo-rev = "v1.0"
+git-tree-sha1 = "e6fd9c204119dc59a152f04e01af755835f3bc96"
+repo-rev = "master"
 repo-url = "https://github.com/crstnbr/MonteCarloObservable.jl"
-uuid = "799dfad0-de95-11e8-06ce-1d94ff3d9ae8"
-version = "0.1.0"
+uuid = "de30a504-a596-5421-acd7-380d5aad8dbb"
+version = "0.0.0"
 
 [[OrderedCollections]]
 deps = ["Random", "Serialization", "Test"]
