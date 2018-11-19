@@ -229,8 +229,8 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
 
   mp.binder && export_result(binder, mp.outfile, "obs/binder", error=false) # jackknife for error
 
-  mp.etpc && export_result(Pplus, mp.outfile, "obs/Pplus"; timeseries=true)
-  mp.etpc && export_result(Pminus, mp.outfile, "obs/Pminus"; timeseries=true)
+  mp.etpc && export_result(Pplus, mp.outfile, "obs/Pplus"; timeseries=false)
+  mp.etpc && export_result(Pminus, mp.outfile, "obs/Pminus"; timeseries=false)
 
   h5open(mp.outfile, "r+") do fout
     HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
