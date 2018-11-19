@@ -77,8 +77,8 @@ function etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
 
   @inbounds for x in 1:L
     @simd for y in 1:L
-      Pm[y,x] .+= real(ev[1,y,x] - ev[2,y,x] - ev[3,y,x] + ev[4,y,x])
-      Pp[y,x] .+= real(ev[1,y,x] + ev[2,y,x] + ev[3,y,x] + ev[4,y,x])
+      Pm[y,x] += real(ev[1,y,x] - ev[2,y,x] - ev[3,y,x] + ev[4,y,x])
+      Pp[y,x] += real(ev[1,y,x] + ev[2,y,x] + ev[3,y,x] + ev[4,y,x])
     end
   end
 

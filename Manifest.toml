@@ -274,6 +274,12 @@ uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 deps = ["Printf"]
 uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 
+[[ProgressMeter]]
+deps = ["Distributed", "Printf", "Random", "Test"]
+git-tree-sha1 = "37e7d3982c8d4610196829c01387dd561756aedc"
+uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
+version = "0.8.0"
+
 [[PyCall]]
 deps = ["Compat", "Conda", "MacroTools", "Statistics", "VersionParsing"]
 git-tree-sha1 = "ce4681263f41d98b3faf6107b28284bf8b866f5f"

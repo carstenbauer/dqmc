@@ -31,6 +31,7 @@ end
 # -------------------------------------------------------
 include("dqmc_framework.jl")
 using Parameters
+using ProgressMeter
 
 
 
@@ -127,7 +128,6 @@ function main(mp::MeasParams)
 
       # load dqmc params
       p = Params(); xml2parameters!(p, mp.inxml, false);
-      # TODO: Probably even set up mc object here?
   catch err
       println("Failed to load dqmc params/results for $(h5path).")
       println("Maybe it doesn't have any configurations yet?")
@@ -166,13 +166,20 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
   mp.binder && (m2s = Vector{Float64}(undef, num_confs))
   mp.binder && (m4s = Vector{Float64}(undef, num_confs))
 
+  # etpc
+  if mp.etpc
+    mc = DQMC(p)
+    initialize_stack(mc, mp)
+    Pplus = Observable(Matrix{Float64}, "S-wave equal time pairing susceptibiliy (ETPC plus)", alloc=num_confs)
+    Pminus = Observable(Matrix{Float64}, "D-wave equal time pairing susceptibiliy (ETPC minus)", alloc=num_confs)
+  end
 
 
   # ----------------- Measure loop ------------------------
-  mp.chi_dyn && println("Measuring chi_dyn/chi_dyn_symm/binder etc. ...");
+  mp.chi_dyn && println("Measuring ...");
   flush(stdout)
 
-  @inbounds @views for i in 1:num_confs
+  @inbounds @views @showprogress for i in 1:num_confs
 
       # chi_dyn
       if mp.chi_dyn
@@ -190,6 +197,14 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
         m = mean(confs[:,:,:,i], dims=(2,3))
         m2s[i] = dot(m, m)
         m4s[i] = m2s[i]*m2s[i]
+      end
+
+      # etpc
+      if mp.etpc
+        mc.p.hsfield = confs[:,:,:,i]
+        etpc!(mc, measure_greens(mc))
+        add!(Pplus, mc.s.meas.etpc_plus)
+        add!(Pminus, mc.s.meas.etpc_minus)
       end
   end
 
@@ -213,6 +228,9 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
   mp.chi_dyn_symm && export_result(chi_dyn_symm, mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
 
   mp.binder && export_result(binder, mp.outfile, "obs/binder", error=false) # jackknife for error
+
+  mp.etpc && export_result(Pplus, mp.outfile, "obs/Pplus"; timeseries=true)
+  mp.etpc && export_result(Pminus, mp.outfile, "obs/Pminus"; timeseries=true)
 
   h5open(mp.outfile, "r+") do fout
     HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
