@@ -8,6 +8,7 @@ length(ARGS) == 1 || error("input arg: prefix.meas.xml [or just prefix or prefix
 # -------------------------------------------------------
 #            Start + Check git branch
 # -------------------------------------------------------
+using Dates, Printf
 const start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
@@ -81,15 +82,15 @@ end
 # -------------------------------------------------------
 function main(mp::MeasParams)
   # --------------- Find .out.h5 ----------------------
-  h5path = replace(mp.inxml, ".in.xml", ".out.h5")
+  h5path = replace(mp.inxml, ".in.xml" => ".out.h5")
   if !isfile(h5path)
-      h5path = replace(h5path, ".out.h5", ".out.h5.running")
+      h5path = replace(h5path, ".out.h5" => ".out.h5.running")
       isfile(h5path) || error("Couldn't find .out.h5[.running] file.")
   end
 
 
   # ----------- Set .meas.h5 and todos ------------------
-  mp.outfile = replace(h5path, ".out.h5", ".meas.h5")
+  mp.outfile = replace(h5path, ".out.h5" => ".meas.h5")
   if !endswith(mp.outfile, ".running")
       # already measured
       if !mp.overwrite
@@ -153,8 +154,8 @@ end
 #                      MEASUREMENTS
 # -------------------------------------------------------
 function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
-  const num_confs = size(confs, ndims(confs))
-  const nsweeps = num_confs * p.write_every_nth
+  num_confs = size(confs, ndims(confs))
+  nsweeps = num_confs * p.write_every_nth
 
   # ------------------- Allocate --------------------------
   # chi_dyn
@@ -162,8 +163,8 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
   mp.chi_dyn && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
   
   # binder
-  mp.binder && (m2s = Vector{Float64}(num_confs))
-  mp.binder && (m4s = Vector{Float64}(num_confs))
+  mp.binder && (m2s = Vector{Float64}(undef, num_confs))
+  mp.binder && (m4s = Vector{Float64}(undef, num_confs))
 
 
 
@@ -186,7 +187,7 @@ function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
 
       # binder
       if mp.binder
-        m = mean(confs[:,:,:,i],[2,3])
+        m = mean(confs[:,:,:,i], dims=(2,3))
         m2s[i] = dot(m, m)
         m4s[i] = m2s[i]*m2s[i]
       end
@@ -279,6 +280,7 @@ try
   ENV["OMP_NUM_THREADS"] = mp.num_threads
   ENV["MKL_NUM_THREADS"] = mp.num_threads
   ENV["JULIA_NUM_THREADS"] = 1
+catch
 end
 
 
@@ -293,4 +295,4 @@ main(mp)
 # -------------------------------------------------------
 end_time = now()
 println("\nEnded: ", Dates.format(end_time, "d.u yyyy HH:MM"))
-@printf("Duration: %.2f minutes", (end_time - start_time).value/1000./60.)
+@printf("Duration: %.2f minutes", (end_time - start_time).value / 1000 / 60)
