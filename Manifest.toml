@@ -238,7 +238,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[MonteCarloObservable]]
 deps = ["Distributed", "EllipsisNotation", "HDF5", "JLD", "PyPlot", "Statistics", "StatsBase", "Test"]
-git-tree-sha1 = "d2b366cbe6e5db3bddf69ee13e59f20627da236f"
+git-tree-sha1 = "52544fc693d1c912c41e1570c06ff78747fcb242"
 repo-rev = "master"
 repo-url = "https://github.com/crstnbr/MonteCarloObservable.jl"
 uuid = "de30a504-a596-5421-acd7-380d5aad8dbb"
