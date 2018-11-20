@@ -55,6 +55,8 @@ Calculate equal time pairing susceptibilities
 
 where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
 
+x,y ∈ [0,L-1]
+
 Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
@@ -66,8 +68,8 @@ function etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
   Pm = mc.s.meas.etpc_minus # d-wave
   Pp = mc.s.meas.etpc_plus # s-wave
 
-  fill!(Pm, 0.)
-  fill!(Pp, 0.)
+  # fill!(Pm, 0.)
+  # fill!(Pp, 0.)
   etpc_evs!(mc, greens)
 
   # xd,xu,xu,xd = 1
@@ -75,10 +77,11 @@ function etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
   # yd,yu,xu,xd = 3
   # yd,yu,yu,yd = 4
 
+  # fill result arrays
   @inbounds for x in 1:L
     @simd for y in 1:L
-      Pm[y,x] += real(ev[1,y,x] - ev[2,y,x] - ev[3,y,x] + ev[4,y,x])
-      Pp[y,x] += real(ev[1,y,x] + ev[2,y,x] + ev[3,y,x] + ev[4,y,x])
+      Pm[y,x] = real(ev[1,y,x] - ev[2,y,x] - ev[3,y,x] + ev[4,y,x])
+      Pp[y,x] = real(ev[1,y,x] + ev[2,y,x] + ev[3,y,x] + ev[4,y,x])
     end
   end
 
@@ -120,20 +123,20 @@ function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
   fill!(etpc_ev, 0.)
   sql = reshape(collect(1:N),L,L)
 
-  @inbounds for x in 1:L, y in 1:L # r
-    for x0 in 1:L, y0 in 1:L # r0
+  @inbounds for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+    for x0 in 1:L, y0 in 1:L # r0 (origin)
       r1 = r2 = siteidx(mc, sql, x0+x, y0+y)
       r3 = r4 = siteidx(mc, sql, x0, y0)
 
-      @inbounds for j in 1:length(js)
+      for j in 1:length(js) # @inbounds
         i1 = greensidx(N, js[j][1], r1)
         i2 = greensidx(N, js[j][2], r2)
         i3 = greensidx(N, js[j][3], r3)
         i4 = greensidx(N, js[j][4], r4)
 
         # Wick's theorem. Result is real because greens is symm. in r and has anti-unitary symm.
-        etpc_ev[j, y, x] += real(G(mc, i1, i4, greens)*G(mc, i2, i3, greens) -
-                                        G(mc, i1, i3, greens)*G(mc, i2, i4, greens))
+        etpc_ev[j, y+1, x+1] += real(G(mc, i1, i4, greens)*G(mc, i2, i3, greens) -
+                                     G(mc, i1, i3, greens)*G(mc, i2, i4, greens))
       end
     end
   end
@@ -142,40 +145,6 @@ function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
 
   nothing
 end
-
-# import MacroTools: postwalk
-
-# greensexpand_replace(x) = begin
-#   @show x
-#   if x == :greens
-#     :(G)
-#   else
-#     x
-#   end
-# end
-
-# macro greensexpand(ex)
-#   expr = postwalk(greensexpand_replace, startex)
-#   @show expr
-#   return :()
-# end
-
-# greensexpand_walk(ex) = begin
-#   if ex.head == :ref
-#     @show ex
-#   else
-
-#   end
-# end
-
-# macro greensexpand(ex)
-#   expr = postwalk(greensexpand_replace, startex)
-#   @show expr
-#   return :()
-# end
-
-# startex = :(greens[i1, i4]*greens[i2, i3])
-# finalex = :(G(mc, i1, i4, greens)*G(mc, i2, i3, greens))
 
 
 
@@ -193,18 +162,6 @@ end
 Get column/row idx of particular flv ∈ (xu, yd, xd, yu) and site ∈ 1:N in Green's function.
 """
 @inline greensidx(N::Int, flv, site) = (flv-1)*N + site
-# greensidx(N::Int, band, site, spin) = (greensblock(band, spin)-1)*N + site
-# function greensblock(band, spin)
-#   if band == 1 && spin == 1 #xup
-#     return 1
-#   elseif band == 2 && spin == 2 # ydown
-#     return 2
-#   elseif band == 1 && spin == 2 # xdown
-#     return 3
-#   else band == 2 && spin == 1 # yup
-#     return 4
-#   end
-# end
 
 """
 Access full (4*N, 4*N) Green's function for any OPDIM efficiently.
