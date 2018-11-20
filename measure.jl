@@ -1,7 +1,7 @@
 # -------------------------------------------------------
 #            Check input arguments
 # -------------------------------------------------------
-length(ARGS) == 1 || error("input arg: prefix.meas.xml [or just prefix or prefix.in.xml or prefix.out.h5 (will use default settings)]")
+length(ARGS) >= 1 || error("input arg: prefix.meas.xml [or just prefix or prefix.in.xml or prefix.out.h5 (will use default settings)]")
 
 
 
@@ -58,20 +58,24 @@ using ProgressMeter
 end
 
 
+"""
+Returns `true` if we want to measure fermionic stuff.
+"""
+@inline hasfermionic(mp::MeasParams) = mp.etpc
+@inline hasfermionic(ol::NamedTuple{K,V}) where {K,V} = :Pplus in K || :Pminus in K
+
+
 
 # -------------------------------------------------------
 #              Initialize stack for meas
 # -------------------------------------------------------
-function initialize_stack(mc::AbstractDQMC, mp::MeasParams)
-  @mytimeit mc.a.to "initialize_stack" begin
+function initialize_stack_for_measurements(mc::AbstractDQMC, mp::MeasParams)
     _initialize_stack(mc)
 
     # allocate for measurement run based on todos
     mp.etpc && allocate_etpc!(mc)
 
-  end #timeit
-
-  nothing
+    nothing
 end
 
 
@@ -110,7 +114,10 @@ function main(mp::MeasParams)
 
           todo || begin println("Already measured."); return;  end
         end
-      end # measure everything requested (overwrite if necessary)
+      else
+        # measure everything requested (overwrite if necessary)
+        println("\nOVERWRITE MODE")
+      end
 
       # maybe job finished in the mean time. is there an old .meas.h5.running? if so, delete it.
       isfile(mp.outfile*".running") && rm(mp.outfile*".running")
@@ -120,26 +127,67 @@ function main(mp::MeasParams)
 
 
   # -------------- Load DQMC params/results -----------------
-  local confs;
-  local p;
-  try
-      # load configurations (TODO: what to actually load here?)
-      confs = ts_flat(h5path, "obs/configurations")
+  println("\nLoading DQMC results...")
 
-      # load dqmc params
-      p = Params(); xml2parameters!(p, mp.inxml, false);
-  catch err
-      println("Failed to load dqmc params/results for $(h5path).")
-      println("Maybe it doesn't have any configurations yet?")
-      error(err)
+  greens = nothing;
+  mc = nothing;
+  
+  confs = ts_flat(h5path, "obs/configurations")
+  hasfermionic(mp) && (greens = ts_flat(h5path, "obs/greens"))
+
+  # load dqmc params
+  p = Params(); xml2parameters!(p, mp.inxml, false);
+
+
+  # ------------------- Create Observables --------------------
+  num_confs = size(confs, ndims(confs))
+  nsweeps = num_confs * p.write_every_nth
+  obs = NamedTuple() # list of Observables
+
+  # chi_dyn
+  mp.chi_dyn_symm && (obs = add(obs, chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs)))
+  mp.chi_dyn && (obs = add(obs, chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs)))
+  
+  # binder
+  mp.binder && (obs = add(obs, m2s = Vector{Float64}(undef, num_confs)))
+  mp.binder && (obs = add(obs, m4s = Vector{Float64}(undef, num_confs)))
+  mp.binder && (obs = add(obs, binder = Observable(Float64, "binder")))
+
+  # etpc
+  if mp.etpc
+    (obs = add(obs, Pplus = Observable(Matrix{Float64}, "S-wave equal time pairing susceptibiliy (ETPC plus)", alloc=num_confs)))
+    (obs = add(obs, Pminus = Observable(Matrix{Float64}, "D-wave equal time pairing susceptibiliy (ETPC minus)", alloc=num_confs)))
+  end
+
+  # prepare fermionic sector if necessary
+  if !(greens === nothing) # should be equivalent to hasfermionic(mp)
+    @assert !(greens === nothing)
+    @assert size(confs, 4) == size(greens, 3)
+    mc = DQMC(p)
+    initialize_stack_for_measurements(mc, mp)
   end
 
   # --------------------- Measure -------------------------
-  measure(mp, p, confs)
+  print("\nPrepared Observables ");
+  println(keys(obs))
+  println()
+  measure(mp, p, obs, confs, greens, mc)
 
-  println("Done.\n")
-  flush(stdout)
+  # ------------ Export results   ----------------
+  export_results(mp, p, obs, nsweeps)
 end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -153,91 +201,94 @@ end
 # -------------------------------------------------------
 #                      MEASUREMENTS
 # -------------------------------------------------------
-function measure(mp::MeasParams, p::Params, confs::AbstractArray{Float64, 4})
-  num_confs = size(confs, ndims(confs))
-  nsweeps = num_confs * p.write_every_nth
+function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens, mc::AbstractDQMC) where {K,V}
+    num_confs = size(confs, ndims(confs))
+    nsweeps = num_confs * p.write_every_nth
 
-  # ------------------- Allocate --------------------------
-  # chi_dyn
-  mp.chi_dyn_symm && (chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs))
-  mp.chi_dyn && (chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs))
-  
-  # binder
-  mp.binder && (m2s = Vector{Float64}(undef, num_confs))
-  mp.binder && (m4s = Vector{Float64}(undef, num_confs))
+    # ----------------- Measure loop ------------------------
+    length(obs) > 0 && println("Measuring ...");
+    flush(stdout)
 
-  # etpc
-  if mp.etpc
-    mc = DQMC(p)
-    initialize_stack(mc, mp)
-    Pplus = Observable(Matrix{Float64}, "S-wave equal time pairing susceptibiliy (ETPC plus)", alloc=num_confs)
-    Pminus = Observable(Matrix{Float64}, "D-wave equal time pairing susceptibiliy (ETPC minus)", alloc=num_confs)
-  end
+    @inbounds @views @showprogress for i in 1:num_confs
+        conf = confs[:,:,:,i]
+
+        measure_bosonic(mp, p, obs, conf, i)
+
+        if !(greens === nothing)
+            g = greens[:,:,i]
+            measure_fermionic(mp, p, obs, conf, g, mc, i)
+        end
+    end
 
 
-  # ----------------- Measure loop ------------------------
-  mp.chi_dyn && println("Measuring ...");
-  flush(stdout)
+    # ------------ Postprocessing   ----------------
+    if :binder in keys(obs)
+        # binder postprocessing
+        m2ev2 = mean(obs[:m2s])^2
+        m4ev = mean(obs[:m4s])
 
-  @inbounds @views @showprogress for i in 1:num_confs
+        add!(obs[:binder], m4ev/m2ev2)
+    end
+end
 
+
+
+
+function measure_bosonic(mp, p, obs, conf, i)
       # chi_dyn
-      if mp.chi_dyn
-        chi = measure_chi_dynamic(confs[:,:,:,i])
-        add!(chi_dyn, chi)
+      if :chi_dyn in keys(obs)
+        chi = measure_chi_dynamic(conf)
+        add!(obs[:chi_dyn], chi)
 
-        if mp.chi_dyn_symm
+        if :chi_dyn_symm in keys(obs)
           chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
-          add!(chi_dyn_symm, chi)
+          add!(obs[:chi_dyn_symm], chi)
         end
       end
 
       # binder
-      if mp.binder
-        m = mean(confs[:,:,:,i], dims=(2,3))
-        m2s[i] = dot(m, m)
-        m4s[i] = m2s[i]*m2s[i]
+      if :binder in keys(obs)
+        m = mean(conf, dims=(2,3))
+        obs[:m2s][i] = dot(m, m)
+        obs[:m4s][i] = obs[:m2s][i] * obs[:m2s][i]
       end
-
-      # etpc
-      if mp.etpc
-        mc.p.hsfield = confs[:,:,:,i]
-        etpc!(mc, measure_greens(mc))
-        add!(Pplus, mc.s.meas.etpc_plus)
-        add!(Pminus, mc.s.meas.etpc_minus)
-      end
-  end
+end
 
 
 
-  # ------------ Postprocessing   ----------------
-  if mp.binder
-    # binder postprocessing
-    m2ev2 = mean(m2s)^2
-    m4ev = mean(m4s)
 
-    binder = Observable(Float64, "binder")
-    add!(binder, m4ev/m2ev2)
-  end
 
-  
+function measure_fermionic(mp, p, obs, conf, greens, mc, i)
+    # etpc
+    if :Pplus in keys(obs)
+        mc.p.hsfield = conf
+        etpc!(mc, greens)
+        add!(obs[:Pplus], mc.s.meas.etpc_plus)
+        add!(obs[:Pminus], mc.s.meas.etpc_minus)
+    end
+end
 
-  # ------------ Export results   ----------------
-  println("Calculating errors and exporting..."); flush(stdout)
-  mp.chi_dyn && export_result(chi_dyn, mp.outfile, "obs/chi_dyn"; timeseries=true)
-  mp.chi_dyn_symm && export_result(chi_dyn_symm, mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
 
-  mp.binder && export_result(binder, mp.outfile, "obs/binder", error=false) # jackknife for error
 
-  mp.etpc && export_result(Pplus, mp.outfile, "obs/Pplus"; timeseries=false)
-  mp.etpc && export_result(Pminus, mp.outfile, "obs/Pminus"; timeseries=false)
 
-  h5open(mp.outfile, "r+") do fout
-    HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
-    HDF5.has(fout, "write_every_nth") && HDF5.o_delete(fout, "write_every_nth")
-    fout["nsweeps"] = nsweeps
-    fout["write_every_nth"] = p.write_every_nth
-  end
+function export_results(mp, p, obs, nsweeps)
+    println("Calculating errors and exporting..."); flush(stdout)
+    :chi_dyn in keys(obs) && export_result(obs[:chi_dyn], mp.outfile, "obs/chi_dyn"; timeseries=true)
+    :chi_dyn_symm in keys(obs) && export_result(obs[:chi_dyn_symm], mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
+
+    :binder in keys(obs) && export_result(obs[:binder], mp.outfile, "obs/binder", error=false) # jackknife for error
+
+    :Pplus in keys(obs) && export_result(obs[:Pplus], mp.outfile, "obs/Pplus"; timeseries=false)
+    :Pminus in keys(obs) && export_result(obs[:Pminus], mp.outfile, "obs/Pminus"; timeseries=false)
+
+    h5open(mp.outfile, "r+") do fout
+        HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
+        HDF5.has(fout, "write_every_nth") && HDF5.o_delete(fout, "write_every_nth")
+        fout["nsweeps"] = nsweeps
+        fout["write_every_nth"] = p.write_every_nth
+    end
+    println("Done. Exported to $(mp.outfile).")
+    flush(stdout)
 end
 
 
@@ -246,8 +297,31 @@ end
 
 
 
+
+
+
+
+
+# -------------------------------------------------------
+#                 Helpers and stuff
+# -------------------------------------------------------
+
+"""
+Allows one to use keyword syntax to add new entries to a `NamedTuple` `obs`.
+"""
+add(obs::NamedTuple; kw...) = combine(obs, values(kw))
+"""
+Combine two `NamedTuple`s into a new one.
+"""
+combine(x::NamedTuple, y::NamedTuple) = NamedTuple{(keys(x)..., keys(y)...)}((x...,y...))
+
+
+
+
+
+
 # #######################################################
-#                       Main
+#                    Start script
 # #######################################################
 # -------------------------------------------------------
 #           Parse ARGS and maybe .meas.xml
