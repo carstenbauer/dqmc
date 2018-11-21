@@ -201,7 +201,7 @@ end
 # -------------------------------------------------------
 #                      MEASUREMENTS
 # -------------------------------------------------------
-function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens, mc::AbstractDQMC) where {K,V}
+function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens, mc) where {K,V}
     num_confs = size(confs, ndims(confs))
     nsweeps = num_confs * p.write_every_nth
 
