@@ -15,9 +15,9 @@ version = "0.8.10"
 
 [[BinaryProvider]]
 deps = ["Libdl", "Pkg", "SHA", "Test"]
-git-tree-sha1 = "9930c1a6cd49d9fcd7218df6be417e6ae4f1468a"
+git-tree-sha1 = "055eb2690182ebc31087859c3dd8598371d3ef9e"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
-version = "0.5.2"
+version = "0.5.3"
 
 [[Blosc]]
 deps = ["BinaryProvider", "CMakeWrapper", "Compat", "Libdl"]
@@ -110,9 +110,9 @@ version = "0.2.4"
 
 [[FileIO]]
 deps = ["Pkg", "Random", "Test"]
-git-tree-sha1 = "481e4db939f005db39f7296599d0543c0744fe30"
+git-tree-sha1 = "884066c07188cc0f57d0ebdcab6c9a09cc734dbc"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.0.2"
+version = "1.0.3"
 
 [[FixedPointNumbers]]
 deps = ["Test"]
@@ -164,9 +164,9 @@ version = "0.9.1"
 
 [[JSON]]
 deps = ["Dates", "Distributed", "Mmap", "Sockets", "Test", "Unicode"]
-git-tree-sha1 = "fec8e4d433072731466d37ed0061b3ba7f70eeb9"
+git-tree-sha1 = "1f7a25b53ec67f5e9422f1f551ee216503f4a0fa"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "0.19.0"
+version = "0.20.0"
 
 [[LaTeXStrings]]
 deps = ["Compat"]
@@ -240,9 +240,9 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 deps = ["Distributed", "EllipsisNotation", "HDF5", "JLD", "PyPlot", "Statistics", "StatsBase", "Test"]
 git-tree-sha1 = "52544fc693d1c912c41e1570c06ff78747fcb242"
 repo-rev = "master"
-repo-url = "https://github.com/crstnbr/MonteCarloObservable.jl"
-uuid = "de30a504-a596-5421-acd7-380d5aad8dbb"
-version = "0.0.0"
+repo-url = "https://github.com/crstnbr/MonteCarloObservable.jl.git"
+uuid = "8a675f2c-1eea-59ef-99a5-5eebc71d1519"
+version = "0.1.0+"
 
 [[OrderedCollections]]
 deps = ["Random", "Serialization", "Test"]
@@ -252,9 +252,9 @@ version = "1.0.2"
 
 [[Parameters]]
 deps = ["Markdown", "OrderedCollections", "REPL", "Test"]
-git-tree-sha1 = "40f540ec96e50c0b2b9efdb11b5e4d0c63f90923"
+git-tree-sha1 = "eec0fe16344cc14aa2e6251874ab30d62aff4f7c"
 uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
-version = "0.10.1"
+version = "0.10.2"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
