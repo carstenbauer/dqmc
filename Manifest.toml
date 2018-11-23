@@ -43,6 +43,9 @@ git-tree-sha1 = "2b43d451639984e3571951cc687b8509b0a86c6d"
 uuid = "d5fb7624-851a-54ee-a528-d3f3bac0b4a0"
 version = "0.2.2"
 
+[[CRC32c]]
+uuid = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
+
 [[ColorTypes]]
 deps = ["FixedPointNumbers", "Random", "Test"]
 git-tree-sha1 = "f73b0e10f2a5756de7019818a41654686da06b09"
@@ -110,9 +113,9 @@ version = "0.2.4"
 
 [[FileIO]]
 deps = ["Pkg", "Random", "Test"]
-git-tree-sha1 = "884066c07188cc0f57d0ebdcab6c9a09cc734dbc"
+git-tree-sha1 = "1a114d08094e7267ba8d4d684f930d5a722184de"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.0.3"
+version = "1.0.4"
 
 [[FixedPointNumbers]]
 deps = ["Test"]
@@ -127,10 +130,10 @@ uuid = "d7ba0133-e1db-5d97-8f8c-041e4b3a1eb2"
 version = "0.3.0"
 
 [[HDF5]]
-deps = ["BinDeps", "Blosc", "Distributed", "Homebrew", "Libdl", "LinearAlgebra", "Mmap", "Pkg", "Test", "WinRPM"]
-git-tree-sha1 = "8c3bcdb44db436cd20106e2381e1c1ac96aa0ee3"
+deps = ["BinDeps", "Blosc", "CRC32c", "Distributed", "Homebrew", "Libdl", "LinearAlgebra", "Mmap", "Pkg", "Test", "WinRPM"]
+git-tree-sha1 = "2b55a7e957923fa15688c97e91198a3ff24155d2"
 uuid = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
-version = "0.10.2"
+version = "0.10.3"
 
 [[HTTPClient]]
 deps = ["Compat", "LibCURL"]
@@ -237,8 +240,8 @@ version = "0.3.1"
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[MonteCarloObservable]]
-deps = ["Distributed", "EllipsisNotation", "HDF5", "JLD", "PyPlot", "Statistics", "StatsBase", "Test"]
-git-tree-sha1 = "52544fc693d1c912c41e1570c06ff78747fcb242"
+deps = ["EllipsisNotation", "HDF5", "JLD", "PyPlot", "Statistics", "StatsBase", "Test"]
+git-tree-sha1 = "617a9c815c6b9f8a29a99c71b7c7d0632f368989"
 repo-rev = "master"
 repo-url = "https://github.com/crstnbr/MonteCarloObservable.jl.git"
 uuid = "8a675f2c-1eea-59ef-99a5-5eebc71d1519"
