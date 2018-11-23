@@ -55,6 +55,8 @@ using ProgressMeter
 
   outfile::String = ""
   inxml::String = ""
+  dqmc_outfile::String = ""
+  chunksize::Int = 100
 end
 
 
@@ -87,15 +89,15 @@ end
 # -------------------------------------------------------
 function main(mp::MeasParams)
   # --------------- Find .out.h5 ----------------------
-  h5path = replace(mp.inxml, ".in.xml" => ".out.h5")
-  if !isfile(h5path)
-      h5path = replace(h5path, ".out.h5" => ".out.h5.running")
-      isfile(h5path) || error("Couldn't find .out.h5[.running] file.")
+  mp.dqmc_outfile = replace(mp.inxml, ".in.xml" => ".out.h5")
+  if !isfile(mp.dqmc_outfile)
+      mp.dqmc_outfile = replace(mp.dqmc_outfile, ".out.h5" => ".out.h5.running")
+      isfile(mp.dqmc_outfile) || error("Couldn't find .out.h5[.running] file.")
   end
 
 
   # ----------- Set .meas.h5 and todos ------------------
-  mp.outfile = replace(h5path, ".out.h5" => ".meas.h5")
+  mp.outfile = replace(mp.dqmc_outfile, ".out.h5" => ".meas.h5")
   if !endswith(mp.outfile, ".running")
       # already measured
       if !mp.overwrite
@@ -132,8 +134,10 @@ function main(mp::MeasParams)
   greens = nothing;
   mc = nothing;
   
-  confs = ts_flat(h5path, "obs/configurations")
-  hasfermionic(mp) && (greens = ts_flat(h5path, "obs/greens"))
+  confs = ts_flat(mp.dqmc_outfile, "obs/configurations")
+  chunkcount = h5read(mp.dqmc_outfile, "obs/configurations/timeseries/chunk_count")
+  mp.chunksize = size(confs, 4) / chunkcount
+  # hasfermionic(mp) && (greens = ts_flat(mp.dqmc_outfile, "obs/greens"))
 
   # load dqmc params
   p = Params(); xml2parameters!(p, mp.inxml, false);
@@ -160,9 +164,9 @@ function main(mp::MeasParams)
   end
 
   # prepare fermionic sector if necessary
-  if !(greens === nothing) # should be equivalent to hasfermionic(mp)
-    @assert !(greens === nothing)
-    @assert size(confs, 4) == size(greens, 3)
+  if hasfermionic(mp)
+    # @assert !(greens === nothing)
+    # @assert size(confs, 4) == size(greens, 3)
     mc = DQMC(p)
     initialize_stack_for_measurements(mc, mp)
   end
@@ -214,8 +218,9 @@ function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens,
 
         measure_bosonic(mp, p, obs, conf, i)
 
-        if !(greens === nothing)
-            g = greens[:,:,i]
+        if hasfermionic(mp)
+            # g = greens[:,:,i]
+            g = _load_single_greens_from_file(mp, i)
             measure_fermionic(mp, p, obs, conf, g, mc, i)
         end
     end
@@ -231,6 +236,15 @@ function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens,
     end
 end
 
+
+function _load_single_greens_from_file(mp::MeasParams, ts_idx::Int)::Matrix{<:Number}
+    chunknr = ceil(Int,ts_idx / mp.chunksize)
+    idx_in_chunk = mod1(ts_idx, mp.chunksize)
+    return jldopen(mp.dqmc_outfile, "r") do f
+        val = f["obs/greens/timeseries/ts_chunk$(chunknr)"][:,:, idx_in_chunk]
+        return dropdims(val, dims=3)
+    end
+end
 
 
 
@@ -278,8 +292,8 @@ function export_results(mp, p, obs, nsweeps)
 
     :binder in keys(obs) && export_result(obs[:binder], mp.outfile, "obs/binder", error=false) # jackknife for error
 
-    :Pplus in keys(obs) && export_result(obs[:Pplus], mp.outfile, "obs/Pplus"; timeseries=false)
-    :Pminus in keys(obs) && export_result(obs[:Pminus], mp.outfile, "obs/Pminus"; timeseries=false)
+    :Pplus in keys(obs) && export_result(obs[:Pplus], mp.outfile, "obs/Pplus"; timeseries=true)
+    :Pminus in keys(obs) && export_result(obs[:Pminus], mp.outfile, "obs/Pminus"; timeseries=true)
 
     h5open(mp.outfile, "r+") do fout
         HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
