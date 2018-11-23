@@ -248,6 +248,10 @@ end
 
 
 
+
+
+
+
 function measure_bosonic(mp, p, obs, conf, i)
       # chi_dyn
       if :chi_dyn in keys(obs)
@@ -281,6 +285,11 @@ function measure_fermionic(mp, p, obs, conf, greens, mc, i)
         add!(obs[:Pminus], mc.s.meas.etpc_minus)
     end
 end
+
+
+
+
+
 
 
 
