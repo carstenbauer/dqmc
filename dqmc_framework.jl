@@ -268,22 +268,12 @@ function thermalize!(mc::DQMC)
     end
 
     # Save thermal configuration for "resume"
-    if i%p.write_every_nth == 0
-      jldopen(mc.p.output_file, "r+") do fjld
-        f = fjld.plain
-        HDF5.has(f, "thermal_init/conf") && HDF5.o_delete(f, "thermal_init/conf")
-        HDF5.has(f, "thermal_init/prethermalized") && HDF5.o_delete(f, "thermal_init/prethermalized")
-        HDF5.has(f, "thermal_init/udsweep") && HDF5.o_delete(f, "thermal_init/udsweep")
-        write(fjld, "thermal_init/conf", mc.p.hsfield)
-        write(fjld, "thermal_init/prethermalized", i)
-        write(fjld, "thermal_init/udsweep", a.to["udsweep"])
-        (i == p.thermalization) && saverng(f; group="thermal_init/rng") # for future features
+    if (shutdown = now() >= p.walltimelimit) || i%p.write_every_nth == 0
+      _save_thermal(mc, i)
+      if shutdown
+        println("Approaching wall-time limit. Safely exiting.")
+        exit(42)
       end
-    end
-
-    if now() >= p.walltimelimit
-      println("Approaching wall-time limit. Safely exiting.")
-      exit(42)
     end
 
   end
@@ -297,6 +287,22 @@ function thermalize!(mc::DQMC)
   end
   nothing
 end
+
+
+_save_thermal(mc, i) = begin
+    jldopen(mc.p.output_file, "r+") do fjld
+      f = fjld.plain
+      HDF5.has(f, "thermal_init/conf") && HDF5.o_delete(f, "thermal_init/conf")
+      HDF5.has(f, "thermal_init/prethermalized") && HDF5.o_delete(f, "thermal_init/prethermalized")
+      HDF5.has(f, "thermal_init/udsweep") && HDF5.o_delete(f, "thermal_init/udsweep")
+      write(fjld, "thermal_init/conf", mc.p.hsfield)
+      write(fjld, "thermal_init/prethermalized", i)
+      write(fjld, "thermal_init/udsweep", mc.a.to["udsweep"])
+      (i == mc.p.thermalization) && saverng(f; group="thermal_init/rng") # for future features
+    end
+end
+
+
 
 
 
@@ -316,11 +322,13 @@ function measure!(mc::DQMC, prevmeasurements=0)
   propagate(mc)
 
   cs = choose_chunk_size(mc)
+  @show cs
 
-  configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/configurations")
-  greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/greens")
-  occ = Observable(Float64, "occupation"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/occupation")
-  boson_action = Observable(Float64, "boson_action"; alloc=cs, inmemory=false, outfile=p.output_file, dataset="obs/boson_action")
+  configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/configurations")
+  greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/greens")
+  occ = Observable(Float64, "occupation"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/occupation")
+  boson_action = Observable(Float64, "boson_action"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/boson_action")
+
 
   i_start = 1
   i_end = p.measurements
@@ -330,7 +338,14 @@ function measure!(mc::DQMC, prevmeasurements=0)
     togo = mod1(prevmeasurements, p.write_every_nth)-1
     i_start = prevmeasurements-togo+1
     i_end = p.measurements + prevmeasurements
+    cs = configurations.alloc
   end
+
+  @show cs
+  @show i_start
+  @show i_end
+  @show length(configurations.timeseries)
+
 
   acc_rate = 0.0
   acc_rate_global = 0.0
@@ -356,6 +371,17 @@ function measure!(mc::DQMC, prevmeasurements=0)
         dumping && saverng(p.output_file; group="resume/rng")
         dumping && println("Dumping block of $cs datapoints was a success")
         flush(stdout)
+
+        if (approaching_wtl = now() >= p.walltimelimit)
+          println("Approaching wall-time limit. Safely exiting. (i = $(i)). Current date: $(Dates.format(now(), "d.u yyyy HH:MM")).")
+          println("Flushing configurations which haven't been dumped yet.")
+          flush(configurations)
+          flush(greens)
+          flush(occ)
+          flush(boson_action)
+          saverng(p.output_file; group="resume/rng")
+          exit(42)
+        end
       end
     end
 
@@ -373,12 +399,13 @@ function measure!(mc::DQMC, prevmeasurements=0)
       a.acc_rate_global = 0.0
       flush(stdout)
     end
-    
-    if now() >= p.walltimelimit
-      println("Approaching wall-time limit. Safely exiting. (i = $(i)). Current date: $(Dates.format(now(), "d.u yyyy HH:MM")).")
-      exit(42)
-    end
   end
+
+  println("Final flush.")
+  flush(configurations)
+  flush(boson_action)
+  flush(greens)
+  flush(occ)
 
   nothing
 end
@@ -444,6 +471,7 @@ function set_walltimelimit!(p, start_time)
   if "WALLTIMELIMIT" in keys(ENV)
     p.walltimelimit = wtl2DateTime(ENV["WALLTIMELIMIT"], start_time)
     @show ENV["WALLTIMELIMIT"]
+    @show p.walltimelimit
   elseif occursin("cheops", gethostname())
     p.walltimelimit = wtl2DateTime("9-23:30:00", start_time) # CHEOPS
     println("Set CHEOPS walltime limit, i.e. 9-23:30:00.")
