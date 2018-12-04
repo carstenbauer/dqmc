@@ -119,7 +119,7 @@ version = "0.2.1"
 
 [[Helpers]]
 deps = ["HDF5", "JLD", "LinearAlgebra", "Printf", "Random", "SparseArrays", "Statistics", "Test"]
-git-tree-sha1 = "b652f77da5fdda501f399d5e74afcdd64d0ea838"
+git-tree-sha1 = "d186dfd24254a702fa58ebd16db6bfabb4a3c96d"
 repo-rev = "master"
 repo-url = "https://github.com/crstnbr/Helpers.jl"
 uuid = "4de40672-05fc-5661-aad9-eb3e0bf5aa76"
