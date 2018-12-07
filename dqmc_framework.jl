@@ -341,11 +341,6 @@ function measure!(mc::DQMC, prevmeasurements=0)
     cs = configurations.alloc
   end
 
-  @show cs
-  @show i_start
-  @show i_end
-  @show length(configurations.timeseries)
-
 
   acc_rate = 0.0
   acc_rate_global = 0.0
