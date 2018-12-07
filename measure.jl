@@ -1,7 +1,7 @@
 # -------------------------------------------------------
 #            Check input arguments
 # -------------------------------------------------------
-length(ARGS) >= 1 || error("input arg: prefix.meas.xml [or just prefix or prefix.in.xml or prefix.out.h5 (will use default settings)]")
+length(ARGS) >= 1 || error("input arg: prefix.meas.xml [or prefix.in.xml]")
 
 
 
@@ -46,7 +46,7 @@ using ProgressMeter
   binder::Bool = true
 
   # fermionic
-  etpc::Bool = false
+  etpc::Bool = true
 
   safe_mult::Int = 10
   overwrite::Bool = false
@@ -60,11 +60,37 @@ using ProgressMeter
 end
 
 
+
+function measxml2MeasParams(fname)
+  # meas.xml: direct mapping of xml fields to kwargs
+  mpdict = xml2dict(fname, false)
+  kwargs_strings = Dict([Symbol(lowercase(k))=>lowercase(v) for (k,v) in mpdict])
+
+  kwargs = Dict()
+  for (k, v) in kwargs_strings
+    if v in ["true", "false"]
+      kwargs[k] = parse(Bool, v)
+    else
+      try
+        kwargs[k] = parse(Int64, v)
+      catch
+        kwargs[k] = v
+      end
+    end
+  end
+
+  mp = MeasParams(; kwargs...)
+  mp.inxml = fname[1:end-9]*".in.xml"
+  return mp
+end
+
+
+
 """
 Returns `true` if we want to measure fermionic stuff.
 """
 @inline hasfermionic(mp::MeasParams) = mp.etpc
-@inline hasfermionic(ol::NamedTuple{K,V}) where {K,V} = :Pplus in K || :Pminus in K
+@inline hasfermionic(ol::NamedTuple{K,V}) where {K,V} = :etpc_plus in K || :etpc_minus in K
 
 
 
@@ -159,8 +185,8 @@ function main(mp::MeasParams)
 
   # etpc
   if mp.etpc
-    (obs = add(obs, Pplus = Observable(Matrix{Float64}, "S-wave equal time pairing susceptibiliy (ETPC plus)", alloc=num_confs)))
-    (obs = add(obs, Pminus = Observable(Matrix{Float64}, "D-wave equal time pairing susceptibiliy (ETPC minus)", alloc=num_confs)))
+    (obs = add(obs, etpc_plus = Observable(Matrix{Float64}, "S-wave equal time pairing susceptibiliy (ETPC plus)", alloc=num_confs)))
+    (obs = add(obs, etpc_minus = Observable(Matrix{Float64}, "D-wave equal time pairing susceptibiliy (ETPC minus)", alloc=num_confs)))
   end
 
   # prepare fermionic sector if necessary
@@ -278,11 +304,11 @@ end
 
 function measure_fermionic(mp, p, obs, conf, greens, mc, i)
     # etpc
-    if :Pplus in keys(obs)
+    if :etpc_plus in keys(obs)
         mc.p.hsfield = conf
         etpc!(mc, greens)
-        add!(obs[:Pplus], mc.s.meas.etpc_plus)
-        add!(obs[:Pminus], mc.s.meas.etpc_minus)
+        add!(obs[:etpc_plus], mc.s.meas.etpc_plus)
+        add!(obs[:etpc_minus], mc.s.meas.etpc_minus)
     end
 end
 
@@ -301,8 +327,8 @@ function export_results(mp, p, obs, nsweeps)
 
     :binder in keys(obs) && export_result(obs[:binder], mp.outfile, "obs/binder", error=false) # jackknife for error
 
-    :Pplus in keys(obs) && export_result(obs[:Pplus], mp.outfile, "obs/Pplus"; timeseries=true)
-    :Pminus in keys(obs) && export_result(obs[:Pminus], mp.outfile, "obs/Pminus"; timeseries=true)
+    :etpc_plus in keys(obs) && export_result(obs[:etpc_plus], mp.outfile, "obs/etpc_plus"; timeseries=true)
+    :etpc_minus in keys(obs) && export_result(obs[:etpc_minus], mp.outfile, "obs/etpc_minus"; timeseries=true)
 
     h5open(mp.outfile, "r+") do fout
         HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
@@ -352,36 +378,15 @@ combine(x::NamedTuple, y::NamedTuple) = NamedTuple{(keys(x)..., keys(y)...)}((x.
 
 const arg = ARGS[1]
 
+isfile(arg) || error("Input file $arg not found.")
 if endswith(arg, ".meas.xml")
-  isfile(arg) || error("Meas input file $arg not found.")
-  # meas.xml: direct mapping of xml fields to kwargs
-  mpdict = xml2dict(arg, false)
-  kwargs_strings = Dict([Symbol(lowercase(k))=>lowercase(v) for (k,v) in mpdict])
-
-  kwargs = Dict()
-  for (k, v) in kwargs_strings
-    if v in ["true", "false"]
-      kwargs[k] = parse(Bool, v)
-    else
-      try
-        kwargs[k] = parse(Int64, v)
-      catch
-        kwargs[k] = v
-      end
-    end
-  end
-
-  mp = MeasParams(; kwargs...)
-  mp.inxml = arg[1:end-9]*".in.xml"
+  mp = measxml2MeasParams(arg)
+elseif endswith(arg, ".in.xml")
+  measxml = arg[1:end-7]*".meas.xml"
+  isfile(measxml) || error("File $(measxml) not found. Input arg was: $(arg).")
+  mp = measxml2MeasParams(measxml)
 else
-  mp = MeasParams()
-
-  if endswith(arg, ".in.xml")
-    mp.inxml = arg
-  else
-    # assume arg to be a simple prefix
-    mp.inxml = arg*".in.xml"
-  end
+  error("No .meas.xml or .in.xml file found. Input arg was: $(arg)")
 end
 
 isfile(mp.inxml) || error("DQMC input file $(mp.inxml) not found.")
