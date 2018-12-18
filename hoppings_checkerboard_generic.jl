@@ -44,10 +44,10 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
   build_checkerboard(mc)
 
   n_groups = l.n_groups
-  eT_half = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
-  eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
-  eT = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
-  eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
+  eT_half = Array{SparseMatrixCSC{H, Int}, 3}(undef, n_groups,2,2) # group, spin (up, down), flavor (x, y)
+  eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(undef, n_groups,2,2)
+  eT = Array{SparseMatrixCSC{H, Int}, 3}(undef, n_groups,2,2)
+  eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(undef, n_groups,2,2)
 
   U = [0.0, 1.0]
   R = [1.0, 0.0]
@@ -86,41 +86,42 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
           end
         end
 
-        eT_half[g,s,f] = sparse(rem_eff_zeros!(expm(- 0.5 * p.delta_tau * T)))
-        eT_half_inv[g,s,f] = sparse(rem_eff_zeros!(expm(0.5 * p.delta_tau * T)))
-        eT[g,s,f] = sparse(rem_eff_zeros!(expm(- p.delta_tau * T)))
-        eT_inv[g,s,f] = sparse(rem_eff_zeros!(expm(p.delta_tau * T)))
+        eT_half[g,s,f] = sparse(rem_eff_zeros!(exp(- 0.5 * p.delta_tau * T)))
+        eT_half_inv[g,s,f] = sparse(rem_eff_zeros!(exp(0.5 * p.delta_tau * T)))
+        eT[g,s,f] = sparse(rem_eff_zeros!(exp(- p.delta_tau * T)))
+        eT_inv[g,s,f] = sparse(rem_eff_zeros!(exp(p.delta_tau * T)))
       end
     end
   end
 
   if p.opdim == 3
-    l.chkr_hop_half = [cat([1,2], eT_half[g,1,1], eT_half[g,2,2], eT_half[g,2,1], eT_half[g,1,2]) for g in 1:n_groups]
-    l.chkr_hop_half_inv = [cat([1,2], eT_half_inv[g,1,1], eT_half_inv[g,2,2], eT_half_inv[g,2,1], eT_half_inv[g,1,2]) for g in 1:n_groups]
-    l.chkr_hop = [cat([1,2], eT[g,1,1], eT[g,2,2], eT[g,2,1], eT[g,1,2]) for g in 1:n_groups]
-    l.chkr_hop_inv = [cat([1,2], eT_inv[g,1,1], eT_inv[g,2,2], eT_inv[g,2,1], eT_inv[g,1,2]) for g in 1:n_groups]
+    l.chkr_hop_half = [cat(eT_half[g,1,1], eT_half[g,2,2], eT_half[g,2,1], eT_half[g,1,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop_half_inv = [cat(eT_half_inv[g,1,1], eT_half_inv[g,2,2], eT_half_inv[g,2,1], eT_half_inv[g,1,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop = [cat(eT[g,1,1], eT[g,2,2], eT[g,2,1], eT[g,1,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop_inv = [cat(eT_inv[g,1,1], eT_inv[g,2,2], eT_inv[g,2,1], eT_inv[g,1,2], dims=(1,2)) for g in 1:n_groups]
 
   else # O(2) and O(1) model
-    l.chkr_hop_half = [cat([1,2], eT_half[g,1,1], eT_half[g,2,2]) for g in 1:n_groups]
-    l.chkr_hop_half_inv = [cat([1,2], eT_half_inv[g,1,1], eT_half_inv[g,2,2]) for g in 1:n_groups]
-    l.chkr_hop = [cat([1,2], eT[g,1,1], eT[g,2,2]) for g in 1:n_groups]
-    l.chkr_hop_inv = [cat([1,2], eT_inv[g,1,1], eT_inv[g,2,2]) for g in 1:n_groups]
+    l.chkr_hop_half = [cat(eT_half[g,1,1], eT_half[g,2,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop_half_inv = [cat(eT_half_inv[g,1,1], eT_half_inv[g,2,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop = [cat(eT[g,1,1], eT[g,2,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop_inv = [cat(eT_inv[g,1,1], eT_inv[g,2,2], dims=(1,2)) for g in 1:n_groups]
   end
-  l.chkr_hop_half_dagger = ctranspose.(l.chkr_hop_half)
-  l.chkr_hop_dagger = ctranspose.(l.chkr_hop)
+  l.chkr_hop_half_dagger = adjoint.(l.chkr_hop_half)
+  l.chkr_hop_dagger = adjoint.(l.chkr_hop)
 
   muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
   muv = repeat(muv, outer=[Int(p.flv/2)])
-  l.chkr_mu_half = spdiagm(exp.(-0.5*p.delta_tau * -muv))
-  l.chkr_mu_half_inv = spdiagm(exp.(0.5*p.delta_tau * -muv))
-  l.chkr_mu = spdiagm(exp.(-p.delta_tau * -muv))
-  l.chkr_mu_inv = spdiagm(exp.(p.delta_tau * -muv))
+  l.chkr_mu_half = sparse(Diagonal(exp.(-0.5*p.delta_tau * -muv)))
+  l.chkr_mu_half_inv = sparse(Diagonal(exp.(0.5*p.delta_tau * -muv)))
+  l.chkr_mu = sparse(Diagonal(exp.(-p.delta_tau * -muv)))
+  l.chkr_mu_inv = sparse(Diagonal(exp.(p.delta_tau * -muv)))
 
   fold_chkr_grps(mc)
 
   hop_mat_exp_chkr = foldl(*,l.chkr_hop_half) * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
-  r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
+  idcs = (LinearIndices(hop_mat_exp_chkr))[findall(x -> x == zero(x), hop_mat_exp_chkr)]
+  r[idcs] .= 0
   println("Checkerboard (generic) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
 end
 
@@ -147,18 +148,18 @@ function fold_chkr_grps(mc::AbstractDQMC{CBGeneric})
   @show SPARSITY_LIMIT
 
   l.chkr_hop_half_folded = SparseMatrixCSC{H, Int64}[]
-  cur = speye(H, flv*N, flv*N)
+  cur = SparseMatrixCSC{H}(I, flv*N, flv*N)
   l.folded = UnitRange{Int64}[]
   fstart = 2
   fstop = 1
 
   for i in 2:l.n_groups
-    if i != 2 && (countnz(cur)/length(cur)) > SPARSITY_LIMIT
+    if i != 2 && (count(!iszero, cur)/length(cur)) > SPARSITY_LIMIT
       push!(l.chkr_hop_half_folded, cur)
       push!(l.folded, fstart:fstop)
       fstart = i
       fstop = i
-      cur = speye(H, flv*N, flv*N)
+      cur = SparseMatrixCSC{H}(I, flv*N, flv*N)
     else
       fstop += 1
     end
@@ -171,18 +172,18 @@ function fold_chkr_grps(mc::AbstractDQMC{CBGeneric})
 
   l.n_folded = length(l.folded)
 
-  l.chkr_hop_half_inv_folded = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
-  l.chkr_hop_half_dagger_folded = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
-  l.chkr_hop_half_folded_rev = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
-  l.chkr_hop_half_inv_folded_rev = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
-  l.chkr_hop_half_dagger_folded_rev = Vector{SparseMatrixCSC{H, Int64}}(l.n_folded)
+  l.chkr_hop_half_inv_folded = Vector{SparseMatrixCSC{H, Int64}}(undef, l.n_folded)
+  l.chkr_hop_half_dagger_folded = Vector{SparseMatrixCSC{H, Int64}}(undef, l.n_folded)
+  l.chkr_hop_half_folded_rev = Vector{SparseMatrixCSC{H, Int64}}(undef, l.n_folded)
+  l.chkr_hop_half_inv_folded_rev = Vector{SparseMatrixCSC{H, Int64}}(undef, l.n_folded)
+  l.chkr_hop_half_dagger_folded_rev = Vector{SparseMatrixCSC{H, Int64}}(undef, l.n_folded)
 
   for (i, rng) in enumerate(l.folded)
-    cur_rev = speye(H, flv*N, flv*N)
-    cur_inv = speye(H, flv*N, flv*N)
-    cur_inv_rev = speye(H, flv*N, flv*N)
-    cur_dagger = speye(H, flv*N, flv*N)
-    cur_dagger_rev = speye(H, flv*N, flv*N)
+    cur_rev = SparseMatrixCSC{H}(I, flv*N, flv*N)
+    cur_inv = SparseMatrixCSC{H}(I, flv*N, flv*N)
+    cur_inv_rev = SparseMatrixCSC{H}(I, flv*N, flv*N)
+    cur_dagger = SparseMatrixCSC{H}(I, flv*N, flv*N)
+    cur_dagger_rev = SparseMatrixCSC{H}(I, flv*N, flv*N)
     for k in rng
       cur_rev = cur_rev * l.chkr_hop_half[k]
       cur_inv = l.chkr_hop_half_inv[k] * cur_inv
@@ -214,10 +215,10 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
   build_checkerboard(mc)
 
   n_groups = l.n_groups
-  eT_half = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2) # group, spin (up, down), flavor (x, y)
-  eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
-  eT = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
-  eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(n_groups,2,2)
+  eT_half = Array{SparseMatrixCSC{H, Int}, 3}(undef, n_groups,2,2) # group, spin (up, down), flavor (x, y)
+  eT_half_inv = Array{SparseMatrixCSC{H, Int}, 3}(undef, n_groups,2,2)
+  eT = Array{SparseMatrixCSC{H, Int}, 3}(undef, n_groups,2,2)
+  eT_inv = Array{SparseMatrixCSC{H, Int}, 3}(undef, n_groups,2,2)
 
   B = zeros(2,2) # rowidx = spin up,down, colidx = flavor
   if p.Bfield
@@ -266,40 +267,41 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
           end
         end
 
-        eT_half[g,s,f] = sparse(rem_eff_zeros!(expm(- 0.5 * p.delta_tau * T)))
-        eT_half_inv[g,s,f] = sparse(rem_eff_zeros!(expm(0.5 * p.delta_tau * T)))
-        eT[g,s,f] = sparse(rem_eff_zeros!(expm(- p.delta_tau * T)))
-        eT_inv[g,s,f] = sparse(rem_eff_zeros!(expm(p.delta_tau * T)))
+        eT_half[g,s,f] = sparse(rem_eff_zeros!(exp(- 0.5 * p.delta_tau * T)))
+        eT_half_inv[g,s,f] = sparse(rem_eff_zeros!(exp(0.5 * p.delta_tau * T)))
+        eT[g,s,f] = sparse(rem_eff_zeros!(exp(- p.delta_tau * T)))
+        eT_inv[g,s,f] = sparse(rem_eff_zeros!(exp(p.delta_tau * T)))
       end
     end
   end
 
   if p.opdim == 3
-    l.chkr_hop_half = [cat([1,2], eT_half[g,1,1], eT_half[g,2,2], eT_half[g,2,1], eT_half[g,1,2]) for g in 1:n_groups]
-    l.chkr_hop_half_inv = [cat([1,2], eT_half_inv[g,1,1], eT_half_inv[g,2,2], eT_half_inv[g,2,1], eT_half_inv[g,1,2]) for g in 1:n_groups]
-    l.chkr_hop = [cat([1,2], eT[g,1,1], eT[g,2,2], eT[g,2,1], eT[g,1,2]) for g in 1:n_groups]
-    l.chkr_hop_inv = [cat([1,2], eT_inv[g,1,1], eT_inv[g,2,2], eT_inv[g,2,1], eT_inv[g,1,2]) for g in 1:n_groups]
+    l.chkr_hop_half = [cat(eT_half[g,1,1], eT_half[g,2,2], eT_half[g,2,1], eT_half[g,1,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop_half_inv = [cat(eT_half_inv[g,1,1], eT_half_inv[g,2,2], eT_half_inv[g,2,1], eT_half_inv[g,1,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop = [cat(eT[g,1,1], eT[g,2,2], eT[g,2,1], eT[g,1,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop_inv = [cat(eT_inv[g,1,1], eT_inv[g,2,2], eT_inv[g,2,1], eT_inv[g,1,2], dims=(1,2)) for g in 1:n_groups]
 
   else # O(2) and O(1) model
-    l.chkr_hop_half = [cat([1,2], eT_half[g,1,1], eT_half[g,2,2]) for g in 1:n_groups]
-    l.chkr_hop_half_inv = [cat([1,2], eT_half_inv[g,1,1], eT_half_inv[g,2,2]) for g in 1:n_groups]
-    l.chkr_hop = [cat([1,2], eT[g,1,1], eT[g,2,2]) for g in 1:n_groups]
-    l.chkr_hop_inv = [cat([1,2], eT_inv[g,1,1], eT_inv[g,2,2]) for g in 1:n_groups]
+    l.chkr_hop_half = [cat(eT_half[g,1,1], eT_half[g,2,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop_half_inv = [cat(eT_half_inv[g,1,1], eT_half_inv[g,2,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop = [cat(eT[g,1,1], eT[g,2,2], dims=(1,2)) for g in 1:n_groups]
+    l.chkr_hop_inv = [cat(eT_inv[g,1,1], eT_inv[g,2,2], dims=(1,2)) for g in 1:n_groups]
   end
-  l.chkr_hop_half_dagger = ctranspose.(l.chkr_hop_half)
-  l.chkr_hop_dagger = ctranspose.(l.chkr_hop)
+  l.chkr_hop_half_dagger = adjoint.(l.chkr_hop_half)
+  l.chkr_hop_dagger = adjoint.(l.chkr_hop)
 
   muv = vcat(fill(p.mu1,l.sites),fill(p.mu2,l.sites))
   muv = repeat(muv, outer=[Int(p.flv/2)])
-  l.chkr_mu_half = spdiagm(exp.(-0.5*p.delta_tau * -muv))
-  l.chkr_mu_half_inv = spdiagm(exp.(0.5*p.delta_tau * -muv))
-  l.chkr_mu = spdiagm(exp.(-p.delta_tau * -muv))
-  l.chkr_mu_inv = spdiagm(exp.(p.delta_tau * -muv))
+  l.chkr_mu_half = sparse(Diagonal(exp.(-0.5*p.delta_tau * -muv)))
+  l.chkr_mu_half_inv = sparse(Diagonal(exp.(0.5*p.delta_tau * -muv)))
+  l.chkr_mu = sparse(Diagonal(exp.(-p.delta_tau * -muv)))
+  l.chkr_mu_inv = sparse(Diagonal(exp.(p.delta_tau * -muv)))
 
   fold_chkr_grps(mc)
 
   hop_mat_exp_chkr = foldl(*,l.chkr_hop_half) * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
-  r[find(x->x==zero(x),hop_mat_exp_chkr)] = 0.
+  idcs = (LinearIndices(hop_mat_exp_chkr))[findall(x -> x == zero(x), hop_mat_exp_chkr)]
+  r[idcs] .= 0
   println("Checkerboard (Bfield, generic) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
 end

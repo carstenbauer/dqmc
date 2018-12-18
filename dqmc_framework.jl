@@ -394,6 +394,12 @@ function measure!(mc::DQMC, prevmeasurements=0)
       a.acc_rate_global = 0.0
       flush(stdout)
     end
+
+    if (approaching_wtl = now() >= p.walltimelimit)
+      println("Approaching wall-time limit. Safely exiting immediately. (i = $(i)). Current date: $(Dates.format(now(), "d.u yyyy HH:MM")).")
+      println("Won't flush because state wouldn't be resumable.")
+      exit(42)
+    end
   end
 
   println("Final flush.")
