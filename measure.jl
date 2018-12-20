@@ -157,19 +157,21 @@ function main(mp::MeasParams)
   # -------------- Load DQMC params/results -----------------
   println("\nLoading DQMC results...")
 
-  greens = nothing;
+  greens = nothing; 
   mc = nothing;
+<<<<<<< HEAD
   local confs
   local chunkcount
   try
     confs = ts_flat(mp.dqmc_outfile, "obs/configurations")
     chunkcount = h5read(mp.dqmc_outfile, "obs/configurations/timeseries/chunk_count")
+    mp.chunksize = h5read(mp.dqmc_outfile, "obs/configurations/alloc")
   catch err
-    println("No configurations?")
-    throw(err)
+    println("Couldn't read configuration data. Probably no configurations yet? Exiting.")
+    exit()
   end
-  mp.chunksize = size(confs, 4) / chunkcount
   # hasfermionic(mp) && (greens = ts_flat(mp.dqmc_outfile, "obs/greens"))
+  hasfermionic(mp) && (greens = loadobs_frommemory(mp.dqmc_outfile, "obs/greens"))
 
   # load dqmc params
   p = Params(); xml2parameters!(p, mp.inxml, false);
@@ -238,6 +240,7 @@ end
 #                      MEASUREMENTS
 # -------------------------------------------------------
 function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens, mc) where {K,V}
+    # greens = (lazy) observable of greens functions or nothing
     num_confs = size(confs, ndims(confs))
     nsweeps = num_confs * p.write_every_nth
 
@@ -252,7 +255,8 @@ function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens,
 
         if hasfermionic(mp)
             # g = greens[:,:,i]
-            g = _load_single_greens_from_file(mp, i)
+            # g = _load_single_greens_from_file(mp, i)
+            g = greens[i] # load single greens from disk through MCO.jl
             measure_fermionic(mp, p, obs, conf, g, mc, i)
         end
     end
@@ -269,14 +273,14 @@ function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens,
 end
 
 
-function _load_single_greens_from_file(mp::MeasParams, ts_idx::Int)::Matrix{<:Number}
-    chunknr = ceil(Int,ts_idx / mp.chunksize)
-    idx_in_chunk = mod1(ts_idx, mp.chunksize)
-    return jldopen(mp.dqmc_outfile, "r") do f
-        val = f["obs/greens/timeseries/ts_chunk$(chunknr)"][:,:, idx_in_chunk]
-        return dropdims(val, dims=3)
-    end
-end
+# function _load_single_greens_from_file(mp::MeasParams, ts_idx::Int)::Matrix{<:Number}
+#     chunknr = ceil(Int,ts_idx / mp.chunksize)
+#     idx_in_chunk = mod1(ts_idx, mp.chunksize)
+#     return jldopen(mp.dqmc_outfile, "r") do f
+#         val = f["obs/greens/timeseries/ts_chunk$(chunknr)"][:,:, idx_in_chunk]
+#         return dropdims(val, dims=3)
+#     end
+# end
 
 
 
