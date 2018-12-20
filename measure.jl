@@ -159,7 +159,6 @@ function main(mp::MeasParams)
 
   greens = nothing; 
   mc = nothing;
-<<<<<<< HEAD
   local confs
   local chunkcount
   try
