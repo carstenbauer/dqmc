@@ -159,9 +159,15 @@ function main(mp::MeasParams)
 
   greens = nothing;
   mc = nothing;
-  
-  confs = ts_flat(mp.dqmc_outfile, "obs/configurations")
-  chunkcount = h5read(mp.dqmc_outfile, "obs/configurations/timeseries/chunk_count")
+  local confs
+  local chunkcount
+  try
+    confs = ts_flat(mp.dqmc_outfile, "obs/configurations")
+    chunkcount = h5read(mp.dqmc_outfile, "obs/configurations/timeseries/chunk_count")
+  catch err
+    println("No configurations?")
+    throw(err)
+  end
   mp.chunksize = size(confs, 4) / chunkcount
   # hasfermionic(mp) && (greens = ts_flat(mp.dqmc_outfile, "obs/greens"))
 
