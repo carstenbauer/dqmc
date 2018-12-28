@@ -327,7 +327,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
   configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/configurations")
   greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/greens")
   occ = Observable(Float64, "occupation"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/occupation")
-  boson_action = Observable(Float64, "boson_action"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/boson_action")
+  # boson_action = Observable(Float64, "boson_action"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/boson_action")
 
 
   i_start = 1
@@ -350,9 +350,9 @@ function measure!(mc::DQMC, prevmeasurements=0)
 
       # if s.current_slice == 1 && s.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
       if s.current_slice == p.slices && s.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
-        dumping = (length(boson_action)+1)%cs == 0
+        dumping = (length(configurations)+1)%cs == 0
         dumping && println("Dumping... (2*i=$(2*i))")
-        add!(boson_action, p.boson_action)
+        # add!(boson_action, p.boson_action)
 
         add!(configurations, p.hsfield)
         
@@ -373,7 +373,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
           flush(configurations)
           flush(greens)
           flush(occ)
-          flush(boson_action)
+          # flush(boson_action)
           saverng(p.output_file; group="resume/rng")
           exit(42)
         end
@@ -404,7 +404,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
 
   println("Final flush.")
   flush(configurations)
-  flush(boson_action)
+  # flush(boson_action)
   flush(greens)
   flush(occ)
 
