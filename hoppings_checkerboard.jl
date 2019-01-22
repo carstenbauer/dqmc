@@ -130,8 +130,7 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBAssaad})
 
   hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
-  idcs = (LinearIndices(hop_mat_exp_chkr))[findall(x->x==zero(x), hop_mat_exp_chkr)]
-  r[idcs] .= 0
+  r[findall(x->x==zero(x), hop_mat_exp_chkr)] .= 0
   println("Checkerboard - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
   # println("Checkerboard - exact (eff rel):\t\t", maximum(r))
 end
@@ -265,8 +264,7 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBAssaad})
 
   hop_mat_exp_chkr = l.chkr_hop_half[1] * l.chkr_hop_half[2] * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
-  idcs = (LinearIndices(hop_mat_exp_chkr))[findall(x -> x == zero(x), hop_mat_exp_chkr)]
-  r[idcs] .= 0
+  r[findall(x -> x == zero(x), hop_mat_exp_chkr)] .= 0
   println("Checkerboard (Bfield) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
   # println("Checkerboard (Bfield) - exact (eff rel):\t\t", maximum(r))
 end

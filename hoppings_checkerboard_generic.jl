@@ -120,8 +120,7 @@ function init_checkerboard_matrices(mc::AbstractDQMC{CBGeneric})
 
   hop_mat_exp_chkr = foldl(*,l.chkr_hop_half) * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
-  idcs = (LinearIndices(hop_mat_exp_chkr))[findall(x -> x == zero(x), hop_mat_exp_chkr)]
-  r[idcs] .= 0
+  r[findall(x -> x == zero(x), hop_mat_exp_chkr)] .= 0
   println("Checkerboard (generic) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
 end
 
@@ -301,7 +300,6 @@ function init_checkerboard_matrices_Bfield(mc::AbstractDQMC{CBGeneric})
 
   hop_mat_exp_chkr = foldl(*,l.chkr_hop_half) * sqrt.(l.chkr_mu)
   r = effreldiff(l.hopping_matrix_exp,hop_mat_exp_chkr)
-  idcs = (LinearIndices(hop_mat_exp_chkr))[findall(x -> x == zero(x), hop_mat_exp_chkr)]
-  r[idcs] .= 0
+  r[findall(x -> x == zero(x), hop_mat_exp_chkr)] .= 0
   println("Checkerboard (Bfield, generic) - exact (abs):\t\t", maximum(absdiff(l.hopping_matrix_exp,hop_mat_exp_chkr)))
 end
