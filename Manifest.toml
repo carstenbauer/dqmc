@@ -21,6 +21,14 @@ git-tree-sha1 = "055eb2690182ebc31087859c3dd8598371d3ef9e"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 version = "0.5.3"
 
+[[BinningAnalysis]]
+deps = ["Statistics", "Test"]
+git-tree-sha1 = "843bda27e8a276f326923ea2026496a39e018d16"
+repo-rev = "master"
+repo-url = "https://github.com/crstnbr/BinningAnalysis.jl"
+uuid = "a1b139fa-e073-5d47-884c-9045a9442dbb"
+version = "0.0.0"
+
 [[Blosc]]
 deps = ["BinaryProvider", "CMakeWrapper", "Compat", "Libdl"]
 git-tree-sha1 = "71fb23581e1f0b0ae7be8ccf0ebfb3600e23ca41"
