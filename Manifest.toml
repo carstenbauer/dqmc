@@ -23,7 +23,7 @@ version = "0.5.3"
 
 [[BinningAnalysis]]
 deps = ["Statistics", "Test"]
-git-tree-sha1 = "843bda27e8a276f326923ea2026496a39e018d16"
+git-tree-sha1 = "bef09beceae1d4eb4b355407ae5d2c3ce5a1d13f"
 repo-rev = "master"
 repo-url = "https://github.com/crstnbr/BinningAnalysis.jl"
 uuid = "a1b139fa-e073-5d47-884c-9045a9442dbb"
@@ -58,15 +58,15 @@ uuid = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "ec61a16eed883ad0cfa002d7489b3ce6d039bb9a"
+git-tree-sha1 = "f7712cd25c80a86d617c1abd23454714d4a546cc"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "1.4.0"
+version = "1.5.0"
 
 [[Conda]]
 deps = ["Compat", "JSON", "VersionParsing"]
-git-tree-sha1 = "fb86fe40cb5b35990e368709bfdc1b46dbb99dac"
+git-tree-sha1 = "b625d802587c2150c279a40a646fba63f9bd8187"
 uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
-version = "1.1.1"
+version = "1.2.0"
 
 [[Crayons]]
 deps = ["Test"]
