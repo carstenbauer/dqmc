@@ -17,9 +17,9 @@ end
 #         Occupation
 # -------------------------------------------------------
 """
-Average occupation per site and fermion flavor.
+Overall occupation, averaged over sites and fermion flavors (both spin and band).
 
-Example: half-filling of spin 1/2 fermions on a lattice corresponds to `n=0.5`.
+Example: half-filling of spin 1/2 fermions on a lattice corresponds to `n=0.5`, not `n=1`.
 """
 function occupation(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
   n = mean(1 .- diag(greens))
@@ -28,6 +28,19 @@ function occupation(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
   # M = mc.p.slices
   # n = 1/(N*M) * sum(1 .- diag(greens))
   real(n)
+end
+
+"""
+Flavor resolved occupations (only averaged over sites).
+"""
+function occupations_flv(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
+  N = mc.l.sites
+  ns = mean.(Iterators.partition(1 .- diag(greens), N))
+  # only per site:
+  # N = mc.l.sites
+  # M = mc.p.slices
+  # n = 1/(N*M) * sum(1 .- diag(greens))
+  real(ns)
 end
 
 
