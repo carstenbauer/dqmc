@@ -3,18 +3,6 @@ using JLD, LinearAlgebra, SparseArrays
 global const randconf = load("O3.jld", "randconf")
 
 
-function mc_from_inxml(inxml::AbstractString)
-    @assert isfile(inxml)
-    p = Params()
-    p.output_file = "$(inxml[1:end-7]).out.h5.running"
-    xml2parameters!(p, inxml)
-    mc = DQMC(p)
-    init!(mc)
-
-    mc.p.hsfield .= randconf
-    mc
-end
-
 # function rewrite()
 #     objs = Dict{String, Any}()
 
@@ -34,9 +22,9 @@ end
 # end
 
 # set up minimal O3 simulation
-mc = mc_from_inxml("parameters/O3_generic_small_system.in.xml")
-mc_nob = mc_from_inxml("parameters/O3_no_bfield_small_system.in.xml")
-mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.xml")
+mc = mc_from_inxml("parameters/O3_generic_small_system.in.xml", randconf)
+mc_nob = mc_from_inxml("parameters/O3_no_bfield_small_system.in.xml", randconf)
+mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.xml", randconf)
 
 
 

@@ -3,6 +3,7 @@ dqmc.in.xml
 **/*.running
 playground.jl
 testing/
+**/.ipynb_checkpoints
 **/*.bin
 **/*.png
 **/*.pdf
