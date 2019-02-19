@@ -1,12 +1,6 @@
 #### SVD, i.e. UDV decomposition
-function decompose_udv!(A::Matrix{T}) where T<:Number
-  LinearAlgebra.LAPACK.gesvd!('A','A',A) # was gesdd! at some point
-end
-
-function decompose_udv(A::Matrix{T}) where T<:Number
-  X = copy(A)
-  decompose_udv!(X)
-end
+decompose_udv!(A::Matrix{<:Number}) = LinearAlgebra.LAPACK.gesvd!('A','A',A) # was gesdd! at some point
+decompose_udv(A::Matrix{T}) where T<:Number = decompose_udv!(copy(A))
 
 
 #### QR, i.e. UDT decomposition
@@ -20,14 +14,6 @@ function decompose_udt(A::AbstractMatrix{C}) where C<:Number
   return F.Q, D, T
 end
 
-# function decompose_udt!(A::AbstractMatrix{C}, D) where C<:Number
-#   Q, R, p = qr(A, Val{true}; thin=false)
-#   @views p[p] = 1:length(p)
-#   D .= abs.(real(diag(R)))
-#   scale!(1 ./ D, R)
-#   return Q, D, R[:, p]
-# end
-
 function decompose_udt!(A::AbstractMatrix{C}, D) where C<:Number
   F = qr!(A, Val(true))
   @views F.p[F.p] = 1:length(F.p)
@@ -39,16 +25,26 @@ end
 
 
 #### Other
+"""
+Calculate matrix exponential via eigenvalue decomposition.
+"""
 function expm_diag!(A::Matrix{T}) where T<:Number
   F = eigfact!(A)
   return F[:vectors] * spdiagm(exp(F[:values])) * adjoint(F[:vectors])
 end
 
+"""
+Calculate the determinant via LU decomposition
+"""
 function lu_det(M)
     L, U, p = lu(M)
     return prod(diag(L)) * prod(diag(U))
 end
 
+
+"""
+Safely multiply two UDT decompositions
+"""
 function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
   mat = Tl * Ur
   mat = spdiagm(Dl)*mat*spdiagm(Dr)

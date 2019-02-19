@@ -7,7 +7,7 @@ if !(@isdefined input)
 end
 
 using Revise, BenchmarkTools
-include("dqmc_framework.jl")
+include("../src/dqmc_framework.jl")
 
 p = Params()
 p.output_file = "live.out.h5.running"
