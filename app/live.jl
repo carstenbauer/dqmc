@@ -1,3 +1,10 @@
+using Pkg
+Pkg.activate(ENV["JULIA_DQMC"])
+
+using Revise, BenchmarkTools
+include(joinpath(ENV["JULIA_DQMC"], "src/dqmc_framework.jl"))
+
+
 if !(@isdefined input)
     if isfile("dqmc.in.xml")
         input = "dqmc.in.xml"
@@ -20,6 +27,6 @@ init!(mc)
 
 # const l = mc.l;
 # const s = mc.s;
-meas = mc.s.meas
+# meas = mc.s.meas
 display(mc)
 nothing
