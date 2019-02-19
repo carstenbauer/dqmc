@@ -54,7 +54,7 @@ end
 
 # TIMING parameter "hack"
 using LightXML #, Iterators
-include("../src/xml_parameters.jl")
+include("../src/tools/xml_parameters.jl")
 params = xml2dict(input_xml, false)
 haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) && (global const TIMING = true)
 

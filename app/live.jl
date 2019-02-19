@@ -13,8 +13,6 @@ if !(@isdefined input)
     end
 end
 
-using Revise, BenchmarkTools
-include("../src/dqmc_framework.jl")
 
 p = Params()
 p.output_file = "live.out.h5.running"
@@ -25,8 +23,5 @@ mc = DQMC(p)
 
 init!(mc)
 
-# const l = mc.l;
-# const s = mc.s;
-# meas = mc.s.meas
 display(mc)
 nothing
