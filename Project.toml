@@ -1,3 +1,6 @@
+name = "dqmc"
+author = ["Carsten Bauer <mail@carstenbauer.eu>"]
+
 [deps]
 BinningAnalysis = "a1b139fa-e073-5d47-884c-9045a9442dbb"
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"

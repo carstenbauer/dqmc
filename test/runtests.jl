@@ -37,7 +37,7 @@ end
 
 
 
-const SUPPRESS_DQMC_INIT_OUTPUT = true
+(@isdefined SUPPRESS_DQMC_INIT_OUTPUT) || (const SUPPRESS_DQMC_INIT_OUTPUT = false)
 
 
 @testset "All Tests" begin

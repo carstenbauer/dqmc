@@ -1,8 +1,23 @@
 # dqmc.jl called with arguments: whatever.in.xml
-using Dates, LinearAlgebra
+using Dates, LinearAlgebra, Pkg
 start_time = now()
 println("\nStarted: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
+
+
+function is_dqmc_env_activated()
+    project_file = Base.active_project()
+    project = Pkg.Types.read_project(project_file)
+    return project.name == "dqmc"
+end
+
+if !is_dqmc_env_activated()
+  println("Activating DQMC environment.")
+  haskey(ENV, "JULIA_DQMC") || error("DQMC environment not loaded and JULIA_DQMC env variable not set!")
+  Pkg.activate(ENV["JULIA_DQMC"])
+  is_dqmc_env_activated() || error("Invalid JULIA_DQMC env variable value.")
+end
+
 
 
 try

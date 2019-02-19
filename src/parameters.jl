@@ -212,6 +212,3 @@ function deduce_remaining_parameters(p::Params)
   end
   nothing
 end
-
-include("xml_parameters.jl")
-include("hdf5_parameters.jl")

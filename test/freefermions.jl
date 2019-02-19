@@ -10,6 +10,7 @@ Perform ED for L=2 system and return ETGF and occupation number.
 `nmax` specifies how many low energy state we keep in the ED.
 """
 function perform_ed(; beta::Float64 = 8., nmax::Integer = 22)
+    println("Performing ED..."); flush(stdout);
     ns = 8
     params = Dict("txh"=>1.0, "txv"=>0.5, "tyh"=>-0.5, "tyv"=>-1.0, "mu"=>-0.5,
         "r"=>1.0, "lambdax"=>0.0, "lambday"=>0.0, "lambdaz"=>0.0, "lambda0"=>0.0)
@@ -37,6 +38,8 @@ function perform_ed(; beta::Float64 = 8., nmax::Integer = 22)
     nbar = EV(n, evecs, evals, beta)
 
     #@assert isapprox(real(sum(1 .- diag(g))), nbar)
+
+    println("Done with ED."); flush(stdout);
 
     return g, nbar
 end
