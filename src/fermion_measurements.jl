@@ -657,7 +657,7 @@ end
 global LEFT = true
 global RIGHT = false
 """
-Calculate UDVs at safe_mult time slices of
+Calculate UDTs at safe_mult time slices of
 dir = LEFT: 
 inv=false:  B(tau, 1) = B(tau) * B(tau-1) * ... * B(1)                    # mult left, 1:tau
 inv=true:   [B(tau, 1)]^-1 = B(1)^-1 * B(2)^-1 * ... B(tau)^-1            # mult inv right, 1:tau
@@ -671,7 +671,7 @@ inv=true:   [B(beta, tau)]^-1 = B(tau)^-1 * B(tau+1)^-1 * ... B(beta)^-1  # mult
 
 udv[i] = from mc.s.ranges[i][1] to mc.p.slices (beta)
 """
-function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
+function calc_tdgf_B_udts(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
   G = geltype(mc)
   flv = mc.p.flv
   N = mc.l.sites
@@ -787,12 +787,12 @@ function calc_tdgfs!(mc)
 
   # ---- first, calculate Gt0 and G0t only at safe_mult slices 
   # right mult (Gt0)
-  BT0Inv_u_stack, BT0Inv_d_stack, BT0Inv_t_stack = calc_tdgf_B_udvs(mc, inv=true, dir=LEFT);
-  BBetaT_u_stack, BBetaT_d_stack, BBetaT_t_stack = calc_tdgf_B_udvs(mc, inv=false, dir=RIGHT);
+  BT0Inv_u_stack, BT0Inv_d_stack, BT0Inv_t_stack = calc_tdgf_B_udts(mc, inv=true, dir=LEFT);
+  BBetaT_u_stack, BBetaT_d_stack, BBetaT_t_stack = calc_tdgf_B_udts(mc, inv=false, dir=RIGHT);
   
   # left mult (G0t)
-  BT0_u_stack, BT0_d_stack, BT0_t_stack = calc_tdgf_B_udvs(mc, inv=false, dir=LEFT);
-  BBetaTInv_u_stack, BBetaTInv_d_stack, BBetaTInv_t_stack = calc_tdgf_B_udvs(mc, inv=true, dir=RIGHT);
+  BT0_u_stack, BT0_d_stack, BT0_t_stack = calc_tdgf_B_udts(mc, inv=false, dir=LEFT);
+  BBetaTInv_u_stack, BBetaTInv_d_stack, BBetaTInv_t_stack = calc_tdgf_B_udts(mc, inv=true, dir=RIGHT);
 
 
 
@@ -855,24 +855,28 @@ end
 
 
 
-function test_Gt0()
+function test_Gt0(mc::AbstractDQMC)
+  Nflv = mc.l.sites * mc.p.flv
+  G = geltype(mc)
+  s = mc.s
+
   eye_full = mc.s.eye_full
   ones_vec = mc.s.ones_vec
 
-  Gt0 = zeros(G, Nflv, Nflv)
+  Gt0 = fill(zero(G), Nflv, Nflv)
 
   # i = 3
   # i = 11 # == 101, almost beta half = 100
   i = 1
 
   if i != 1
-    U,D,T = inv_sum_udts(BT0Inv_u_stack[i-1], BT0Inv_d_stack[i-1], BT0Inv_t_stack[i-1],
-                 BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_t_stack[i])
+    U,D,T = inv_sum_udts(s.BT0Inv_u_stack[i-1], s.BT0Inv_d_stack[i-1], s.BT0Inv_t_stack[i-1],
+                 s.BBetaT_u_stack[i], s.BBetaT_d_stack[i], s.BBetaT_t_stack[i])
     UDT_to_mat!(Gt0, U, D, T) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
     effective_greens2greens!(mc, Gt0)
   else
     U,D,T = inv_sum_udts(eye_full, ones_vec, eye_full,
-                 BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_t_stack[i])
+                 s.BBetaT_u_stack[i], s.BBetaT_d_stack[i], s.BBetaT_t_stack[i])
     UDT_to_mat!(Gt0, U, D, T) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
     effective_greens2greens!(mc, Gt0)
   end

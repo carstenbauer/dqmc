@@ -1,12 +1,12 @@
 # load comparison data
 using JLD, LinearAlgebra, SparseArrays
-(@isdefined randconf) || (global const randconf = load("O3.jld", "randconf"))
+(@isdefined randconf) || (global const randconf = load("data/O3.jld", "randconf"))
 
 
 # function rewrite()
 #     objs = Dict{String, Any}()
 
-#     jldopen("O3.jld", "r") do f
+#     jldopen("data/O3.jld", "r") do f
 #         objkeys = names(f)
 #         for k in objkeys
 #             objs[k] = read(f[k])
@@ -45,54 +45,54 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
 
     @testset "hopping matrices" begin
         # init_hopping_matrices(mc)
-        @test isapprox(mc.l.hopping_matrix_exp, load("O3.jld", "hopping_matrix_exp"))
-        @test isapprox(mc.l.hopping_matrix_exp_inv, load("O3.jld", "hopping_matrix_exp_inv"))
+        @test isapprox(mc.l.hopping_matrix_exp, load("data/O3.jld", "hopping_matrix_exp"))
+        @test isapprox(mc.l.hopping_matrix_exp_inv, load("data/O3.jld", "hopping_matrix_exp_inv"))
     end
 
 
     # test peirls phases
     # TODO: load a NNNN model for this (to also check higher order phases)
-    include("peirls.jl")
+    include("tests_O3_peirls.jl")
 
 
     @testset "checkerboard hopping matrices" begin
         # init_checkerboard_matrices(mc_nob)
         @test find_four_site_hopping_corners(mc_nob.l) == ([1, 3, 9, 11], [6, 8, 14, 16])
 
-        @test isapprox(mc_nob.l.chkr_hop[1], load("O3.jld", "nob_chkr_hop1"))
-        @test isapprox(mc_nob.l.chkr_hop[2], load("O3.jld", "nob_chkr_hop2"))
-        @test isapprox(mc_nob.l.chkr_hop_inv[1], load("O3.jld", "nob_chkr_hop_inv1"))
-        @test isapprox(mc_nob.l.chkr_hop_inv[2], load("O3.jld", "nob_chkr_hop_inv2"))
+        @test isapprox(mc_nob.l.chkr_hop[1], load("data/O3.jld", "nob_chkr_hop1"))
+        @test isapprox(mc_nob.l.chkr_hop[2], load("data/O3.jld", "nob_chkr_hop2"))
+        @test isapprox(mc_nob.l.chkr_hop_inv[1], load("data/O3.jld", "nob_chkr_hop_inv1"))
+        @test isapprox(mc_nob.l.chkr_hop_inv[2], load("data/O3.jld", "nob_chkr_hop_inv2"))
 
-        @test isapprox(mc_nob.l.chkr_hop_half[1], load("O3.jld", "nob_chkr_hop_half1"))
-        @test isapprox(mc_nob.l.chkr_hop_half[2], load("O3.jld", "nob_chkr_hop_half2"))
-        @test isapprox(mc_nob.l.chkr_hop_half_inv[1], load("O3.jld", "nob_chkr_hop_half_inv1"))
-        @test isapprox(mc_nob.l.chkr_hop_half_inv[2], load("O3.jld", "nob_chkr_hop_half_inv2"))
+        @test isapprox(mc_nob.l.chkr_hop_half[1], load("data/O3.jld", "nob_chkr_hop_half1"))
+        @test isapprox(mc_nob.l.chkr_hop_half[2], load("data/O3.jld", "nob_chkr_hop_half2"))
+        @test isapprox(mc_nob.l.chkr_hop_half_inv[1], load("data/O3.jld", "nob_chkr_hop_half_inv1"))
+        @test isapprox(mc_nob.l.chkr_hop_half_inv[2], load("data/O3.jld", "nob_chkr_hop_half_inv2"))
 
-        @test isapprox(mc_nob.l.chkr_mu, load("O3.jld", "nob_chkr_mu"))
-        @test isapprox(mc_nob.l.chkr_mu_half, load("O3.jld", "nob_chkr_mu_half"))
-        @test isapprox(mc_nob.l.chkr_mu_inv, load("O3.jld", "nob_chkr_mu_inv"))
-        @test isapprox(mc_nob.l.chkr_mu_half_inv, load("O3.jld", "nob_chkr_mu_half_inv"))
+        @test isapprox(mc_nob.l.chkr_mu, load("data/O3.jld", "nob_chkr_mu"))
+        @test isapprox(mc_nob.l.chkr_mu_half, load("data/O3.jld", "nob_chkr_mu_half"))
+        @test isapprox(mc_nob.l.chkr_mu_inv, load("data/O3.jld", "nob_chkr_mu_inv"))
+        @test isapprox(mc_nob.l.chkr_mu_half_inv, load("data/O3.jld", "nob_chkr_mu_half_inv"))
     end
 
 
     @testset "checkerboard hopping matrices (Bfield)" begin
-        @test isapprox(build_four_site_hopping_matrix_Bfield(mc, 3, 1, 2), load("O3.jld", "build_four_site_hopping_matrix_Bfield"))
+        @test isapprox(build_four_site_hopping_matrix_Bfield(mc, 3, 1, 2), load("data/O3.jld", "build_four_site_hopping_matrix_Bfield"))
 
-        @test isapprox(mc.l.chkr_hop[1], load("O3.jld", "chkr_hop1"))
-        @test isapprox(mc.l.chkr_hop[2], load("O3.jld", "chkr_hop2"))
-        @test isapprox(mc.l.chkr_hop_inv[1], load("O3.jld", "chkr_hop_inv1"))
-        @test isapprox(mc.l.chkr_hop_inv[2], load("O3.jld", "chkr_hop_inv2"))
+        @test isapprox(mc.l.chkr_hop[1], load("data/O3.jld", "chkr_hop1"))
+        @test isapprox(mc.l.chkr_hop[2], load("data/O3.jld", "chkr_hop2"))
+        @test isapprox(mc.l.chkr_hop_inv[1], load("data/O3.jld", "chkr_hop_inv1"))
+        @test isapprox(mc.l.chkr_hop_inv[2], load("data/O3.jld", "chkr_hop_inv2"))
 
-        @test isapprox(mc.l.chkr_hop_half[1], load("O3.jld", "chkr_hop_half1"))
-        @test isapprox(mc.l.chkr_hop_half[2], load("O3.jld", "chkr_hop_half2"))
-        @test isapprox(mc.l.chkr_hop_half_inv[1], load("O3.jld", "chkr_hop_half_inv1"))
-        @test isapprox(mc.l.chkr_hop_half_inv[2], load("O3.jld", "chkr_hop_half_inv2"))
+        @test isapprox(mc.l.chkr_hop_half[1], load("data/O3.jld", "chkr_hop_half1"))
+        @test isapprox(mc.l.chkr_hop_half[2], load("data/O3.jld", "chkr_hop_half2"))
+        @test isapprox(mc.l.chkr_hop_half_inv[1], load("data/O3.jld", "chkr_hop_half_inv1"))
+        @test isapprox(mc.l.chkr_hop_half_inv[2], load("data/O3.jld", "chkr_hop_half_inv2"))
 
-        @test isapprox(mc.l.chkr_mu, load("O3.jld", "chkr_mu"))
-        @test isapprox(mc.l.chkr_mu_half, load("O3.jld", "chkr_mu_half"))
-        @test isapprox(mc.l.chkr_mu_inv, load("O3.jld", "chkr_mu_inv"))
-        @test isapprox(mc.l.chkr_mu_half_inv, load("O3.jld", "chkr_mu_half_inv"))
+        @test isapprox(mc.l.chkr_mu, load("data/O3.jld", "chkr_mu"))
+        @test isapprox(mc.l.chkr_mu_half, load("data/O3.jld", "chkr_mu_half"))
+        @test isapprox(mc.l.chkr_mu_inv, load("data/O3.jld", "chkr_mu_inv"))
+        @test isapprox(mc.l.chkr_mu_half_inv, load("data/O3.jld", "chkr_mu_half_inv"))
     end
 
 
@@ -114,23 +114,23 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         @testset "interaction matrix exponentials" begin
             eV = similar(mc_nob.s.eV)
             interaction_matrix_exp!(mc_nob, 3, 1., eV)
-            @test isapprox(eV, load("O3.jld", "nob_eVplus"))
+            @test isapprox(eV, load("data/O3.jld", "nob_eVplus"))
             @test isapprox(eV, interaction_matrix_exp(mc_nob, 3, 1.))
             interaction_matrix_exp!(mc_nob, 3, -1., eV)
-            @test isapprox(eV, load("O3.jld", "nob_eVminus"))
+            @test isapprox(eV, load("data/O3.jld", "nob_eVminus"))
 
-            @test isapprox(interaction_matrix_exp_op(mc_nob, [0.130018, 0.792039, 0.683411], 1.), load("O3.jld", "nob_eVexpop"))
+            @test isapprox(interaction_matrix_exp_op(mc_nob, [0.130018, 0.792039, 0.683411], 1.), load("data/O3.jld", "nob_eVexpop"))
         end
 
         @testset "interaction matrix exponentials (Bfield)" begin
             eV = similar(mc.s.eV)
             interaction_matrix_exp!(mc, 3, 1., eV)
-            @test isapprox(eV, load("O3.jld", "eVplus"))
+            @test isapprox(eV, load("data/O3.jld", "eVplus"))
             @test isapprox(eV, interaction_matrix_exp(mc, 3, 1.))
             interaction_matrix_exp!(mc, 3, -1., eV)
-            @test isapprox(eV, load("O3.jld", "eVminus"))
+            @test isapprox(eV, load("data/O3.jld", "eVminus"))
 
-            @test isapprox(interaction_matrix_exp_op(mc, [0.130018, 0.792039, 0.683411], 1.), load("O3.jld", "eVexpop"))
+            @test isapprox(interaction_matrix_exp_op(mc, [0.130018, 0.792039, 0.683411], 1.), load("data/O3.jld", "eVexpop"))
         end
     end
 
@@ -138,17 +138,17 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
     @testset "local updates" begin
         init!(mc)
         @test isapprox(calc_detratio(mc, 7, [0.488033, 0.0196912, 0.438309]), 1.000380293015979 + 1.0842021724855044e-18im)
-        @test isapprox(mc.s.delta_i, load("O3.jld", "delta_i"))
-        @test isapprox(mc.s.M, load("O3.jld", "M"))
+        @test isapprox(mc.s.delta_i, load("data/O3.jld", "delta_i"))
+        @test isapprox(mc.s.M, load("data/O3.jld", "M"))
 
         update_greens!(mc, 7)
-        @test isapprox(mc.s.greens, load("O3.jld", "afterupdate_greens"))
+        @test isapprox(mc.s.greens, load("data/O3.jld", "afterupdate_greens"))
 
         # TODO: test full local update
         Random.seed!(123456789) # set seed
         @test local_updates(mc) == 0.6875 # acc. rate
-        @test isapprox(mc.s.greens, load("O3.jld", "afterlocal_greens"))
-        @test isapprox(mc.p.hsfield, load("O3.jld", "afterlocal_hsfield"))
+        @test isapprox(mc.s.greens, load("data/O3.jld", "afterlocal_greens"))
+        @test isapprox(mc.p.hsfield, load("data/O3.jld", "afterlocal_hsfield"))
         @test isapprox(mc.p.boson_action, 75.18407422927604)
     end
 
@@ -168,23 +168,18 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
     end
 
 
-    @testset "linalg" begin
-        # TODO: 
-    end
-
-
     @testset "stack" begin
         init!(mc)
         @test isapprox(mc.s.greens, calc_greens(mc, mc.s.current_slice)) # compare against "exact" greens
 
         @testset "greens (+ logdet) calculation" begin
             # load Ur, Dr, Tr, Ul, Dl, Tl of time slice 1, direction up
-            mc.s.Ur = load("O3.jld", "Ur")
-            mc.s.Dr = load("O3.jld", "Dr")
-            mc.s.Tr = load("O3.jld", "Tr")
-            mc.s.Ul = load("O3.jld", "Ul")
-            mc.s.Dl = load("O3.jld", "Dl")
-            mc.s.Tl = load("O3.jld", "Tl")
+            mc.s.Ur = load("data/O3.jld", "Ur")
+            mc.s.Dr = load("data/O3.jld", "Dr")
+            mc.s.Tr = load("data/O3.jld", "Tr")
+            mc.s.Ul = load("data/O3.jld", "Ul")
+            mc.s.Dl = load("data/O3.jld", "Dl")
+            mc.s.Tl = load("data/O3.jld", "Tl")
             calculate_greens(mc)
             ld = calculate_logdet(mc)
             gfresh, ldfresh = calc_greens_and_logdet(mc, 1)
@@ -207,7 +202,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
                 propagate(mc)
             end
             propagate(mc) # we want to go in direction up
-            @test isapprox(mc.s.Ur, load("O3.jld", "Ur")) # TODO: compare greens here?!
+            @test isapprox(mc.s.Ur, load("data/O3.jld", "Ur")) # TODO: compare greens here?!
         end
     end
 
@@ -229,8 +224,8 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
 
 
     @testset "slice matrices" begin
-        @test isapprox(slice_matrix(mc, 3, 1.), load("O3.jld", "Bplus"))
-        @test isapprox(slice_matrix(mc, 3, -1.), load("O3.jld", "Bminus"))
+        @test isapprox(slice_matrix(mc, 3, 1.), load("data/O3.jld", "Bplus"))
+        @test isapprox(slice_matrix(mc, 3, -1.), load("data/O3.jld", "Bminus"))
 
         A = rand!(similar(mc.s.greens))
         Aorig = copy(A)
@@ -261,15 +256,8 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         # TODO: xml read write
     end
 
-
-    @testset "measurements" begin
-        @testset "boson measurements" begin
-            # TODO
-        end
-
-        @testset "fermion measurements" begin
-            # TODO
-        end
+    @testset "Measurements" begin
+        include("tests_O3_measurements.jl")
     end
 
 

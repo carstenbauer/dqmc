@@ -26,30 +26,11 @@ end
 
 #### Other
 """
-Calculate matrix exponential via eigenvalue decomposition.
-"""
-function expm_diag!(A::Matrix{T}) where T<:Number
-  F = eigfact!(A)
-  return F[:vectors] * spdiagm(exp(F[:values])) * adjoint(F[:vectors])
-end
-
-"""
 Calculate the determinant via LU decomposition
 """
 function lu_det(M)
     L, U, p = lu(M)
     return prod(diag(L)) * prod(diag(U))
-end
-
-
-"""
-Safely multiply two UDT decompositions
-"""
-function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
-  mat = Tl * Ur
-  mat = spdiagm(Dl)*mat*spdiagm(Dr)
-  U, D, T = decompose_udt(mat)
-  return Ul*U, D, T*Tr
 end
 
 # See https://discourse.julialang.org/t/asymmetric-speed-of-in-place-sparse-dense-matrix-product/10256/3
@@ -81,6 +62,19 @@ end
 
 
 
+
+
+
+
+"""
+Safely multiply two UDT decompositions
+"""
+function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
+  mat = Tl * Ur
+  mat = Diagonal(Dl) * mat * Diagonal(Dr)
+  U, D, T = decompose_udt(mat)
+  return Ul*U, D, T*Tr
+end
 
 
 

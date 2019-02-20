@@ -1,7 +1,8 @@
-using Test
+using Test, Random
 include("../src/dqmc_framework.jl") # to be replaced by using DQMC or similar
 
 function mc_from_inxml(inxml::AbstractString)
+    Random.seed!(1234)
     if SUPPRESS_DQMC_INIT_OUTPUT
         old_stdout = stdout
         (rp, wp) = redirect_stdout()
@@ -42,11 +43,14 @@ end
 
 @testset "All Tests" begin
 
-    # tests
-    include("O3.jl")
+    # Linear algebra
+    include("tests_linalg.jl")
+
+    # O3 model
+    include("tests_O3.jl")
 
     # no interactions
-    include("freefermions.jl")
+    include("tests_freefermions.jl")
 
 end
 

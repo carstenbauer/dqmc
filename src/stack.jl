@@ -82,6 +82,7 @@ mutable struct Stack{G<:Number} # G = GreensEltype
 
   #### Allocations for measurements (won't be initialized for dqmc)
   #TODO Move to meas stack!
+  #TODO: Seems like those aren't actually used in calc_tdgf! ????
   # TDGF
   BT0Inv_u_stack::Vector{Matrix{G}}
   BT0Inv_d_stack::Vector{Vector{Float64}}

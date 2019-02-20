@@ -2,10 +2,10 @@
     println("Checking Peirls phases")
     init!(mc)
     # check peirls phases result
-    @test isapprox(filter(x->!isnan(x), mc.l.peirls[1,1]), filter(x->!isnan(x), load("O3.jld", "peirls11")))
-    @test isapprox(filter(x->!isnan(x), mc.l.peirls[1,2]), filter(x->!isnan(x), load("O3.jld", "peirls12")))
-    @test isapprox(filter(x->!isnan(x), mc.l.peirls[2,1]), filter(x->!isnan(x), load("O3.jld", "peirls21")))
-    @test isapprox(filter(x->!isnan(x), mc.l.peirls[2,2]), filter(x->!isnan(x), load("O3.jld", "peirls22")))
+    @test isapprox(filter(x->!isnan(x), mc.l.peirls[1,1]), filter(x->!isnan(x), load("data/O3.jld", "peirls11")))
+    @test isapprox(filter(x->!isnan(x), mc.l.peirls[1,2]), filter(x->!isnan(x), load("data/O3.jld", "peirls12")))
+    @test isapprox(filter(x->!isnan(x), mc.l.peirls[2,1]), filter(x->!isnan(x), load("data/O3.jld", "peirls21")))
+    @test isapprox(filter(x->!isnan(x), mc.l.peirls[2,2]), filter(x->!isnan(x), load("data/O3.jld", "peirls22")))
 
     p = mc.p
     l = mc.l
