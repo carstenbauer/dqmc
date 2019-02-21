@@ -1,6 +1,9 @@
 #### SVD, i.e. UDV decomposition
-decompose_udv!(A::Matrix{<:Number}) = LinearAlgebra.LAPACK.gesvd!('A','A',A) # was gesdd! at some point
-decompose_udv(A::Matrix{T}) where T<:Number = decompose_udv!(copy(A))
+decompose_udv!(A::AbstractMatrix{<:Number}) = LinearAlgebra.LAPACK.gesvd!('A','A',A) # was gesdd! at some point
+# decompose_udv!(A::AbstractMatrix{<:Number}) = LinearAlgebra.LAPACK.gesdd!('A',A) # was gesdd! at some point
+# using JacobiSVD # experimental package
+# decompose_udv!(A::AbstractMatrix{<:Number}) = JacobiSVD.gesvj!('G','U','V', A) # was gesdd! at some point
+decompose_udv(A::AbstractMatrix{T}) where T<:Number = decompose_udv!(copy(A))
 
 
 #### QR, i.e. UDT decomposition
@@ -66,55 +69,64 @@ end
 
 
 
-"""
-Safely multiply two UDT decompositions
-"""
-function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
-  mat = Tl * Ur
-  mat = Diagonal(Dl) * mat * Diagonal(Dr)
-  U, D, T = decompose_udt(mat)
-  return Ul*U, D, T*Tr
+##############################################################
+#
+#                   SVD / UDV(t)
+#
+##############################################################
+# multiplies two UDVds -> UDVd
+function multiply_safely_udv(Ul,Dl,Vdl,Ur,Dr,Vdr)
+  tmp = adjoint(Vdl) * Ur
+  rmul!(tmp, Diagonal(Dr))
+  lmul!(Diagonal(Dl), tmp)
+  U, D, Vd = decompose_udv!(tmp)
+  U = Ul * U
+  Vd = Vd * Vdr
+  return U, D, Vd
 end
-
-
 
 
 # Calculates (UDVd)^-1, where U, D, Vd come from SVD decomp.
 function inv_udv(U,D,Vd)
-  m = adjoint(Vd)
+  m = copy(Vd')
   rmul!(m, Diagonal(1 ./ D))
   res = similar(m)
-  mul!(res,m,adjoint(U))
+  mul!(res, m, U')
   res
 end
 
-# Calculates (UDT)^-1, where U, D, T come from QR decomp.
-function inv_udt(U,D,T)
-  m = inv(T)
-  res = similar(m)
+
+# Calculates (UDVd)^-1, where U, D, Vd come from SVD decomp.
+function inv_udv!(res, U,D,Vd)
+
+  # copy here isn't necessary but Vd would be overwritten if we drop it
+  # also, m could be preallocated in stack if necessary
+  m = copy(Vd')
   rmul!(m, Diagonal(1 ./ D))
-  mul!(res, m, adjoint(U))
-  res
+  mul!(res, m, U')
+  nothing
 end
+
+
 
 # Calculates (1 + UDVd)^-1, where U, D, Vd come from SVD decomp.
 # !! Breaks down for large spread in D (i.e. low temperatures).
 function inv_one_plus_udv(U,D,Vd)
-  inner = adjoint(Vd)
-  inner .+= U * spdiagm(D)
+  inner = copy(Vd')
+  inner .+= U * Diagonal(D)
   I = decompose_udv!(inner)
-  u = adjoint(I[3] * Vd)
+  u = copy(adjoint(I[3] * Vd))
   d = 1 ./ I[2]
   vd = adjoint(I[1])
 
   rmul!(u,Diagonal(d))
-  u*vd
+  u * vd
 end
 
 # same as inv_one_plus_udt but separating both U AND Vd from D
 # !! Breaks down for large spread in D (i.e. low temperatures). Slightly better than normal version.
 function inv_one_plus_udv_alt(U,D,Vd)
-  inner = adjoint(Vd*U)
+  inner = copy((Vd*U)')
   inner[diagind(inner)] .+= D
   u, d, vd = decompose_udv!(inner)
 
@@ -133,7 +145,7 @@ function inv_one_plus_udv_scalettar(U,D,Vd)
   Dm = min.(D,1.)
   Dpinv = 1 ./ Dp
 
-  l = adjoint(Vd)
+  l = copy(Vd')
   rmul!(l, Diagonal(Dpinv))
 
   r = copy(U)
@@ -145,76 +157,77 @@ function inv_one_plus_udv_scalettar(U,D,Vd)
   lmul!(Diagonal(Dpinv), m)
   u, d, vd = decompose_udv!(m)
 
-  mul!(adjoint(m), Vd, u)
+  mul!(m, Vd', u)
   # return m, d, vd
   rmul!(m, Diagonal(d))
   m*vd
 end
 
-# speed? Left in a hurry
-function inv_one_plus_udt(U,D,T)
-  m = adjoint(U) * inv(T)
-  m[diagind(m)] .+= D
-  u,d,t = decompose_udt(m)
-  u = U*u
-  t = t*T
-  tinv = inv(t)
-  rmul!(tinv, Diagonal(1 ./ d))
-  tinv*adjoint(u)
-end
 
-function inv_one_plus_udt!(mc, res, U,D,T)
-  m = mc.s.tmp
-  d = mc.s.d
-  u = mc.s.U
-  t = mc.s.T
+# TODO: Optimize!
+# I only made the function overwrite res. Otherwise it's unchanged compared to the one above.
+function inv_one_plus_udv_scalettar!(mc, res, U,D,Vd)
+  # all similars here could go into mc.s
+  Dp = similar(D)
+  Dm = similar(D)
+  l = similar(Vd)
+  l .= Vd'
+  r = similar(U)
+  r .= U
+  # u, d, vd below could be preallocated, but does this matter for speed?
+  # m could be preallocated, I guess
 
-  mul!(m, adjoint(U), inv(T))
-  m[diagind(m)] .+= D
+  Dp .= max.(D, 1)
+  Dm .= min.(D, 1)
 
-  utmp,ttmp = decompose_udt!(m, d)
-  mul!(u, U, utmp)
-  mul!(t, ttmp, T)
-  tinv = inv(t)
-  rmul!(tinv, Diagonal(1 ./ d))
-  mul!(res, tinv, adjoint(u))
+  Dp .\= 1 # Dp now Dpinv!!!
+
+  rmul!(l, Diagonal(Dp))
+  rmul!(r, Diagonal(Dm))
+
+  u, d, vd = decompose_udv!(l + r)
+
+  m = inv_udv(u,d,vd) # TODO: optimize
+  lmul!(Diagonal(Dp), m)
+  u, d, vd = decompose_udv!(m)
+
+  mul!(m, Vd', u)
+  # return m, d, vd
+  rmul!(m, Diagonal(d))
+  # res .= m*vd
+  mul!(res, m, vd)
   nothing
 end
 
-function UDV_to_mat!(mat, U, D, Vd, is_inv) 
-    if !is_inv
+
+
+
+
+
+
+function UDV_to_mat!(mat, U, D, Vd; invert=false) 
+    if !invert
         mat1 = copy(U)
         rmul!(mat1, Diagonal(D))
-        mul!(mat,mat1,Vd)
+        mul!(mat, mat1, Vd)
     else #V D^(-1) Ud = (D^-1 *Vd)^(dagger) *Ud
         mat1 = copy(Vd)
-        lmul!(Diagonal(1 ./ D), Vd)
-        mul!(mat,adjoint(mat1),adjoint(U))
-    end  
+        lmul!(Diagonal(1 ./ D), mat1)
+        mul!(mat, mat1', U')
+    end
+    nothing
 end
 
-function UDT_to_mat!(mat, U, D, T; inv=false) 
-    if !inv
-        mat1 = copy(U)
-        rmul!(mat1, Diagonal(D))
-        mul!(mat,mat1,T)
-    else # (DT)^-1 * U^dagger
-        mat1 = copy(T)
-        lmul!(Diagonal(D), mat1)
-        mat .= mat1 \ adjoint(U)
-    end  
+
+function UDV_to_mat(U, D, Vd; kw...)
+  res = copy(U)
+  UDV_to_mat!(res, U, D, Vd; kw...)
+  res
 end
 
-# multiplies two UDVds -> UDVd
-function mul_udvs(Ul,Dl,Vdl,Ur,Dr,Vdr)
-  tmp = adjoint(Vdl)*Ur
-  rmul!(tmp, Diagonal(Dr))
-  lmul!(Diagonal(Dl), tmp)
-  U, D, Vd = decompose_udv!(tmp)
-  U = Ul*U
-  Vd = Vd*Vdr
-  return U, D, Vd
-end
+
+
+
 
 # Calculates (UaDaVda + UbDbVdb)^-1
 function inv_sum_udvs(Ua, Da, Vda, Ub, Db, Vdb)
@@ -244,7 +257,57 @@ function inv_sum_udvs(Ua, Da, Vda, Ub, Db, Vdb)
     
     #invert mat1: mat1=mat1^(-1)
     U, D, Vd = decompose_udv!(mat1)
-    UDV_to_mat!(mat1, U, D, Vd, true)
+    UDV_to_mat!(mat1, U, D, Vd, invert=true)
+
+    #mat1 = 1/DYp * mat1 /DXp
+    for j in 1:d, k in 1:d
+        mat1[j,k]=mat1[j,k] / Dbp[j] / Dap[k]
+    end
+
+    #mat1 = U D Vd
+    U, D, Vd = decompose_udv!(mat1)
+
+    # U = (Y%Vd)^dagger * U , Vd = Vd * (X%U)^dagger
+    mul!(mat1, Vdb', U)
+    mul!(mat2, Vd, Ua')
+    U = mat1
+    Vd = mat2
+
+    return U, D, Vd
+end
+
+
+# Calculates (UaDaVda + UbDbVdb)^-1
+# TODO: Optimize!
+# I only made the function overwrite res. Otherwise it's unchanged compared to the one above.
+function inv_sum_udvs!(mc, res, Ua, Da, Vda, Ub, Db, Vdb)
+    
+    d=length(Da)
+    
+    #DXp = max (X%D, 1) ,DXm = min (X%D, 1) and similarly for Y.
+    Dap = max.(Da,1.)
+    Dam = min.(Da,1.)
+    Dbp = max.(Db,1.)
+    Dbm = min.(Db,1.)
+
+    #mat1= DXm * X%Vd * (Y%Vd)^dagger /DYp
+    mat1 = Vda * adjoint(Vdb)
+    for j in 1:d, k in 1:d
+        mat1[j,k]=mat1[j,k] * Dam[j]/Dbp[k]
+    end
+
+    #mat2 = 1/(DXp) * (X%U)^dagger * Y%U * DYm
+    mat2 = adjoint(Ua) * Ub
+    for j in 1:d, k in 1:d
+        mat2[j,k]=mat2[j,k] * Dbm[k]/Dap[j]
+    end
+    
+    #mat1 = mat1+mat2
+    mat1 = mat1 + mat2
+    
+    #invert mat1: mat1=mat1^(-1)
+    U, D, Vd = decompose_udv!(mat1)
+    UDV_to_mat!(mat1, U, D, Vd, invert=true)
 
     #mat1 = 1/DYp * mat1 /DXp
     for j in 1:d, k in 1:d
@@ -260,15 +323,115 @@ function inv_sum_udvs(Ua, Da, Vda, Ub, Db, Vdb)
     U=mat1
     Vd=mat2
 
-    return U, D, Vd
+    # return U, D, Vd
+    UDV_to_mat!(res, U, D, Vd, invert=false)
+    nothing
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+##############################################################
+#
+#                   QR / UDT
+#
+##############################################################
+"""
+Safely multiply two UDT decompositions
+"""
+function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
+  mat = Tl * Ur
+  mat = Diagonal(Dl) * mat * Diagonal(Dr)
+  U, D, T = decompose_udt(mat)
+  return Ul*U, D, T*Tr
+end
+
+
+
+# Calculates (UDT)^-1, where U, D, T come from QR decomp.
+function inv_udt(U,D,T)
+  res = similar(T)
+  inv_udt!(res, U, D, T)
+  res
+end
+
+function inv_udt!(res, U,D,T)
+  m = inv(T)
+  rmul!(m, Diagonal(1 ./ D))
+  mul!(res, m, U')
+  nothing
+end
+
+
+
+
+# speed? Left in a hurry
+function inv_one_plus_udt(U,D,T)
+  m = adjoint(U) * inv(T)
+  m[diagind(m)] .+= D
+  u,d,t = decompose_udt(m)
+  u = U * u
+  t = t * T
+  tinv = inv(t)
+  rmul!(tinv, Diagonal(1 ./ d))
+  tinv * u'
+end
+
+function inv_one_plus_udt!(mc, res, U,D,T)
+  m = mc.s.tmp
+  d = mc.s.d
+  u = mc.s.U
+  t = mc.s.T
+
+  mul!(m, U', inv(T))
+  m[diagind(m)] .+= D
+
+  utmp,ttmp = decompose_udt!(m, d)
+  mul!(u, U, utmp)
+  mul!(t, ttmp, T)
+  tinv = inv(t)
+  rmul!(tinv, Diagonal(1 ./ d))
+  mul!(res, tinv, u')
+  nothing
+end
+
+
+
+function UDT_to_mat!(mat, U, D, T; invert=false) 
+    if !invert
+        mat1 = copy(U)
+        rmul!(mat1, Diagonal(D))
+        mul!(mat,mat1,T)
+    else # (DT)^-1 * U^dagger
+        mat1 = copy(T)
+        lmul!(Diagonal(D), mat1)
+        mat .= mat1 \ U'
+    end
+    nothing
+end
+
+function UDT_to_mat(U, D, T; kw...)
+  res = copy(U)
+  UDT_to_mat!(res, U, D, T; kw...)
+  res
+end
+
 
 # Calculates (UaDaTda + UbDbTdb)^-1
 function inv_sum_udts(Ua,Da,Ta,Ub,Db,Tb)
   m1 = Ta * inv(Tb)
   lmul!(Diagonal(Da), m1)
 
-  m2 = adjoint(Ua) * Ub
+  m2 = Ua' * Ub
   rmul!(m2, Diagonal(Db))
 
   u,d,t = decompose_udt(m1 + m2)
@@ -276,12 +439,14 @@ function inv_sum_udts(Ua,Da,Ta,Ub,Db,Tb)
   mul!(m1, Ua, u)
   mul!(m2, t, Tb)
 
-  return inv(m2), 1 ./ d, adjoint(m1)
+  return inv(m2), 1 ./ d, m1'
   # m3 = inv(m2)
   # scale!(m3, 1 ./ d)
-  # return m3 * adjoint(m1)
+  # return m3 * m1'
 end
 
+
+# Calculates (UaDaTda + UbDbTdb)^-1
 function inv_sum_udts!(mc, res, Ua,Da,Ta,Ub,Db,Tb)
   d = mc.s.d
   m1 = mc.s.tmp
@@ -290,7 +455,7 @@ function inv_sum_udts!(mc, res, Ua,Da,Ta,Ub,Db,Tb)
   mul!(m1, Ta, inv(Tb))
   lmul!(Diagonal(Da), m1)
 
-  mul!(m2, adjoint(Ua), Ub)
+  mul!(m2, Ua', Ub)
   rmul!(m2, Diagonal(Db))
 
   u,t = decompose_udt!(m1 + m2, d)
@@ -300,7 +465,7 @@ function inv_sum_udts!(mc, res, Ua,Da,Ta,Ub,Db,Tb)
 
   m3 = inv(m2)
   rmul!(m3, Diagonal(1 ./ d))
-  mul!(res, m3, adjoint(m1))
+  mul!(res, m3, m1')
 
   nothing
 end

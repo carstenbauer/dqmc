@@ -13,6 +13,18 @@ end
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 # -------------------------------------------------------
 #         Occupation
 # -------------------------------------------------------
@@ -42,6 +54,17 @@ function occupations_flv(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
   # n = 1/(N*M) * sum(1 .- diag(greens))
   real(ns)
 end
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -226,6 +249,13 @@ end
 
 
 
+
+
+
+
+
+
+
 # -------------------------------------------------------
 #         Postprocessing/Analysis
 # -------------------------------------------------------
@@ -271,6 +301,14 @@ function fft_greens(greens::AbstractMatrix)
 
   return np.einsum("kmkn->kmn", g); #k, fs1, fs2
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -450,12 +488,45 @@ end
 
 
 
+
 """
 SVD DECOMPOSITION: Calculate effective(!) Green's function (direct, i.e. without stack)
 """
 function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
-  # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
   # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
+  flv = mc.p.flv
+  N = mc.l.sites
+  G = geltype(mc)
+
+  @assert 0 < start <= mc.p.slices
+  @assert 0 < stop <= mc.p.slices
+  @assert start <= stop
+
+  U = Matrix{G}(I, flv*N, flv*N)
+  D = ones(Float64, flv*N)
+  Vt = Matrix{G}(I, flv*N, flv*N)
+
+  svs = zeros(flv*N,length(start:stop))
+  svc = 1
+  for k in start:stop
+    if mod(k,safe_mult) == 0 || k == stop # always decompose in the end
+      multiply_B_left!(mc,k,U)
+      rmul!(U, Diagonal(D))
+      U, D, Vtnew = decompose_udv(U)
+      mul!(mc.s.tmp, Vtnew, Vt)
+      Vt .=  mc.s.tmp
+      svs[:,svc] = log.(D)
+      svc += 1
+    else
+      multiply_B_left!(mc,k,U)
+    end
+  end
+  return (U,D,Vt,svs)
+end
+
+
+function calc_Bchain_inv_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
+  # Calculate Ul, Dl, Vtl = [B(stop) ... B(start)]^(-1) = B(start)^(-1) ... B(stop)^(-1)
   flv = mc.p.flv
   slices = mc.p.slices
   N = mc.l.sites
@@ -472,9 +543,9 @@ function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
-  for k in start:stop
+  for k in reverse(start:stop)
     if mod(k,safe_mult) == 0
-      multiply_B_left!(mc,k,U)
+      multiply_B_inv_left!(mc,k,U)
       U *= Diagonal(D)
       U, D, Vtnew = decompose_udv!(U)
       # not yet in-place
@@ -487,6 +558,7 @@ function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int
   end
   return (U,D,Vt,svs)
 end
+
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its logdet in a stable manner
 function calc_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
@@ -515,6 +587,26 @@ function calc_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int
   Vt = adjoint(Ul * I[1])
   return U*D*Vt, sum(log.(diag(D)))
 end
+
+
+
+"""
+Calculate ETGF (slice=1) as inv_one_plus_udv(calc_Bchain_udv)
+"""
+function calc_greens_udv_simple(mc::AbstractDQMC)
+  Budv = calc_Bchain_udv(mc, 1, mc.p.slices);
+  gudv = inv_one_plus_udv_scalettar(Budv[1], Budv[2], Budv[3])
+end
+
+
+
+
+
+
+
+
+
+
 
 # -------------------------------------------------------
 #    Effective Green's function -> Green's function
@@ -553,7 +645,7 @@ function effective_greens2greens!(mc::DQMC_CBTrue, U::AbstractMatrix, T::Abstrac
         U .= tmp
       end
   end
-  nothing
+    nothing
 end
 function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   chkr_hop_half_minus = mc.l.chkr_hop_half
@@ -606,10 +698,29 @@ end
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # -------------------------------------------------------
 #         Time-displaced Green's function
 # -------------------------------------------------------
-# Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = B(slice,1)G(1)
+# OLD: Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = B(slice,1)G(1)
 # function calc_tdgf_naive(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
 #   U,D,T = calc_greens_udt(mc, 1, safe_mult)
 
@@ -763,6 +874,22 @@ function calc_tdgf_B_udts(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
 end
 
 
+
+function allocate_tdgf!(mc)
+  @stackshortcuts
+  M = mc.p.slices
+  Nflv = N*flv
+  meas = mc.s.meas
+
+  meas.Gt0 = [zeros(G, Nflv, Nflv) for _ in 1:M]
+  meas.G0t = [zeros(G, Nflv, Nflv) for _ in 1:M]
+
+  println("Allocated memory for TDGF measurement.")
+  nothing
+end
+
+
+
 function calc_tdgfs!(mc)
   G = geltype(mc)
   M = mc.p.slices
@@ -773,17 +900,16 @@ function calc_tdgfs!(mc)
   eye_full = mc.s.eye_full
   ones_vec = mc.s.ones_vec
 
-  # allocate matrices if not yet done
+  # allocate matrices if not yet done TODO: EVENTUALLY THIS SHOULD BE REMOVED
   try
-    mc.s.Gt0[1]
-    mc.s.G0t[1]
+    mc.s.meas.Gt0[1]
+    mc.s.meas.G0t[1]
   catch
-    mc.s.Gt0 = [zeros(G, Nflv, Nflv) for _ in 1:M]
-    mc.s.G0t = [zeros(G, Nflv, Nflv) for _ in 1:M]
+    allocate_tdgf!(mc)
   end
 
-  Gt0 = mc.s.Gt0
-  G0t = mc.s.G0t
+  Gt0 = mc.s.meas.Gt0
+  G0t = mc.s.meas.G0t
 
   # ---- first, calculate Gt0 and G0t only at safe_mult slices 
   # right mult (Gt0)
@@ -991,6 +1117,42 @@ function check_unitarity(u_stack)
   end
   return true
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
