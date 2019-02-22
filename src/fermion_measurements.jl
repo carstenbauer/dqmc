@@ -894,6 +894,11 @@ end
 
 
 
+
+
+
+
+
 function calc_tdgfs!(mc)
   G = geltype(mc)
   M = mc.p.slices
@@ -903,14 +908,6 @@ function calc_tdgfs!(mc)
   safe_mult = mc.p.safe_mult
   eye_full = mc.s.eye_full
   ones_vec = mc.s.ones_vec
-
-  # allocate matrices if not yet done TODO: EVENTUALLY THIS SHOULD BE REMOVED
-  try
-    mc.s.meas.Gt0[1]
-    mc.s.meas.G0t[1]
-  catch
-    allocate_tdgf!(mc)
-  end
 
   Gt0 = mc.s.meas.Gt0
   G0t = mc.s.meas.G0t
