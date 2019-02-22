@@ -736,7 +736,7 @@ end
 # end
 
 # Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = [B(slice, 1)^-1 + B(beta, slice)]^-1 which is equal to B(slice,1)G(1)
-function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
+function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult; scalettar=true)
   if slice != 1
     Ul, Dl, Tl = calc_Bchain_inv(mc, 1, slice-1, safe_mult)
   else
@@ -750,7 +750,11 @@ function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   end
 
   # time displace
-  U, D, T = inv_sum_udts(Ul, Dl, Tl, Ur, Dr, Tr)
+  if scalettar
+    U, D, T = inv_sum_udts(Ul, Dl, Tl, Ur, Dr, Tr)
+  else
+    U, D, T = inv_sum_udts_scalettar(Ul, Dl, Tl, Ur, Dr, Tr)
+  end
   effective_greens2greens!(mc, U, T)
 
   rmul!(U, Diagonal(D))
@@ -921,27 +925,26 @@ function calc_tdgfs!(mc)
   BBetaTInv_u_stack, BBetaTInv_d_stack, BBetaTInv_t_stack = calc_tdgf_B_udts(mc, inv=true, dir=RIGHT);
 
 
-
   safe_mult_taus = 1:safe_mult:mc.p.slices
   @inbounds for i in 1:length(safe_mult_taus) # i = ith safe mult time slice
     tau = safe_mult_taus[i] # tau = tauth (overall) time slice
     if i != 1
       # Gt0
-      inv_sum_udts!(mc, Gt0[tau], BT0Inv_u_stack[i-1], BT0Inv_d_stack[i-1], BT0Inv_t_stack[i-1],
+      inv_sum_udts_scalettar!(mc, Gt0[tau], BT0Inv_u_stack[i-1], BT0Inv_d_stack[i-1], BT0Inv_t_stack[i-1],
                    BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_t_stack[i]) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
       effective_greens2greens!(mc, Gt0[tau])
 
       # G0t
-      inv_sum_udts!(mc, G0t[tau], BT0_u_stack[i-1], BT0_d_stack[i-1], BT0_t_stack[i-1],
+      inv_sum_udts_scalettar!(mc, G0t[tau], BT0_u_stack[i-1], BT0_d_stack[i-1], BT0_t_stack[i-1],
                    BBetaTInv_u_stack[i], BBetaTInv_d_stack[i], BBetaTInv_t_stack[i]) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
       effective_greens2greens!(mc, G0t[tau])
     else
       # Gt0
-      inv_one_plus_udt!(mc, Gt0[tau], BBetaT_u_stack[1], BBetaT_d_stack[1], BBetaT_t_stack[1])
+      inv_one_plus_udt_scalettar!(mc, Gt0[tau], BBetaT_u_stack[1], BBetaT_d_stack[1], BBetaT_t_stack[1])
       effective_greens2greens!(mc, Gt0[tau])
 
       # G0t
-      inv_one_plus_udt!(mc, G0t[tau], BBetaTInv_u_stack[1], BBetaTInv_d_stack[1], BBetaTInv_t_stack[1])
+      inv_one_plus_udt_scalettar!(mc, G0t[tau], BBetaTInv_u_stack[1], BBetaTInv_d_stack[1], BBetaTInv_t_stack[1])
       effective_greens2greens!(mc, G0t[tau]) # TODO: check analytically that we can still do this
     end
   end

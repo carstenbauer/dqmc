@@ -31,7 +31,6 @@ end
 
 
 
-
 global LEFT = true
 global RIGHT = false
 """

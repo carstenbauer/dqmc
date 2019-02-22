@@ -143,6 +143,9 @@ B_QR_T = load("data/linalg.jld", "B_QR_T")
                 @test inv_one_plus_udt!(mc, res, u,d,t) == nothing
                 @test isapprox(res, inv_I_plus_X)
 
+                @test inv_one_plus_udt_scalettar!(mc, res, u,d,t) == nothing
+                @test isapprox(res, inv_I_plus_X)
+
                 # UDT_to_mat!
                 @test isapprox(UDT_to_mat(u,d,t), X)
                 @test UDT_to_mat!(res, u,d,t) == nothing
@@ -157,6 +160,12 @@ B_QR_T = load("data/linalg.jld", "B_QR_T")
                 @test UDT_to_mat!(res, inv_sum_udts(u,d,t,uy,dy,ty)...) == nothing
                 @test isapprox(res, inv_X_plus_Y)
                 @test inv_sum_udts!(mc, res, u,d,t,uy,dy,ty) == nothing
+                @test isapprox(res, inv_X_plus_Y)
+
+                @test UDT_to_mat!(res, inv_sum_udts_scalettar(u,d,t,uy,dy,ty)...) == nothing
+                @test isapprox(res, inv_X_plus_Y)
+
+                @test inv_sum_udts_scalettar!(mc, res, u,d,t,uy,dy,ty) == nothing
                 @test isapprox(res, inv_X_plus_Y)
             end
 
