@@ -50,11 +50,11 @@ end
                 for (i, tau) in enumerate(2:mc.p.slices)
                     should_be_zero = maximum(Gt0[tau] + G0t[end-(tau-2)])
                     should_be_zeros[i] = should_be_zero
-                    should_be_zero < 1e-10 || (return false) # TODO: switch to @test when this is working!
+                    should_be_zero < 1e-10 || (return false)
                 end
                 return true
             end
-            @test_broken t()
+            @test t()
 
         end
     end

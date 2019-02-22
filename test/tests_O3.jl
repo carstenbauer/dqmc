@@ -21,12 +21,15 @@ using JLD, LinearAlgebra, SparseArrays
 #     nothing
 # end
 
+
+# set up minimal O3 simulation
+mc = mc_from_inxml("parameters/O3_generic_small_system.in.xml", randconf)
+mc_nob = mc_from_inxml("parameters/O3_no_bfield_small_system.in.xml", randconf)
+mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.xml", randconf)
+# set to nothing at the end of this file to trigger GC
+
+
 @testset "O3 model" begin
-    
-    # set up minimal O3 simulation
-    mc = mc_from_inxml("parameters/O3_generic_small_system.in.xml", randconf)
-    mc_nob = mc_from_inxml("parameters/O3_no_bfield_small_system.in.xml", randconf)
-    mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.xml", randconf)
 
     @testset "boson action" begin
         @test isapprox(calc_boson_action(mc, randconf), 75.57712964980982)
@@ -259,5 +262,11 @@ using JLD, LinearAlgebra, SparseArrays
 
 
 end # O3 model
+
+
+mc = nothing
+mc_nob = nothing
+mc_nob_nochkr = nothing
+
 
 nothing

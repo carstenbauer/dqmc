@@ -71,6 +71,481 @@ end
 
 ##############################################################
 #
+#                   QR / UDT
+#
+##############################################################
+"""
+Safely multiply two UDT decompositions
+"""
+function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
+  mat = Tl * Ur
+  lmul!(Diagonal(Dl), mat)
+  rmul!(mat, Diagonal(Dr))
+  U, D, T = decompose_udt(mat)
+  return Ul*U, D, T*Tr
+end
+
+
+
+
+
+
+
+
+"""
+
+  inv_udt(U, D, T) -> result
+
+Calculate (UDT)^(-1).
+"""
+function inv_udt(U,D,T)
+  res = similar(U)
+  inv_udt!(res, U, D, T)
+  res
+end
+
+"""
+
+  inv_udt!(res, U, D, T) -> nothing
+
+Calculate (UDT)^(-1) and store result in `res`
+"""
+function inv_udt!(res, U,D,T)
+  tmp = similar(U)
+  ldiv!(tmp, lu(T), Diagonal(1 ./ D))
+  mul!(res, tmp, U')
+  nothing
+end
+
+
+
+
+
+
+
+
+
+"""
+
+  inv_one_plus_udt(U, D, T) -> result
+
+Stable calculation of [1 + UDT]^(-1):
+
+  * Use one intermediate UDT decomposition.
+
+Faster but less accurate than the scalettar approach.
+
+Consider `inv_one_plus_udt!` as an efficient (not one-to-one) replacement.
+"""
+function inv_one_plus_udt(U,D,T)
+  @warn "Calling somewhat inefficient and potentially inaccurate `inv_one_plus_udt`"
+
+  m = U' / T
+  m[diagind(m)] .+= D
+  u,d,t = decompose_udt(m)
+  u = U * u
+  t = t * T
+  ldiv!(m, lu!(t), Diagonal(1 ./ d))
+  m * u'
+end
+
+
+
+
+
+
+
+
+
+
+
+"""
+
+  inv_one_plus_udt!(mc, res, U, D, T) -> nothing
+
+Stable calculation of [1 + UDT]^(-1):
+
+  * Use one intermediate UDT decomposition.
+
+Uses preallocated memory in `mc`. Writes the result into `res`.
+
+Much faster (~50%) than `inv_one_plus_udt_scalettar!` but less accurate.
+"""
+function inv_one_plus_udt!(mc, res, U,D,T)
+  @warn "Calling potentially inaccurate `inv_one_plus_udt!`"
+
+  d = mc.s.d
+  u = mc.s.tmp
+  t = mc.s.tmp2
+
+  m = U' / T
+  m[diagind(m)] .+= D
+
+  utmp,ttmp = decompose_udt!(m, d)
+  mul!(u, U, utmp)
+  mul!(t, ttmp, T)
+    
+  ldiv!(m, lu!(t), Diagonal(1 ./ d))
+    
+  mul!(res, m, u')
+  nothing
+end
+
+
+
+
+
+
+
+"""
+
+  inv_one_plus_udt_scalettar!(mc, res, Ua, Da, Ta, Ub, Db, Tb) -> nothing
+
+Stable calculation of [1 + UDT]^(-1):
+
+  * Separate scales larger and smaller than unity
+  * Use two intermediate UDT decompositions.
+
+Uses preallocated memory in `mc`. Writes the result into `res`.
+"""
+function inv_one_plus_udt_scalettar!(mc, res, U,D,T)
+  d = mc.s.d
+  r = mc.s.tmp
+  l = mc.s.tmp2
+
+  Dp = max.(D,1.)
+  Dm = min.(D,1.)
+  
+  Dp .\= 1
+  Dpinv = Dp # renaming
+
+  ldiv!(l, lu(T), Diagonal(Dpinv)) # Don't use lu!(T) because T is input
+
+  mul!(r, U, Diagonal(Dm))
+  r .+= l
+
+  u, t = decompose_udt!(r, d)
+
+  ldiv!(r, lu!(t), Diagonal(1 ./ d))
+  mul!(l, r, u')
+
+  lmul!(Diagonal(Dpinv), l)
+  u, t = decompose_udt!(l, d)
+
+  ldiv!(l, lu(T), u)
+
+  rmul!(l, Diagonal(d))
+  mul!(res, l, t)
+  nothing
+end
+
+
+
+
+
+
+
+
+
+"""
+
+  inv_sum_udts(Ua, Da, Ta, Ub, Db, Tb) -> U, D, T
+
+Stable calculation of [UaDaTa + UbDbTb]^(-1):
+
+  * Use one intermediate UDT decompositions.
+
+Faster but less accurate than `inv_sum_udts_scalettar`.
+
+Consider `inv_sum_udts!` as an efficient (not one-to-one) replacement.
+"""
+function inv_sum_udts(Ua,Da,Ta,Ub,Db,Tb)
+  @warn "Calling somewhat inefficient and potentially inaccurate `inv_sum_udts`"
+
+  m1 = Ta / Tb
+  lmul!(Diagonal(Da), m1)
+
+  m2 = Ua' * Ub
+  rmul!(m2, Diagonal(Db))
+
+  u,d,t = decompose_udt(m1 + m2)
+
+  mul!(m1, Ua, u)
+  mul!(m2, t, Tb)
+
+  return inv(m2), 1 ./ d, m1'
+end
+
+
+
+
+
+
+
+
+
+"""
+
+  inv_sum_udts!(mc, res, Ua, Da, Ta, Ub, Db, Tb) -> nothing
+
+Stable calculation of [UaDaTa + UbDbTb]^(-1):
+
+  * Use one intermediate UDT decompositions.
+
+Uses preallocated memory in `mc`. Writes the result into `res`.
+
+Much faster (~40%) than `inv_sum_udts_scalettar!` but less accurate.
+"""
+function inv_sum_udts!(mc, res, Ua,Da,Ta,Ub,Db,Tb)
+  @warn "Calling potentially inaccurate `inv_sum_udts!`"
+
+  d = mc.s.d
+  m1 = mc.s.tmp
+  m2 = mc.s.tmp2
+  tmp = mc.s.U
+
+  m1 = Ta / Tb
+  lmul!(Diagonal(Da), m1)
+
+  mul!(m2, Ua', Ub)
+  rmul!(m2, Diagonal(Db))
+
+  u,t = decompose_udt!(m1 + m2, d)
+
+  mul!(m1, Ua, u)
+  mul!(m2, t, Tb)
+
+  ldiv!(tmp, lu!(m2), Diagonal(1 ./ d))
+  mul!(res, tmp, m1')
+
+  nothing
+end
+
+
+
+
+
+
+
+
+
+"""
+
+  inv_sum_udts_scalettar(Ua, Da, Ta, Ub, Db, Tb) -> U, D, T
+
+Stable calculation of [UaDaTa + UbDbTb]^(-1):
+
+  * Separate scales larger and smaller than unity
+  * Use two intermediate UDT decompositions.
+
+Consider `inv_sum_udts_scalettar!` as an efficient (not one-to-one) replacement.
+"""
+function inv_sum_udts_scalettar(Ua, Da, Ta, Ub, Db, Tb)
+    @warn "Calling somewhat inefficient `inv_sum_udts_scalettar`"
+
+    d=length(Da)
+    
+    # separating scales larger and smaller than unity
+    Dap = max.(Da,1.)
+    Dam = min.(Da,1.)
+    Dbp = max.(Db,1.)
+    Dbm = min.(Db,1.)
+
+    # mat1 = Dam * Vda * Vdb' / Dbp
+    mat1 = Ta * inv(Tb)
+    @inbounds for j in 1:d, k in 1:d
+        mat1[j,k]=mat1[j,k] * Dam[j]/Dbp[k]
+    end
+
+    # mat2 = 1/(Dap) * Ua' * Ub * Dbm
+    mat2 = Ua' * Ub
+    @inbounds for j in 1:d, k in 1:d
+        mat2[j,k]=mat2[j,k] * Dbm[k]/Dap[j]
+    end
+    
+    #mat1 = mat1 + mat2
+    mat1 = mat1 + mat2
+    
+    # decompose mat1: U, D, T
+    U, D, T = decompose_udt(mat1)
+
+    # invert inner part: mat1 = (U D T)^(-1) = mat1^(-1)
+    # was UDT_to_mat!(mat1, U, D, T, invert=true)
+    lmul!(Diagonal(D), T)
+    ldiv!(mat1, lu!(T), U') # mat1 = T \ (U')
+
+    # mat1 = 1/Dbp * mat1 /Dap
+    @inbounds for j in 1:d, k in 1:d
+        mat1[j,k]=mat1[j,k] / Dbp[j] / Dap[k]
+    end
+
+    #mat1 = U D T
+    U, D, T = decompose_udt(mat1)
+
+    # U = Tb^(-1) * U , T = T * Ua'
+    mul!(mat1, inv(Tb), U)
+    mul!(mat2, T, Ua')
+    U = mat1
+    T = mat2
+
+    return U, D, T
+end
+
+
+
+
+
+
+
+
+
+"""
+
+  inv_sum_udts_scalettar!(mc, res, Ua, Da, Ta, Ub, Db, Tb) -> nothing
+
+Stable calculation of [UaDaTa + UbDbTb]^(-1):
+
+  * Separate scales larger and smaller than unity
+  * Use two intermediate UDT decompositions.
+
+Uses preallocated memory in `mc`. Writes the result into `res`.
+"""
+function inv_sum_udts_scalettar!(mc, res, Ua, Da, Ta, Ub, Db, Tb)
+    # optimization rounds: 1
+    mat1 = mc.s.tmp
+    mat2 = mc.s.U
+    D = mc.s.d
+    to = mc.a.to
+    
+    d=length(Da)
+        
+    # separating scales larger and smaller than unity
+    Dap = max.(Da,1.)
+    Dam = min.(Da,1.)
+    Dbp = max.(Db,1.)
+    Dbm = min.(Db,1.)
+
+    # mat1 = Dam * Vda * Vdb' / Dbp
+    mat1 = Ta / Tb
+    @inbounds for j in 1:d, k in 1:d
+        mat1[j,k]=mat1[j,k] * Dam[j]/Dbp[k]
+    end
+
+    # mat2 = 1/(Dap) * Ua' * Ub * Dbm
+    mul!(mat2, Ua', Ub)    
+    @inbounds for j in 1:d, k in 1:d
+        mat2[j,k]=mat2[j,k] * Dbm[k]/Dap[j]
+    end
+    
+    # mat1 = mat1 + mat2
+    mat1 .+= mat2
+    
+    # decompose mat1: U, D, T
+    U, T = decompose_udt!(mat1, D)
+
+    # invert and combine inner part: mat1 = (U D T)^(-1)
+    lmul!(Diagonal(D), T)
+    ldiv!(mat1, lu!(T), U') # mat1 = T \ (U')
+
+    # mat1 = 1/Dbp * mat1 /Dap
+    @inbounds for j in 1:d, k in 1:d
+        mat1[j,k]=mat1[j,k] / Dbp[j] / Dap[k]
+    end
+
+    #mat1 = U D T
+    U, T = decompose_udt!(mat1, D)
+
+    # U = Tb^(-1) * U , T = T * Ua'
+    ldiv!(mat1, lu!(Tb), U) # mat1 = Tb \ U
+    mul!(mat2, T, Ua')
+    U = mat1
+    T = mat2
+
+    # combine UDT into res
+    rmul!(U, Diagonal(D))
+    mul!(res, U, T)
+    nothing
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+  UDT_to_mat!(mat, U, D, T[; invert=false]) -> nothing
+
+Combine given UDT to a matrix. Result will be stored in `mat`.
+
+If `invert = true` (UDT)^(-1) is calculated.
+
+Note that if parts of the input UDT may be overwritten it's
+more efficient to inline this function and remove unnecessary copies!
+"""
+function UDT_to_mat!(mat, U, D, T; invert=false) 
+    # TODO: Check where this is called and inline manually for better speed. (remove copy())
+    @warn "UDT_to_mat! probably shouldn't be called here" # TODO remove once checked
+    if !invert
+        mat1 = copy(U)
+        rmul!(mat1, Diagonal(D))
+        mul!(mat,mat1,T)
+    else # (DT)^-1 * U^dagger
+        mat1 = copy(T)
+        lmul!(Diagonal(D), mat1)
+        mat .= mat1 \ U'
+    end
+    nothing
+end
+
+function UDT_to_mat(U, D, T; kw...)
+  res = copy(U)
+  UDT_to_mat!(res, U, D, T; kw...)
+  res
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##############################################################
+#
 #                   SVD / UDV(t)
 #
 ##############################################################
@@ -328,317 +803,5 @@ function inv_sum_udvs!(mc, res, Ua, Da, Vda, Ub, Db, Vdb)
 
     # return U, D, Vd
     UDV_to_mat!(res, U, D, Vd, invert=false)
-    nothing
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-##############################################################
-#
-#                   QR / UDT
-#
-##############################################################
-"""
-Safely multiply two UDT decompositions
-"""
-function multiply_safely(Ul,Dl,Tl, Ur,Dr,Tr)
-  mat = Tl * Ur
-  mat = Diagonal(Dl) * mat * Diagonal(Dr)
-  U, D, T = decompose_udt(mat)
-  return Ul*U, D, T*Tr
-end
-
-
-
-# Calculates (UDT)^-1, where U, D, T come from QR decomp.
-function inv_udt(U,D,T)
-  res = similar(T)
-  inv_udt!(res, U, D, T)
-  res
-end
-
-function inv_udt!(res, U,D,T)
-  m = inv(T)
-  rmul!(m, Diagonal(1 ./ D))
-  mul!(res, m, U')
-  nothing
-end
-
-
-
-
-# speed? Left in a hurry
-function inv_one_plus_udt(U,D,T)
-  m = adjoint(U) * inv(T)
-  m[diagind(m)] .+= D
-  u,d,t = decompose_udt(m)
-  u = U * u
-  t = t * T
-  tinv = inv(t)
-  rmul!(tinv, Diagonal(1 ./ d))
-  tinv * u'
-end
-
-function inv_one_plus_udt!(mc, res, U,D,T)
-  m = mc.s.tmp
-  d = mc.s.d
-  u = mc.s.U
-  t = mc.s.T
-
-  mul!(m, U', inv(T))
-  m[diagind(m)] .+= D
-
-  utmp,ttmp = decompose_udt!(m, d)
-  mul!(u, U, utmp)
-  mul!(t, ttmp, T)
-  tinv = inv(t)
-  rmul!(tinv, Diagonal(1 ./ d))
-  mul!(res, tinv, u')
-  nothing
-end
-
-
-function inv_one_plus_udt_scalettar!(mc, res, U,D,T)
-  r = mc.s.U
-  d = mc.s.d
-  m = mc.s.tmp
-
-  Dp = max.(D,1.)
-  Dm = min.(D,1.)
-  
-  Dp .\= 1
-  Dpinv = Dp # renaming
-
-  l = inv(T)
-  rmul!(l, Diagonal(Dpinv))
-
-  copy!(r, U)
-  rmul!(r, Diagonal(Dm))
-
-  u, t = decompose_udt!(l+r, d)
-
-  inv_udt!(m, u, d, t)
-  lmul!(Diagonal(Dpinv), m)
-  u, t = decompose_udt!(m, d)
-
-  mul!(m, inv(T), u)
-  # return m, d, t
-  rmul!(m, Diagonal(d))
-  mul!(res, m, t)
-  nothing
-end
-
-
-function UDT_to_mat!(mat, U, D, T; invert=false) 
-    if !invert
-        mat1 = copy(U)
-        rmul!(mat1, Diagonal(D))
-        mul!(mat,mat1,T)
-    else # (DT)^-1 * U^dagger
-        mat1 = copy(T)
-        lmul!(Diagonal(D), mat1)
-        mat .= mat1 \ U'
-    end
-    nothing
-end
-
-
-function UDT_to_mat!(mc, mat, U, D, T; invert=false)
-    mat1 = mc.s.tmp2
-    if !invert
-        mat1 = copy(U)
-        rmul!(mat1, Diagonal(D))
-        mul!(mat,mat1,T)
-    else # (DT)^-1 * U^dagger
-        mat1 = copy(T)
-        lmul!(Diagonal(D), mat1)
-        mat .= mat1 \ U'
-    end
-    nothing
-end
-
-
-function UDT_to_mat(U, D, T; kw...)
-  res = copy(U)
-  UDT_to_mat!(res, U, D, T; kw...)
-  res
-end
-
-
-# Calculates (UaDaTda + UbDbTdb)^-1
-function inv_sum_udts(Ua,Da,Ta,Ub,Db,Tb)
-  m1 = Ta * inv(Tb)
-  lmul!(Diagonal(Da), m1)
-
-  m2 = Ua' * Ub
-  rmul!(m2, Diagonal(Db))
-
-  u,d,t = decompose_udt(m1 + m2)
-
-  mul!(m1, Ua, u)
-  mul!(m2, t, Tb)
-
-  return inv(m2), 1 ./ d, m1'
-  # m3 = inv(m2)
-  # scale!(m3, 1 ./ d)
-  # return m3 * m1'
-end
-
-
-# Calculates (UaDaTda + UbDbTdb)^-1
-function inv_sum_udts!(mc, res, Ua,Da,Ta,Ub,Db,Tb)
-  d = mc.s.d
-  m1 = mc.s.tmp
-  m2 = mc.s.tmp2
-
-  mul!(m1, Ta, inv(Tb))
-  lmul!(Diagonal(Da), m1)
-
-  mul!(m2, Ua', Ub)
-  rmul!(m2, Diagonal(Db))
-
-  u,t = decompose_udt!(m1 + m2, d)
-
-  mul!(m1, Ua, u)
-  mul!(m2, t, Tb)
-
-  m3 = inv(m2)
-  rmul!(m3, Diagonal(1 ./ d))
-  mul!(res, m3, m1')
-
-  nothing
-end
-
-
-
-
-
-# Calculates (UaDaVda + UbDbVdb)^-1
-function inv_sum_udts_scalettar(Ua, Da, Ta, Ub, Db, Tb)
-    
-    d=length(Da)
-    
-    # separating scales larger and smaller than unity
-    Dap = max.(Da,1.)
-    Dam = min.(Da,1.)
-    Dbp = max.(Db,1.)
-    Dbm = min.(Db,1.)
-
-    # mat1 = Dam * Vda * Vdb' / Dbp
-    mat1 = Ta * inv(Tb)
-    for j in 1:d, k in 1:d
-        mat1[j,k]=mat1[j,k] * Dam[j]/Dbp[k] # TODO: simplify notation
-    end
-
-    # mat2 = 1/(Dap) * Ua' * Ub * Dbm
-    mat2 = Ua' * Ub
-    for j in 1:d, k in 1:d
-        mat2[j,k]=mat2[j,k] * Dbm[k]/Dap[j] # TODO: simplify notation
-    end
-    
-    #mat1 = mat1 + mat2
-    mat1 = mat1 + mat2
-    
-    # decompose mat1: U, D, T
-    U, D, T = decompose_udt(mat1) # TODO: in-place?
-
-    # invert inner part: mat1 = (U D T)^(-1) = mat1^(-1)
-    UDT_to_mat!(mat1, U, D, T, invert=true)
-
-    # mat1 = 1/Dbp * mat1 /Dap
-    for j in 1:d, k in 1:d
-        mat1[j,k]=mat1[j,k] / Dbp[j] / Dap[k] # TODO: simplify notation
-    end
-
-    #mat1 = U D T
-    U, D, T = decompose_udt(mat1)
-
-    # U = Tb^(-1) * U , T = T * Ua'
-    mul!(mat1, inv(Tb), U)
-    mul!(mat2, T, Ua')
-    U = mat1
-    T = mat2
-
-    return U, D, T
-end
-
-
-
-"""
-
-  inv_sum_udts_scalettar!(mc, res, Ua, Da, Ta, Ub, Db, Tb) -> nothing
-
-Stable calculation of [UaDaTa + UbDbTb]^(-1).
-
-  * Separate scales larger and smaller than unity
-  * Use two intermediate UDT decompositions.
-  
-"""
-function inv_sum_udts_scalettar!(mc, res, Ua, Da, Ta, Ub, Db, Tb)
-    # optimization rounds: 1
-    mat1 = mc.s.tmp
-    mat2 = mc.s.U
-    D = mc.s.d
-    to = mc.a.to
-    
-    d=length(Da)
-        
-    # separating scales larger and smaller than unity
-    Dap = max.(Da,1.)
-    Dam = min.(Da,1.)
-    Dbp = max.(Db,1.)
-    Dbm = min.(Db,1.)
-
-    # mat1 = Dam * Vda * Vdb' / Dbp
-    mat1 = Ta / Tb
-    @inbounds for j in 1:d, k in 1:d
-        mat1[j,k]=mat1[j,k] * Dam[j]/Dbp[k]
-    end
-
-    # mat2 = 1/(Dap) * Ua' * Ub * Dbm
-    mul!(mat2, Ua', Ub)    
-    @inbounds for j in 1:d, k in 1:d
-        mat2[j,k]=mat2[j,k] * Dbm[k]/Dap[j]
-    end
-    
-    # mat1 = mat1 + mat2
-    mat1 .+= mat2
-    
-    # decompose mat1: U, D, T
-    U, T = decompose_udt!(mat1, D)
-
-    # invert and combine inner part: mat1 = (U D T)^(-1)
-    # (was UDT_to_mat!(mat1, U, D, T, invert=true))
-    
-    lmul!(Diagonal(D), T)
-    ldiv!(mat1, lu!(T), U') # mat1 = T \ (U')
-
-    # mat1 = 1/Dbp * mat1 /Dap
-    @inbounds for j in 1:d, k in 1:d
-        mat1[j,k]=mat1[j,k] / Dbp[j] / Dap[k]
-    end
-
-    #mat1 = U D T
-    U, T = decompose_udt!(mat1, D)
-
-    # U = Tb^(-1) * U , T = T * Ua'
-    ldiv!(mat1, lu!(Tb), U) # mat1 = Tb \ U
-    mul!(mat2, T, Ua')
-    U = mat1
-    T = mat2
-
-    # combine UDT into res
-    rmul!(U, Diagonal(D))
-    mul!(res, U, T)
     nothing
 end

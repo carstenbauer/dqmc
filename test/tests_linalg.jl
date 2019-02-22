@@ -123,6 +123,7 @@ B_QR_T = load("data/linalg.jld", "B_QR_T")
             inv_I_plus_X = inv(I + X)
             inv_X_plus_Y = inv(X+Y)
             inv_X = inv(X)
+            res = similar(X)
 
 
 
@@ -130,7 +131,6 @@ B_QR_T = load("data/linalg.jld", "B_QR_T")
             @testset "UDT" begin
                 u,d,t = decompose_udt(X);
                 uy,dy,ty = decompose_udt(Y);
-                res = similar(X)
 
                 # inv_udt
                 @test isapprox(inv_udt(u,d,t), inv_X)
