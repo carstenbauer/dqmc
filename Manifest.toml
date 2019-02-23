@@ -15,6 +15,12 @@ version = "0.1.1"
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
+[[BenchmarkTools]]
+deps = ["JSON", "Printf", "Statistics", "Test"]
+git-tree-sha1 = "5d1dd8577643ba9014574cd40d9c028cd5e4b85a"
+uuid = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+version = "0.4.2"
+
 [[BinDeps]]
 deps = ["Compat", "Libdl", "SHA", "URIParser"]
 git-tree-sha1 = "12093ca6cdd0ee547c39b1870e0c9c3f154d9ca9"
@@ -29,7 +35,7 @@ version = "0.5.3"
 
 [[BinningAnalysis]]
 deps = ["EllipsisNotation", "Lazy", "Random", "RecursiveArrayTools", "Reexport", "Statistics", "Test"]
-git-tree-sha1 = "f6122d4b3b3ae034370cc90456984866d6f3abc8"
+git-tree-sha1 = "6ef9faaee98e5f1126ad50b8aed6c686617a81d9"
 repo-rev = "master"
 repo-url = "https://github.com/crstnbr/BinningAnalysis.jl.git"
 uuid = "a1b139fa-e073-5d47-884c-9045a9442dbb"
@@ -115,6 +121,9 @@ git-tree-sha1 = "c94b0787956629036fb2b20fccde9e52b89d079a"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 version = "1.0.5"
 
+[[FileWatching]]
+uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
+
 [[Git]]
 deps = ["BinDeps", "Homebrew", "Libdl", "Test", "VersionParsing"]
 git-tree-sha1 = "0419db5d174ec0fc26d67f05c7eaa010d4485e8a"
@@ -162,14 +171,6 @@ deps = ["Dates", "Distributed", "Mmap", "Sockets", "Test", "Unicode"]
 git-tree-sha1 = "1f7a25b53ec67f5e9422f1f551ee216503f4a0fa"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.20.0"
-
-[[JacobiSVD]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "9a8b5755e3f632400c395a0f3f226d4034965a96"
-repo-rev = "master"
-repo-url = "https://github.com/RalphAS/JacobiSVD.jl"
-uuid = "2ca068c6-2156-5cf0-8317-c67edf277a2c"
-version = "0.0.0"
 
 [[Lazy]]
 deps = ["Compat", "MacroTools", "Test"]
@@ -308,6 +309,12 @@ deps = ["Test"]
 git-tree-sha1 = "f6fbf4ba64d295e146e49e021207993b6b48c7d1"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "0.5.2"
+
+[[Revise]]
+deps = ["Distributed", "FileWatching", "InteractiveUtils", "LibGit2", "OrderedCollections", "Pkg", "REPL", "Random", "Test", "UUIDs", "Unicode"]
+git-tree-sha1 = "341be2df64de382559e2cc307e02ed4192f8a8b7"
+uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
+version = "1.0.2"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"

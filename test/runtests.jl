@@ -1,4 +1,4 @@
-using Test, Random
+using Test, Random, Arpack
 include("../src/dqmc_framework.jl") # to be replaced by using DQMC or similar
 
 function mc_from_inxml(inxml::AbstractString)
