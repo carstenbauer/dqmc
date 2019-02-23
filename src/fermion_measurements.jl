@@ -13,6 +13,18 @@ end
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 # -------------------------------------------------------
 #         Occupation
 # -------------------------------------------------------
@@ -42,6 +54,17 @@ function occupations_flv(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
   # n = 1/(N*M) * sum(1 .- diag(greens))
   real(ns)
 end
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -226,6 +249,13 @@ end
 
 
 
+
+
+
+
+
+
+
 # -------------------------------------------------------
 #         Postprocessing/Analysis
 # -------------------------------------------------------
@@ -271,6 +301,14 @@ function fft_greens(greens::AbstractMatrix)
 
   return np.einsum("kmkn->kmn", g); #k, fs1, fs2
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -450,12 +488,45 @@ end
 
 
 
+
 """
 SVD DECOMPOSITION: Calculate effective(!) Green's function (direct, i.e. without stack)
 """
 function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
-  # Calculate B(stop) ... B(start) safely (with stabilization at every safe_mult step, default ALWAYS)
   # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
+  flv = mc.p.flv
+  N = mc.l.sites
+  G = geltype(mc)
+
+  @assert 0 < start <= mc.p.slices
+  @assert 0 < stop <= mc.p.slices
+  @assert start <= stop
+
+  U = Matrix{G}(I, flv*N, flv*N)
+  D = ones(Float64, flv*N)
+  Vt = Matrix{G}(I, flv*N, flv*N)
+
+  svs = zeros(flv*N,length(start:stop))
+  svc = 1
+  for k in start:stop
+    if mod(k,safe_mult) == 0 || k == stop # always decompose in the end
+      multiply_B_left!(mc,k,U)
+      rmul!(U, Diagonal(D))
+      U, D, Vtnew = decompose_udv(U)
+      mul!(mc.s.tmp, Vtnew, Vt)
+      Vt .=  mc.s.tmp
+      svs[:,svc] = log.(D)
+      svc += 1
+    else
+      multiply_B_left!(mc,k,U)
+    end
+  end
+  return (U,D,Vt,svs)
+end
+
+
+function calc_Bchain_inv_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
+  # Calculate Ul, Dl, Vtl = [B(stop) ... B(start)]^(-1) = B(start)^(-1) ... B(stop)^(-1)
   flv = mc.p.flv
   slices = mc.p.slices
   N = mc.l.sites
@@ -472,9 +543,9 @@ function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int
 
   svs = zeros(flv*N,length(start:stop))
   svc = 1
-  for k in start:stop
+  for k in reverse(start:stop)
     if mod(k,safe_mult) == 0
-      multiply_B_left!(mc,k,U)
+      multiply_B_inv_left!(mc,k,U)
       U *= Diagonal(D)
       U, D, Vtnew = decompose_udv!(U)
       # not yet in-place
@@ -487,6 +558,7 @@ function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int
   end
   return (U,D,Vt,svs)
 end
+
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its logdet in a stable manner
 function calc_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
@@ -515,6 +587,26 @@ function calc_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int
   Vt = adjoint(Ul * I[1])
   return U*D*Vt, sum(log.(diag(D)))
 end
+
+
+
+"""
+Calculate ETGF (slice=1) as inv_one_plus_udv(calc_Bchain_udv)
+"""
+function calc_greens_udv_simple(mc::AbstractDQMC)
+  Budv = calc_Bchain_udv(mc, 1, mc.p.slices);
+  gudv = inv_one_plus_udv_scalettar(Budv[1], Budv[2], Budv[3])
+end
+
+
+
+
+
+
+
+
+
+
 
 # -------------------------------------------------------
 #    Effective Green's function -> Green's function
@@ -553,7 +645,7 @@ function effective_greens2greens!(mc::DQMC_CBTrue, U::AbstractMatrix, T::Abstrac
         U .= tmp
       end
   end
-  nothing
+    nothing
 end
 function greens2effective_greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   chkr_hop_half_minus = mc.l.chkr_hop_half
@@ -606,10 +698,29 @@ end
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # -------------------------------------------------------
 #         Time-displaced Green's function
 # -------------------------------------------------------
-# Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = B(slice,1)G(1)
+# OLD: Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = B(slice,1)G(1)
 # function calc_tdgf_naive(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
 #   U,D,T = calc_greens_udt(mc, 1, safe_mult)
 
@@ -625,7 +736,7 @@ end
 # end
 
 # Calculate "G(tau, 0)", i.e. G(slice,1) as G(slice,1) = [B(slice, 1)^-1 + B(beta, slice)]^-1 which is equal to B(slice,1)G(1)
-function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
+function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult; scalettar=true)
   if slice != 1
     Ul, Dl, Tl = calc_Bchain_inv(mc, 1, slice-1, safe_mult)
   else
@@ -639,7 +750,11 @@ function calc_tdgf(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
   end
 
   # time displace
-  U, D, T = inv_sum_udts(Ul, Dl, Tl, Ur, Dr, Tr)
+  if scalettar
+    U, D, T = inv_sum_udts(Ul, Dl, Tl, Ur, Dr, Tr)
+  else
+    U, D, T = inv_sum_udts_scalettar(Ul, Dl, Tl, Ur, Dr, Tr)
+  end
   effective_greens2greens!(mc, U, T)
 
   rmul!(U, Diagonal(D))
@@ -657,7 +772,7 @@ end
 global LEFT = true
 global RIGHT = false
 """
-Calculate UDVs at safe_mult time slices of
+Calculate UDTs at safe_mult time slices of
 dir = LEFT: 
 inv=false:  B(tau, 1) = B(tau) * B(tau-1) * ... * B(1)                    # mult left, 1:tau
 inv=true:   [B(tau, 1)]^-1 = B(1)^-1 * B(2)^-1 * ... B(tau)^-1            # mult inv right, 1:tau
@@ -671,7 +786,7 @@ inv=true:   [B(beta, tau)]^-1 = B(tau)^-1 * B(tau+1)^-1 * ... B(beta)^-1  # mult
 
 udv[i] = from mc.s.ranges[i][1] to mc.p.slices (beta)
 """
-function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
+function calc_tdgf_B_udts(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
   G = geltype(mc)
   flv = mc.p.flv
   N = mc.l.sites
@@ -763,6 +878,27 @@ function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
 end
 
 
+
+function allocate_tdgf!(mc)
+  @stackshortcuts
+  M = mc.p.slices
+  Nflv = N*flv
+  meas = mc.s.meas
+
+  meas.Gt0 = [zeros(G, Nflv, Nflv) for _ in 1:M]
+  meas.G0t = [zeros(G, Nflv, Nflv) for _ in 1:M]
+
+  println("Allocated memory for TDGF measurement.")
+  nothing
+end
+
+
+
+
+
+
+
+
 function calc_tdgfs!(mc)
   G = geltype(mc)
   M = mc.p.slices
@@ -773,27 +909,17 @@ function calc_tdgfs!(mc)
   eye_full = mc.s.eye_full
   ones_vec = mc.s.ones_vec
 
-  # allocate matrices if not yet done
-  try
-    mc.s.Gt0[1]
-    mc.s.G0t[1]
-  catch
-    mc.s.Gt0 = [zeros(G, Nflv, Nflv) for _ in 1:M]
-    mc.s.G0t = [zeros(G, Nflv, Nflv) for _ in 1:M]
-  end
-
-  Gt0 = mc.s.Gt0
-  G0t = mc.s.G0t
+  Gt0 = mc.s.meas.Gt0
+  G0t = mc.s.meas.G0t
 
   # ---- first, calculate Gt0 and G0t only at safe_mult slices 
   # right mult (Gt0)
-  BT0Inv_u_stack, BT0Inv_d_stack, BT0Inv_t_stack = calc_tdgf_B_udvs(mc, inv=true, dir=LEFT);
-  BBetaT_u_stack, BBetaT_d_stack, BBetaT_t_stack = calc_tdgf_B_udvs(mc, inv=false, dir=RIGHT);
+  BT0Inv_u_stack, BT0Inv_d_stack, BT0Inv_t_stack = calc_tdgf_B_udts(mc, inv=true, dir=LEFT);
+  BBetaT_u_stack, BBetaT_d_stack, BBetaT_t_stack = calc_tdgf_B_udts(mc, inv=false, dir=RIGHT);
   
   # left mult (G0t)
-  BT0_u_stack, BT0_d_stack, BT0_t_stack = calc_tdgf_B_udvs(mc, inv=false, dir=LEFT);
-  BBetaTInv_u_stack, BBetaTInv_d_stack, BBetaTInv_t_stack = calc_tdgf_B_udvs(mc, inv=true, dir=RIGHT);
-
+  BT0_u_stack, BT0_d_stack, BT0_t_stack = calc_tdgf_B_udts(mc, inv=false, dir=LEFT);
+  BBetaTInv_u_stack, BBetaTInv_d_stack, BBetaTInv_t_stack = calc_tdgf_B_udts(mc, inv=true, dir=RIGHT);
 
 
   safe_mult_taus = 1:safe_mult:mc.p.slices
@@ -801,21 +927,21 @@ function calc_tdgfs!(mc)
     tau = safe_mult_taus[i] # tau = tauth (overall) time slice
     if i != 1
       # Gt0
-      inv_sum_udts!(mc, Gt0[tau], BT0Inv_u_stack[i-1], BT0Inv_d_stack[i-1], BT0Inv_t_stack[i-1],
+      inv_sum_udts_scalettar!(mc, Gt0[tau], BT0Inv_u_stack[i-1], BT0Inv_d_stack[i-1], BT0Inv_t_stack[i-1],
                    BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_t_stack[i]) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
       effective_greens2greens!(mc, Gt0[tau])
 
       # G0t
-      inv_sum_udts!(mc, G0t[tau], BT0_u_stack[i-1], BT0_d_stack[i-1], BT0_t_stack[i-1],
+      inv_sum_udts_scalettar!(mc, G0t[tau], BT0_u_stack[i-1], BT0_d_stack[i-1], BT0_t_stack[i-1],
                    BBetaTInv_u_stack[i], BBetaTInv_d_stack[i], BBetaTInv_t_stack[i]) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
       effective_greens2greens!(mc, G0t[tau])
     else
       # Gt0
-      inv_one_plus_udt!(mc, Gt0[tau], BBetaT_u_stack[1], BBetaT_d_stack[1], BBetaT_t_stack[1])
+      inv_one_plus_udt_scalettar!(mc, Gt0[tau], BBetaT_u_stack[1], BBetaT_d_stack[1], BBetaT_t_stack[1])
       effective_greens2greens!(mc, Gt0[tau])
 
       # G0t
-      inv_one_plus_udt!(mc, G0t[tau], BBetaTInv_u_stack[1], BBetaTInv_d_stack[1], BBetaTInv_t_stack[1])
+      inv_one_plus_udt_scalettar!(mc, G0t[tau], BBetaTInv_u_stack[1], BBetaTInv_d_stack[1], BBetaTInv_t_stack[1])
       effective_greens2greens!(mc, G0t[tau]) # TODO: check analytically that we can still do this
     end
   end
@@ -855,24 +981,28 @@ end
 
 
 
-function test_Gt0()
+function test_Gt0(mc::AbstractDQMC)
+  Nflv = mc.l.sites * mc.p.flv
+  G = geltype(mc)
+  s = mc.s
+
   eye_full = mc.s.eye_full
   ones_vec = mc.s.ones_vec
 
-  Gt0 = zeros(G, Nflv, Nflv)
+  Gt0 = fill(zero(G), Nflv, Nflv)
 
   # i = 3
   # i = 11 # == 101, almost beta half = 100
   i = 1
 
   if i != 1
-    U,D,T = inv_sum_udts(BT0Inv_u_stack[i-1], BT0Inv_d_stack[i-1], BT0Inv_t_stack[i-1],
-                 BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_t_stack[i])
+    U,D,T = inv_sum_udts(s.BT0Inv_u_stack[i-1], s.BT0Inv_d_stack[i-1], s.BT0Inv_t_stack[i-1],
+                 s.BBetaT_u_stack[i], s.BBetaT_d_stack[i], s.BBetaT_t_stack[i])
     UDT_to_mat!(Gt0, U, D, T) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
     effective_greens2greens!(mc, Gt0)
   else
     U,D,T = inv_sum_udts(eye_full, ones_vec, eye_full,
-                 BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_t_stack[i])
+                 s.BBetaT_u_stack[i], s.BBetaT_d_stack[i], s.BBetaT_t_stack[i])
     UDT_to_mat!(Gt0, U, D, T) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
     effective_greens2greens!(mc, Gt0)
   end
@@ -987,6 +1117,42 @@ function check_unitarity(u_stack)
   end
   return true
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

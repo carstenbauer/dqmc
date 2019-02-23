@@ -29,7 +29,7 @@ end
 # -------------------------------------------------------
 #                       Includes
 # -------------------------------------------------------
-include("dqmc_framework.jl")
+include("../src/dqmc_framework.jl")
 using Parameters
 using ProgressMeter
 

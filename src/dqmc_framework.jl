@@ -59,6 +59,10 @@ include("global_updates.jl")
 include("boson_measurements.jl")
 include("fermion_measurements.jl")
 
+# tools for apps
+include("tools/xml_parameters.jl")
+include("tools/hdf5_parameters.jl")
+
 
 
 # -------------------------------------------------------

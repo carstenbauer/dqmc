@@ -1,8 +1,23 @@
 # dqmc.jl called with arguments: whatever.in.xml
-using Dates, LinearAlgebra
+using Dates, LinearAlgebra, Pkg
 start_time = now()
 println("\nStarted: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
+
+
+function is_dqmc_env_activated()
+    project_file = Base.active_project()
+    project = Pkg.Types.read_project(project_file)
+    return lowercase(project.name) == "dqmc"
+end
+
+if !is_dqmc_env_activated()
+  println("Activating DQMC environment.")
+  haskey(ENV, "JULIA_DQMC") || error("DQMC environment not loaded and JULIA_DQMC env variable not set!")
+  Pkg.activate(ENV["JULIA_DQMC"])
+  is_dqmc_env_activated() || error("Invalid JULIA_DQMC env variable value.")
+end
+
 
 
 try
@@ -54,7 +69,7 @@ end
 
 # TIMING parameter "hack"
 using LightXML #, Iterators
-include("xml_parameters.jl")
+include("../src/tools/xml_parameters.jl")
 params = xml2dict(input_xml, false)
 haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) && (global const TIMING = true)
 
@@ -62,7 +77,7 @@ haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) &
 # -------------------------------------------------------
 #                    Includes
 # -------------------------------------------------------
-include("dqmc_framework.jl")
+include("../src/dqmc_framework.jl")
 using JLD
 
 
