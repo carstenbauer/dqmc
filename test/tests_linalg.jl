@@ -98,7 +98,7 @@ B_QR_T = load("data/linalg.jld", "B_QR_T")
 
 
     @testset "UDT and UDV inversion business (well-conditioned)" begin
-        let mc = mc_from_inxml("parameters\\O3_generic_small_system.in.xml")
+        let mc = mc_from_inxml("parameters/O3_generic_small_system.in.xml")
             Random.seed!(1234)
             # X = rand(10,10);
             # Y = rand(10,10);
