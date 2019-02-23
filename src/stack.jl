@@ -340,12 +340,11 @@ function calculate_greens(mc::AbstractDQMC)
   mul!(tmp, s.Ul, s.U)
   s.U .= tmp
   mul!(tmp2, s.T, adjoint(s.Ur))
-  s.T .= tmp2
-  mul!(tmp, adjoint(s.U), inv(s.T))
+  myrdiv!(tmp, s.U', tmp2) # or tmp = s.U' / tmp2 or mul!(tmp, adjoint(s.U), inv(tmp2))
   tmp[diagind(tmp)] .+= s.D
   @mytimeit a.to "decompose_udt!" u, t = decompose_udt!(tmp, s.d)
 
-  mul!(tmp, t, s.T)
+  mul!(tmp, t, tmp2)
   s.T = inv(tmp)
   mul!(tmp, s.U, u)
   s.U = adjoint(tmp)

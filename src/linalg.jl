@@ -56,6 +56,9 @@ end
 
 
 
+myrdiv!(dest, a, b) = copyto!(dest, adjoint(adjoint(b) \ adjoint(a)))
+
+
 
 
 
