@@ -357,24 +357,7 @@ function calculate_greens(mc::AbstractDQMC)
   nothing
 end
 
-# function calculate_greens_old(mc::AbstractDQMC)
-#   s = mc.s
 
-#   tmp = s.Tl * adjoint(s.Tr)
-#   s.U, s.D, s.T = decompose_udt(spdiagm(s.Dl) * tmp * spdiagm(s.Dr))
-#   s.U = s.Ul * s.U
-#   s.T *= adjoint(s.Ur)
-
-#   u, s.d, t = decompose_udt(adjoint(s.U) * inv(s.T) + spdiagm(s.D))
-
-#   s.T = inv(t * s.T)
-#   s.U *= u
-#   s.U = adjoint(s.U)
-#   s.d = 1 ./ s.d
-
-#   s.greens = s.T * spdiagm(s.d) * s.U
-#   nothing
-# end
 
 
 """
