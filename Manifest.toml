@@ -35,11 +35,11 @@ version = "0.5.3"
 
 [[BinningAnalysis]]
 deps = ["EllipsisNotation", "Lazy", "Random", "RecursiveArrayTools", "Reexport", "Statistics", "Test"]
-git-tree-sha1 = "6ef9faaee98e5f1126ad50b8aed6c686617a81d9"
+git-tree-sha1 = "965c9215b18a072f7b9590e3d5ccc94c8a291dad"
 repo-rev = "master"
 repo-url = "https://github.com/crstnbr/BinningAnalysis.jl.git"
-uuid = "a1b139fa-e073-5d47-884c-9045a9442dbb"
-version = "0.0.0"
+uuid = "b7192094-8e58-5052-a244-180a858778ee"
+version = "0.1.0+"
 
 [[Blosc]]
 deps = ["BinaryProvider", "CMakeWrapper", "Compat", "Libdl"]
