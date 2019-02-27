@@ -879,7 +879,7 @@ end
 
 
 
-function allocate_tdgf!(mc)
+function allocate_tdgfs!(mc)
   @stackshortcuts
   M = mc.p.slices
   Nflv = N*flv

@@ -8,10 +8,27 @@ length(ARGS) >= 1 || error("input arg: prefix.meas.xml [or prefix.in.xml]")
 # -------------------------------------------------------
 #            Start + Check git branch
 # -------------------------------------------------------
-using Dates, Printf
+using Dates, Printf, Pkg
 const start_time = now()
 println("Started: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
+
+
+
+function is_dqmc_env_activated()
+    project_file = Base.active_project()
+    project = Pkg.Types.read_project(project_file)
+    return !isnothing(project.name) && lowercase(project.name) == "dqmc"
+end
+
+if !is_dqmc_env_activated()
+  println("Activating DQMC environment.")
+  haskey(ENV, "JULIA_DQMC") || error("DQMC environment not loaded and JULIA_DQMC env variable not set!")
+  Pkg.activate(ENV["JULIA_DQMC"])
+  is_dqmc_env_activated() || error("Invalid JULIA_DQMC env variable value.")
+end
+
+
 
 using Git
 branch = Git.branch(dir=dirname(@__FILE__)).string[1:end-1]
@@ -32,6 +49,7 @@ end
 include("../src/dqmc_framework.jl")
 using Parameters
 using ProgressMeter
+using RecursiveArrayTools
 
 
 
@@ -46,7 +64,8 @@ using ProgressMeter
   binder::Bool = true
 
   # fermionic
-  etpc::Bool = true
+  etpc::Bool = false
+  tdgfs::Bool = false
 
   safe_mult::Int = 10
   overwrite::Bool = false
@@ -89,8 +108,14 @@ end
 """
 Returns `true` if we want to measure fermionic stuff.
 """
-@inline hasfermionic(mp::MeasParams) = mp.etpc
-@inline hasfermionic(ol::NamedTuple{K,V}) where {K,V} = :etpc_plus in K || :etpc_minus in K
+@inline hasfermionic(mp::MeasParams) = mp.etpc || mp.tdgfs
+@inline needs_mc(mp::MeasParams) = mp.etpc || mp.tdgfs
+@inline needs_etgf(mp::MeasParams) = mp.etpc
+
+# see https://discourse.julialang.org/t/is-the-first-key-of-a-namedtuple-special/21256
+@inline hasfermionic(ol::NamedTuple{K,V}) where {K,V} = Base.sym_in(:etpc_plus, K) ||
+                                                        Base.sym_in(:tdgfs_Gt0, K)
+@inline needs_etgf(ol::NamedTuple{K,V}) where {K,V} = Base.sym_in(:etpc_plus, K)
 
 
 
@@ -102,6 +127,7 @@ function initialize_stack_for_measurements(mc::AbstractDQMC, mp::MeasParams)
 
     # allocate for measurement run based on todos
     mp.etpc && allocate_etpc!(mc)
+    mp.tdgfs && allocate_tdgfs!(mc)
 
     nothing
 end
@@ -134,11 +160,13 @@ function main(mp::MeasParams)
           println("Checking...")
           allobs = listobs(mp.outfile)
 
-          mp.chi_dyn && !("chi_dyn" in allobs) && (mp.chi_dyn = true; todo = true)
-          mp.chi_dyn_symm && !("chi_dyn_symm" in allobs) && (mp.chi_dyn_symm = true; todo = true)
-          mp.binder && !("binder" in allobs) && (mp.binder = true; todo = true)
-          mp.etpc && !("etpc_minus" in allobs) && (mp.etpc = true; todo = true)
-          mp.etpc && !("etpc_plus" in allobs) && (mp.etpc = true; todo = true)
+          mp.chi_dyn && !("chi_dyn" in allobs) && (todo = true)
+          mp.chi_dyn_symm && !("chi_dyn_symm" in allobs) && (todo = true)
+          mp.binder && !("binder" in allobs) && (todo = true)
+          mp.etpc && !("etpc_minus" in allobs) && (todo = true)
+          mp.etpc && !("etpc_plus" in allobs) && (todo = true)
+          mp.tdgfs && !("tdgfs_Gt0" in allobs) && (todo = true)
+          mp.tdgfs && !("tdgfs_G0t" in allobs) && (todo = true)
 
           todo || begin println("Already measured."); return;  end
         end
@@ -169,8 +197,8 @@ function main(mp::MeasParams)
     println("Couldn't read configuration data. Probably no configurations yet? Exiting.")
     exit()
   end
-  # hasfermionic(mp) && (greens = ts_flat(mp.dqmc_outfile, "obs/greens"))
-  hasfermionic(mp) && (greens = loadobs_frommemory(mp.dqmc_outfile, "obs/greens"))
+
+  needs_etgf(mp) && (greens = loadobs_frommemory(mp.dqmc_outfile, "obs/greens"))
 
   # load dqmc params
   p = Params(); xml2parameters!(p, mp.inxml, false);
@@ -190,18 +218,24 @@ function main(mp::MeasParams)
   mp.binder && (obs = add(obs, m4s = Vector{Float64}(undef, num_confs)))
   mp.binder && (obs = add(obs, binder = Observable(Float64, "binder")))
 
+
+  # prepare fermionic sector if necessary
+  if needs_etgf(mp)
+    mc = DQMC(p)
+    initialize_stack_for_measurements(mc, mp)
+  end
+
+
   # etpc
   if mp.etpc
     (obs = add(obs, etpc_plus = Observable(Matrix{Float64}, "S-wave equal time pairing susceptibiliy (ETPC plus)", alloc=num_confs)))
     (obs = add(obs, etpc_minus = Observable(Matrix{Float64}, "D-wave equal time pairing susceptibiliy (ETPC minus)", alloc=num_confs)))
   end
 
-  # prepare fermionic sector if necessary
-  if hasfermionic(mp)
-    # @assert !(greens === nothing)
-    # @assert size(confs, 4) == size(greens, 3)
-    mc = DQMC(p)
-    initialize_stack_for_measurements(mc, mp)
+  # tdgfs
+  if mp.tdgfs
+    (obs = add(obs, tdgfs_Gt0 = Observable(Array{geltype(mc), 3}, "Time-displaced Green's function G(tau,0) (TDGF Gt0)", alloc=num_confs)))
+    (obs = add(obs, tdgfs_G0t = Observable(Array{geltype(mc), 3}, "Time-displaced Green's function G(0, tau) (TDGF G0t)", alloc=num_confs)))
   end
 
   # --------------------- Measure -------------------------
@@ -252,10 +286,9 @@ function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens,
 
         measure_bosonic(mp, p, obs, conf, i)
 
-        if hasfermionic(mp)
-            # g = greens[:,:,i]
-            # g = _load_single_greens_from_file(mp, i)
-            g = greens[i] # load single greens from disk through MCO.jl
+        # ifs should all happen at compile time (based on obs, i.e. NamedTuple keys)
+        if hasfermionic(obs)
+            g = needs_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
             measure_fermionic(mp, p, obs, conf, g, mc, i)
         end
     end
@@ -270,16 +303,6 @@ function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens,
         add!(obs[:binder], m4ev/m2ev2)
     end
 end
-
-
-# function _load_single_greens_from_file(mp::MeasParams, ts_idx::Int)::Matrix{<:Number}
-#     chunknr = ceil(Int,ts_idx / mp.chunksize)
-#     idx_in_chunk = mod1(ts_idx, mp.chunksize)
-#     return jldopen(mp.dqmc_outfile, "r") do f
-#         val = f["obs/greens/timeseries/ts_chunk$(chunknr)"][:,:, idx_in_chunk]
-#         return dropdims(val, dims=3)
-#     end
-# end
 
 
 
@@ -305,6 +328,7 @@ function measure_bosonic(mp, p, obs, conf, i)
         obs[:m2s][i] = dot(m, m)
         obs[:m4s][i] = obs[:m2s][i] * obs[:m2s][i]
       end
+      nothing
 end
 
 
@@ -319,6 +343,16 @@ function measure_fermionic(mp, p, obs, conf, greens, mc, i)
         add!(obs[:etpc_plus], mc.s.meas.etpc_plus)
         add!(obs[:etpc_minus], mc.s.meas.etpc_minus)
     end
+
+
+    # tdgfs
+    if :tdgfs_Gt0 in keys(obs)
+        mc.p.hsfield = conf
+        calc_tdgfs!(mc)
+        add!(obs[:tdgfs_Gt0], VectorOfArray(mc.s.meas.Gt0))
+        add!(obs[:tdgfs_G0t], VectorOfArray(mc.s.meas.G0t))
+    end
+    nothing
 end
 
 
@@ -338,6 +372,9 @@ function export_results(mp, p, obs, nsweeps)
 
     :etpc_plus in keys(obs) && export_result(obs[:etpc_plus], mp.outfile, "obs/etpc_plus"; timeseries=true)
     :etpc_minus in keys(obs) && export_result(obs[:etpc_minus], mp.outfile, "obs/etpc_minus"; timeseries=true)
+
+    :tdgfs_Gt0 in keys(obs) && export_result(obs[:tdgfs_Gt0], mp.outfile, "obs/tdgfs_Gt0"; timeseries=true)
+    :tdgfs_G0t in keys(obs) && export_result(obs[:tdgfs_G0t], mp.outfile, "obs/tdgfs_G0t"; timeseries=true)
 
     h5open(mp.outfile, "r+") do fout
         HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")

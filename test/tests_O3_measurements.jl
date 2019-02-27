@@ -33,7 +33,7 @@ end
             @assert !mc.p.Bfield
             @assert !mc.p.chkr
 
-            allocate_tdgf!(mc)
+            allocate_tdgfs!(mc)
             Gt0 = mc.s.meas.Gt0
             G0t = mc.s.meas.G0t
             calc_tdgfs!(mc)
