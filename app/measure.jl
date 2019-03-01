@@ -3,7 +3,8 @@
 # -------------------------------------------------------
 length(ARGS) >= 1 || error("input arg: prefix.meas.xml [or prefix.in.xml]")
 
-
+# support for symbol link to app/measure.jl in root of repo
+__FILE__ = basename(pwd()) == "app" ? "" : joinpath(dirname(@__FILE__), "app")
 
 # -------------------------------------------------------
 #            Start + Check git branch
@@ -46,7 +47,7 @@ end
 # -------------------------------------------------------
 #                       Includes
 # -------------------------------------------------------
-include("../src/dqmc_framework.jl")
+include(joinpath(__FILE__), "../src/dqmc_framework.jl"))
 using Parameters
 using ProgressMeter
 using RecursiveArrayTools
