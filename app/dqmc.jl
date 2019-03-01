@@ -4,6 +4,8 @@ start_time = now()
 println("\nStarted: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
 
+# support for symbol link to app/dqmc.jl in root of repo
+__FILE__ = basename(pwd()) == "app" ? "" : joinpath(dirname(@__FILE__), "app")
 
 function is_dqmc_env_activated()
     project_file = Base.active_project()
@@ -69,7 +71,7 @@ end
 
 # TIMING parameter "hack"
 using LightXML #, Iterators
-include("../src/tools/xml_parameters.jl")
+include(joinpath(__FILE__, "../src/tools/xml_parameters.jl"))
 params = xml2dict(input_xml, false)
 haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) && (global const TIMING = true)
 
@@ -77,7 +79,7 @@ haskey(params, "TIMING") && (parse(Bool, lowercase(params["TIMING"])) == true) &
 # -------------------------------------------------------
 #                    Includes
 # -------------------------------------------------------
-include("../src/dqmc_framework.jl")
+include(joinpath(__FILE__, "../src/dqmc_framework.jl"))
 using JLD
 
 
