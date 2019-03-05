@@ -5,7 +5,7 @@ println("\nStarted: ", Dates.format(start_time, "d.u yyyy HH:MM"))
 println("Hostname: ", gethostname())
 
 # support for symbol link to app/dqmc.jl in root of repo
-__FILE__ = basename(pwd()) == "app" ? "" : joinpath(dirname(@__FILE__), "app")
+__FILE__ = joinpath(dirname(@__FILE__), splitpath(dirname(@__FILE__))[end] == "app" ? "" : "app")
 
 function is_dqmc_env_activated()
     project_file = Base.active_project()
