@@ -326,7 +326,6 @@ function measure!(mc::DQMC, prevmeasurements=0)
   propagate(mc)
 
   cs = choose_chunk_size(mc)
-  @show cs
 
   configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/configurations")
   greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/greens")
@@ -343,7 +342,10 @@ function measure!(mc::DQMC, prevmeasurements=0)
     i_start = prevmeasurements-togo+1
     i_end = p.measurements + prevmeasurements
     cs = configurations.alloc
+    println("Overriding cs to match cs of previous run (cs = $(cs)).")
   end
+
+  @show cs
 
 
   acc_rate = 0.0
@@ -371,15 +373,25 @@ function measure!(mc::DQMC, prevmeasurements=0)
         dumping && println("Dumping block of $cs datapoints was a success")
         flush(stdout)
 
-        if (approaching_wtl = now() >= p.walltimelimit)
-          println("Approaching wall-time limit. Safely exiting. (i = $(i)). Current date: $(Dates.format(now(), "d.u yyyy HH:MM")).")
-          println("Flushing configurations which haven't been dumped yet.")
-          flush(configurations)
-          flush(greens)
-          flush(occ)
-          # flush(boson_action)
-          saverng(p.output_file; group="resume/rng")
-          exit(42)
+
+        if !dumping # measuring but we aren't dumping
+          # Estimate whether we'll make it to another measurement before hitting WTL. If not, flush and restart.
+          to_udsweep = mc.a.to["udsweep"]
+          udsd = TimerOutputs.time(to_udsweep) *10.0^(-9)/TimerOutputs.ncalls(to_udsweep)
+          secs_to_meas = p.write_every_nth * udsd
+          secs_to_meas *= 1.1 # add 10 percent because we might be slower
+          next_meas_date = now() + Millisecond(ceil(Int, secs_to_meas*1000))
+
+          if next_meas_date >= p.walltimelimit
+            println("Approaching wall-time limit. Won't make it to next measurement. Safely exiting. (i = $(i)). Current date: $(Dates.format(now(), "d.u yyyy HH:MM")).")
+            println("Flushing configurations which haven't been dumped yet.")
+            flush(configurations)
+            flush(greens)
+            flush(occ)
+            # flush(boson_action)
+            saverng(p.output_file; group="resume/rng")
+            exit(42)
+          end
         end
       end
     end
@@ -478,11 +490,11 @@ function set_walltimelimit!(p, start_time)
     @show ENV["WALLTIMELIMIT"]
     @show p.walltimelimit
   elseif occursin("cheops", gethostname())
-    p.walltimelimit = wtl2DateTime("9-23:00:00", start_time) # CHEOPS
-    println("Set CHEOPS walltime limit, i.e. 9-23:00:00.")
+    p.walltimelimit = wtl2DateTime("9-23:30:00", start_time) # CHEOPS
+    println("Set CHEOPS walltime limit, i.e. 9-23:30:00.")
   elseif occursin("jw", gethostname())
-    p.walltimelimit = wtl2DateTime("0-23:00:00", start_time) # JUWELS
-    println("Set JUWELS walltime limit, i.e. 0-23:00:00.")
+    p.walltimelimit = wtl2DateTime("0-23:30:00", start_time) # JUWELS
+    println("Set JUWELS walltime limit, i.e. 0-23:30:00.")
   end
 
   nothing
