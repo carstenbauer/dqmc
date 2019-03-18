@@ -519,7 +519,7 @@ function csheuristics(wctl::DateTime, udsd::Real, writeeverynth::Int; maxcs::Int
     # wcts == 0.0 && (return maxcs) # no wallclocktime limit
 
     num_uds = wcts/(udsd * writeeverynth) # Float64: number of add!s we will (in theory) perform in the given time
-    num_uds *= 0.85 # 15% buffer, i.e. things might take longer than expected.
+    num_uds *= 0.80 # 20% buffer, i.e. things might take longer than expected.
     cs = max(floor(Int, min(num_uds, 100)), 1)
 end
 
