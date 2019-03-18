@@ -34,12 +34,12 @@ uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 version = "0.5.3"
 
 [[BinningAnalysis]]
-deps = ["EllipsisNotation", "Lazy", "Random", "RecursiveArrayTools", "Reexport", "Statistics", "Test"]
-git-tree-sha1 = "965c9215b18a072f7b9590e3d5ccc94c8a291dad"
+deps = ["Lazy", "Random", "RecursiveArrayTools", "Reexport", "Statistics", "Test"]
+git-tree-sha1 = "00b3f40a1cbf47ffee04cd5a790d48d408bea3a6"
 repo-rev = "master"
 repo-url = "https://github.com/crstnbr/BinningAnalysis.jl.git"
 uuid = "b7192094-8e58-5052-a244-180a858778ee"
-version = "0.1.0+"
+version = "0.2.0+"
 
 [[Blosc]]
 deps = ["BinaryProvider", "CMakeWrapper", "Compat", "Libdl"]
@@ -68,11 +68,17 @@ version = "0.2.2"
 [[CRC32c]]
 uuid = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
 
+[[CodeTracking]]
+deps = ["InteractiveUtils", "Test", "UUIDs"]
+git-tree-sha1 = "0d3001bf3c6b749308b1eaa307a3765daec0eb16"
+uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
+version = "0.3.3"
+
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "49269e311ffe11ac5b334681d212329002a9832a"
+git-tree-sha1 = "195a3ffcb8b0762684b6821de18f83a16455c6ea"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "1.5.1"
+version = "2.0.0"
 
 [[Conda]]
 deps = ["Compat", "JSON", "VersionParsing"]
@@ -82,9 +88,9 @@ version = "1.2.0"
 
 [[Crayons]]
 deps = ["Test"]
-git-tree-sha1 = "3017c662a988bcb8a3f43306a793617c6524d476"
+git-tree-sha1 = "416737eea5c50ee5a08c588ea73d77d5eebc94e7"
 uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-version = "1.0.0"
+version = "3.0.0"
 
 [[DSP]]
 deps = ["AbstractFFTs", "Compat", "FFTW", "LinearAlgebra", "Polynomials", "Random", "Reexport", "SpecialFunctions"]
@@ -144,7 +150,7 @@ version = "0.2.1"
 
 [[Helpers]]
 deps = ["HDF5", "JLD", "LinearAlgebra", "Printf", "Random", "SparseArrays", "Statistics", "Test"]
-git-tree-sha1 = "d186dfd24254a702fa58ebd16db6bfabb4a3c96d"
+git-tree-sha1 = "544419fb2cce863f7b5370d8d1cf6ebdbbda8f19"
 repo-rev = "master"
 repo-url = "https://github.com/crstnbr/Helpers.jl"
 uuid = "4de40672-05fc-5661-aad9-eb3e0bf5aa76"
@@ -235,8 +241,8 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[MonteCarloObservable]]
-deps = ["EllipsisNotation", "HDF5", "JLD", "Statistics", "Test"]
-git-tree-sha1 = "cbbf3f82e193e7575ee1a40e9975a9aed461cd30"
+deps = ["BinningAnalysis", "EllipsisNotation", "HDF5", "JLD", "Lazy", "Statistics", "Test"]
+git-tree-sha1 = "f59f88f76cec2d7254400b63b43491b237eadb1f"
 repo-rev = "master"
 repo-url = "https://github.com/crstnbr/MonteCarloObservable.jl.git"
 uuid = "8a675f2c-1eea-59ef-99a5-5eebc71d1519"
@@ -311,10 +317,10 @@ uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "0.5.2"
 
 [[Revise]]
-deps = ["Distributed", "FileWatching", "InteractiveUtils", "LibGit2", "OrderedCollections", "Pkg", "REPL", "Random", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "341be2df64de382559e2cc307e02ed4192f8a8b7"
+deps = ["CodeTracking", "Distributed", "FileWatching", "InteractiveUtils", "LibGit2", "OrderedCollections", "Pkg", "REPL", "Random", "Test", "UUIDs", "Unicode"]
+git-tree-sha1 = "a47a47a35c794e0bcefe0f76bcb6469ec7ece7d7"
 uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
-version = "1.0.2"
+version = "1.1.0"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -341,9 +347,9 @@ version = "0.7.2"
 
 [[StaticArrays]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Random", "Statistics", "Test"]
-git-tree-sha1 = "1eb114d6e23a817cd3e99abc3226190876d7c898"
+git-tree-sha1 = "3841b39ed5f047db1162627bf5f80a9cd3e39ae2"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.10.2"
+version = "0.10.3"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -355,9 +361,9 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[TimerOutputs]]
 deps = ["Crayons", "Printf", "Test", "Unicode"]
-git-tree-sha1 = "89a9bd610d6bfd62a7c2b85112762b99b979fe5f"
+git-tree-sha1 = "b80671c06f8f8bae08c55d67b5ce292c5ae2660c"
 uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-version = "0.4.0"
+version = "0.5.0"
 
 [[URIParser]]
 deps = ["Test", "Unicode"]
