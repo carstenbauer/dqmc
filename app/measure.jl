@@ -4,7 +4,7 @@
 length(ARGS) >= 1 || error("input arg: prefix.meas.xml [or prefix.in.xml]")
 
 # support for symbol link to app/measure.jl in root of repo
-__FILE__ = basename(pwd()) == "app" ? "" : joinpath(dirname(@__FILE__), "app")
+__FILE__ = joinpath(dirname(@__FILE__), splitpath(dirname(@__FILE__))[end] == "app" ? "" : "app")
 
 # -------------------------------------------------------
 #            Start + Check git branch
@@ -47,7 +47,7 @@ end
 # -------------------------------------------------------
 #                       Includes
 # -------------------------------------------------------
-include(joinpath(__FILE__), "../src/dqmc_framework.jl"))
+include(joinpath(__FILE__, "../src/dqmc_framework.jl"))
 using Parameters
 using ProgressMeter
 using RecursiveArrayTools
@@ -211,13 +211,13 @@ function main(mp::MeasParams)
   obs = NamedTuple() # list of Observables
 
   # chi_dyn
-  mp.chi_dyn_symm && (obs = add(obs, chi_dyn_symm = Observable(Array{Float64, 3}, "chi_dyn_symm"; alloc=num_confs)))
-  mp.chi_dyn && (obs = add(obs, chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs)))
+  mp.chi_dyn_symm && (obs = add(obs, chi_dyn_symm = Observable(Array{Float64, 3}, name="chi_dyn_symm"; alloc=num_confs)))
+  mp.chi_dyn && (obs = add(obs, chi_dyn = Observable(Array{Float64, 3}, name="chi_dyn"; alloc=num_confs)))
   
   # binder
   mp.binder && (obs = add(obs, m2s = Vector{Float64}(undef, num_confs)))
   mp.binder && (obs = add(obs, m4s = Vector{Float64}(undef, num_confs)))
-  mp.binder && (obs = add(obs, binder = Observable(Float64, "binder")))
+  mp.binder && (obs = add(obs, binder = Observable(Float64, name="binder")))
 
 
   # prepare fermionic sector if necessary
@@ -229,14 +229,19 @@ function main(mp::MeasParams)
 
   # etpc
   if mp.etpc
-    (obs = add(obs, etpc_plus = Observable(Matrix{Float64}, "S-wave equal time pairing susceptibiliy (ETPC plus)", alloc=num_confs)))
-    (obs = add(obs, etpc_minus = Observable(Matrix{Float64}, "D-wave equal time pairing susceptibiliy (ETPC minus)", alloc=num_confs)))
+    zero_etpc = zeros(Float64, mc.p.L, mc.p.L)
+    (obs = add(obs, etpc_plus = LightObservable(zero_etpc, name="S-wave equal time pairing susceptibiliy (ETPC plus)", alloc=num_confs)))
+    (obs = add(obs, etpc_minus = LightObservable(zero_etpc, name="D-wave equal time pairing susceptibiliy (ETPC minus)", alloc=num_confs)))
   end
 
   # tdgfs
   if mp.tdgfs
-    (obs = add(obs, tdgfs_Gt0 = Observable(Array{geltype(mc), 3}, "Time-displaced Green's function G(tau,0) (TDGF Gt0)", alloc=num_confs)))
-    (obs = add(obs, tdgfs_G0t = Observable(Array{geltype(mc), 3}, "Time-displaced Green's function G(0, tau) (TDGF G0t)", alloc=num_confs)))
+    # create zero element for LightObservable
+    Nflv = mc.p.flv * mc.l.sites
+    tdgf_size = (Nflv, Nflv, mc.p.slices)
+    zero_tdgf = zeros(geltype(mc), tdgf_size)
+    (obs = add(obs, tdgfs_Gt0 = LightObservable(zero_tdgf, name="Time-displaced Green's function G(tau,0) (TDGF Gt0)", alloc=num_confs)))
+    (obs = add(obs, tdgfs_G0t = LightObservable(zero_tdgf, name="Time-displaced Green's function G(0, tau) (TDGF G0t)", alloc=num_confs)))
   end
 
   # --------------------- Measure -------------------------
@@ -301,7 +306,7 @@ function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens,
         m2ev2 = mean(obs[:m2s])^2
         m4ev = mean(obs[:m4s])
 
-        add!(obs[:binder], m4ev/m2ev2)
+        push!(obs[:binder], m4ev/m2ev2)
     end
 end
 
@@ -315,11 +320,11 @@ function measure_bosonic(mp, p, obs, conf, i)
       # chi_dyn
       if :chi_dyn in keys(obs)
         chi = measure_chi_dynamic(conf)
-        add!(obs[:chi_dyn], chi)
+        push!(obs[:chi_dyn], chi)
 
         if :chi_dyn_symm in keys(obs)
           chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
-          add!(obs[:chi_dyn_symm], chi)
+          push!(obs[:chi_dyn_symm], chi)
         end
       end
 
@@ -341,8 +346,8 @@ function measure_fermionic(mp, p, obs, conf, greens, mc, i)
     if :etpc_plus in keys(obs)
         mc.p.hsfield = conf
         etpc!(mc, greens)
-        add!(obs[:etpc_plus], mc.s.meas.etpc_plus)
-        add!(obs[:etpc_minus], mc.s.meas.etpc_minus)
+        push!(obs[:etpc_plus], mc.s.meas.etpc_plus)
+        push!(obs[:etpc_minus], mc.s.meas.etpc_minus)
     end
 
 
@@ -350,8 +355,8 @@ function measure_fermionic(mp, p, obs, conf, greens, mc, i)
     if :tdgfs_Gt0 in keys(obs)
         mc.p.hsfield = conf
         calc_tdgfs!(mc)
-        add!(obs[:tdgfs_Gt0], VectorOfArray(mc.s.meas.Gt0))
-        add!(obs[:tdgfs_G0t], VectorOfArray(mc.s.meas.G0t))
+        push!(obs[:tdgfs_Gt0], VectorOfArray(mc.s.meas.Gt0))
+        push!(obs[:tdgfs_G0t], VectorOfArray(mc.s.meas.G0t))
     end
     nothing
 end
@@ -371,11 +376,11 @@ function export_results(mp, p, obs, nsweeps)
 
     :binder in keys(obs) && export_result(obs[:binder], mp.outfile, "obs/binder", error=false) # jackknife for error
 
-    :etpc_plus in keys(obs) && export_result(obs[:etpc_plus], mp.outfile, "obs/etpc_plus"; timeseries=true)
-    :etpc_minus in keys(obs) && export_result(obs[:etpc_minus], mp.outfile, "obs/etpc_minus"; timeseries=true)
+    :etpc_plus in keys(obs) && export_result(obs[:etpc_plus], mp.outfile, "obs/etpc_plus")
+    :etpc_minus in keys(obs) && export_result(obs[:etpc_minus], mp.outfile, "obs/etpc_minus")
 
-    :tdgfs_Gt0 in keys(obs) && export_result(obs[:tdgfs_Gt0], mp.outfile, "obs/tdgfs_Gt0"; timeseries=true)
-    :tdgfs_G0t in keys(obs) && export_result(obs[:tdgfs_G0t], mp.outfile, "obs/tdgfs_G0t"; timeseries=true)
+    :tdgfs_Gt0 in keys(obs) && export_result(obs[:tdgfs_Gt0], mp.outfile, "obs/tdgfs_Gt0")
+    :tdgfs_G0t in keys(obs) && export_result(obs[:tdgfs_G0t], mp.outfile, "obs/tdgfs_G0t")
 
     h5open(mp.outfile, "r+") do fout
         HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
