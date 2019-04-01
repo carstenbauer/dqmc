@@ -221,7 +221,7 @@ function main(mp::MeasParams)
 
 
   # prepare fermionic sector if necessary
-  if needs_etgf(mp)
+  if needs_mc(mp)
     mc = DQMC(p)
     initialize_stack_for_measurements(mc, mp)
   end
