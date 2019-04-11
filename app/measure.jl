@@ -66,6 +66,7 @@ using RecursiveArrayTools
 
   # fermionic
   etpc::Bool = false
+  zfpc::Bool = false
   tdgfs::Bool = false
 
   safe_mult::Int = 10
@@ -109,14 +110,18 @@ end
 """
 Returns `true` if we want to measure fermionic stuff.
 """
-@inline hasfermionic(mp::MeasParams) = mp.etpc || mp.tdgfs
-@inline needs_mc(mp::MeasParams) = mp.etpc || mp.tdgfs
-@inline needs_etgf(mp::MeasParams) = mp.etpc
+@inline hasfermionic(mp::MeasParams) = mp.etpc || mp.tdgfs || mp.zfpc
+@inline need_to_setup_mc(mp::MeasParams) = mp.etpc || mp.tdgfs || mp.zfpc
+@inline need_to_load_etgf(mp::MeasParams) = mp.etpc
+@inline need_to_calc_tdgf(mp::MeasParams) = mp.tdgfs || mp.zfpc
 
 # see https://discourse.julialang.org/t/is-the-first-key-of-a-namedtuple-special/21256
 @inline hasfermionic(ol::NamedTuple{K,V}) where {K,V} = Base.sym_in(:etpc_plus, K) ||
+                                                        Base.sym_in(:zfpc_plus, K) ||
                                                         Base.sym_in(:tdgfs_Gt0, K)
-@inline needs_etgf(ol::NamedTuple{K,V}) where {K,V} = Base.sym_in(:etpc_plus, K)
+@inline need_to_load_etgf(ol::NamedTuple{K,V}) where {K,V} = Base.sym_in(:etpc_plus, K)
+@inline need_to_calc_tdgf(ol::NamedTuple{K,V}) where {K,V} = Base.sym_in(:tdgfs_Gt0, K) ||
+                                                             Base.sym_in(:zfpc_plus, K)
 
 
 
@@ -166,6 +171,8 @@ function main(mp::MeasParams)
           mp.binder && !("binder" in allobs) && (todo = true)
           mp.etpc && !("etpc_minus" in allobs) && (todo = true)
           mp.etpc && !("etpc_plus" in allobs) && (todo = true)
+          mp.zfpc && !("zfpc_minus" in allobs) && (todo = true)
+          mp.zfpc && !("zfpc_plus" in allobs) && (todo = true)
           mp.tdgfs && !("tdgfs_Gt0" in allobs) && (todo = true)
           mp.tdgfs && !("tdgfs_G0t" in allobs) && (todo = true)
 
@@ -199,7 +206,7 @@ function main(mp::MeasParams)
     exit()
   end
 
-  needs_etgf(mp) && (greens = loadobs_frommemory(mp.dqmc_outfile, "obs/greens"))
+  need_to_load_etgf(mp) && (greens = loadobs_frommemory(mp.dqmc_outfile, "obs/greens"))
 
   # load dqmc params
   p = Params(); xml2parameters!(p, mp.inxml, false);
@@ -220,8 +227,8 @@ function main(mp::MeasParams)
   mp.binder && (obs = add(obs, binder = Observable(Float64, name="binder")))
 
 
-  # prepare fermionic sector if necessary
-  if needs_mc(mp)
+  # prepare dqmc framework if necessary
+  if need_to_setup_mc(mp)
     mc = DQMC(p)
     initialize_stack_for_measurements(mc, mp)
   end
@@ -232,6 +239,13 @@ function main(mp::MeasParams)
     zero_etpc = zeros(Float64, mc.p.L, mc.p.L)
     (obs = add(obs, etpc_plus = LightObservable(zero_etpc, name="S-wave equal time pairing susceptibiliy (ETPC plus)", alloc=num_confs)))
     (obs = add(obs, etpc_minus = LightObservable(zero_etpc, name="D-wave equal time pairing susceptibiliy (ETPC minus)", alloc=num_confs)))
+  end
+
+  # zfpc
+  if mp.zfpc
+    zero_zfpc = zeros(Float64, mc.p.L, mc.p.L)
+    (obs = add(obs, zfpc_plus = LightObservable(zero_zfpc, name="S-wave zero-frequency pairing susceptibiliy (ZFPC plus)", alloc=num_confs)))
+    (obs = add(obs, zfpc_minus = LightObservable(zero_zfpc, name="D-wave zero-frequency pairing susceptibiliy (ZFPC minus)", alloc=num_confs)))
   end
 
   # tdgfs
@@ -294,7 +308,7 @@ function measure(mp::MeasParams, p::Params, obs::NamedTuple{K,V}, confs, greens,
 
         # ifs should all happen at compile time (based on obs, i.e. NamedTuple keys)
         if hasfermionic(obs)
-            g = needs_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
+            g = need_to_load_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
             measure_fermionic(mp, p, obs, conf, g, mc, i)
         end
     end
@@ -342,22 +356,35 @@ end
 
 
 function measure_fermionic(mp, p, obs, conf, greens, mc, i)
+    mc.p.hsfield = conf
+
     # etpc
     if :etpc_plus in keys(obs)
-        mc.p.hsfield = conf
         etpc!(mc, greens)
         push!(obs[:etpc_plus], mc.s.meas.etpc_plus)
         push!(obs[:etpc_minus], mc.s.meas.etpc_minus)
     end
 
+    if need_to_calc_tdgf(obs)
+      calc_tdgfs!(mc)
+      Gt0 = mc.s.meas.Gt0
+      G0t = mc.s.meas.G0t
+    end
 
     # tdgfs
-    if :tdgfs_Gt0 in keys(obs)
-        mc.p.hsfield = conf
-        calc_tdgfs!(mc)
-        push!(obs[:tdgfs_Gt0], VectorOfArray(mc.s.meas.Gt0))
-        push!(obs[:tdgfs_G0t], VectorOfArray(mc.s.meas.G0t))
+    if :tdgfs_Gt0 in keys(obs)        
+        push!(obs[:tdgfs_Gt0], VectorOfArray(Gt0))
+        push!(obs[:tdgfs_G0t], VectorOfArray(G0t))
     end
+
+    # zfpc
+    if :zfpc_plus in keys(obs)
+        zfpc!(mc, Gt0)
+        push!(obs[:zfpc_plus], mc.s.meas.zfpc_plus)
+        push!(obs[:zfpc_minus], mc.s.meas.zfpc_minus)
+    end
+
+    # GC.gc()
     nothing
 end
 
@@ -381,6 +408,9 @@ function export_results(mp, p, obs, nsweeps)
 
     :tdgfs_Gt0 in keys(obs) && export_result(obs[:tdgfs_Gt0], mp.outfile, "obs/tdgfs_Gt0")
     :tdgfs_G0t in keys(obs) && export_result(obs[:tdgfs_G0t], mp.outfile, "obs/tdgfs_G0t")
+
+    :zfpc_plus in keys(obs) && export_result(obs[:zfpc_plus], mp.outfile, "obs/zfpc_plus")
+    :zfpc_minus in keys(obs) && export_result(obs[:zfpc_minus], mp.outfile, "obs/zfpc_minus")
 
     h5open(mp.outfile, "r+") do fout
         HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
