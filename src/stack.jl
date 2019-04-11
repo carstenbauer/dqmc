@@ -1,10 +1,14 @@
 mutable struct MeasStack{G<:Number} # G = GreensEltype
 
   # ETPCs
-  etpc_evs::Array{Float64, 3} # j, y, x; where j ∈ ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
+  pc_evs::Array{Float64, 3} # j, y, x; where j ∈ ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
   etpc_minus::Array{Float64, 2} # "P_(x,y)", i.e. d-wave
   etpc_plus::Array{Float64, 2} # "P+(x,y)", i.e. s-wave
 
+  # ZFPCs (zero-frequency)
+  # uses pc_evs
+  zfpc_minus::Array{Float64, 2} # "P_(x,y)", i.e. d-wave
+  zfpc_plus::Array{Float64, 2} # "P+(x,y)", i.e. s-wave
 
   # TDGF
   Gt0::Vector{Matrix{G}}
@@ -26,7 +30,7 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   greens::Matrix{G}
   log_det::Float64 # contains logdet of greens_{p.slices+1} === greens_1
                             # after we calculated a fresh greens in propagate()
-  
+
   C::Vector{G}
   S::Vector{G}
   R::Vector{G}
@@ -43,7 +47,7 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   d::Vector{Float64}
   tmp::Matrix{G}
   tmp2::Matrix{G}
-  
+
   # global update
   gb_u_stack::Array{G, 3}
   gb_d_stack::Matrix{Float64}
@@ -128,7 +132,7 @@ function allocate_global_update!(mc)
   s.gb_d_stack = zero(s.d_stack)
   s.gb_t_stack = zero(s.t_stack)
   s.gb_greens = zero(s.greens)
-  s.gb_log_det = 0. 
+  s.gb_log_det = 0.
   s.gb_hsfield = zero(mc.p.hsfield)
 end
 
@@ -177,7 +181,7 @@ end
 function _initialize_stack(mc::AbstractDQMC)
   @stackshortcuts
   s.n_elements = convert(Int, mc.p.slices / safe_mult) + 1
-  
+
   s.ranges = UnitRange[]
   for i in 1:s.n_elements - 1
     push!(s.ranges, 1 + (i - 1) * safe_mult:i * safe_mult)
@@ -218,7 +222,7 @@ function initialize_stack(mc::AbstractDQMC)
     # allocate for dqmc
     allocate_etgreens_stack!(mc)
     allocate_global_update!(mc)
-    allocate_calc_detratio!(mc)  
+    allocate_calc_detratio!(mc)
     allocate_calc_greens!(mc)
     allocate_update_greens!(mc)
     allocate_propagate!(mc)
