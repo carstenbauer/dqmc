@@ -882,9 +882,11 @@ end
 
 
 
+@enum Direction begin
+  LEFT
+  RIGHT
+end
 
-global LEFT = true
-global RIGHT = false
 """
 Calculate UDTs at safe_mult time slices of
 dir = LEFT: 
@@ -900,7 +902,7 @@ inv=true:   [B(beta, tau)]^-1 = B(tau)^-1 * B(tau+1)^-1 * ... B(beta)^-1  # mult
 
 udv[i] = from mc.s.ranges[i][1] to mc.p.slices (beta)
 """
-function calc_tdgf_B_udts(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
+function calc_tdgf_B_udts!(mc::AbstractDQMC, u_stack, d_stack, t_stack; invert::Bool=false, dir::Direction=LEFT)
   G = geltype(mc)
   flv = mc.p.flv
   N = mc.l.sites
@@ -909,13 +911,9 @@ function calc_tdgf_B_udts(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
   eye_full = mc.s.eye_full
   ones_vec = mc.s.ones_vec
   ranges = mc.s.ranges
-  
-  u_stack = [zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  d_stack = [zeros(Float64, flv*N) for _ in 1:nranges]
-  t_stack = [zeros(G, flv*N, flv*N) for _ in 1:nranges]
 
   rightmult = false
-  ((dir == RIGHT && !inv) || (dir == LEFT && inv)) && (rightmult = true)
+  ((dir == RIGHT && !invert) || (dir == LEFT && invert)) && (rightmult = true)
 
   # @show rightmult
 
@@ -938,7 +936,7 @@ function calc_tdgf_B_udts(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
     slice_range = dir == RIGHT ? reverse(ranges[rngidx]) : ranges[rngidx]
 
     for slice in slice_range
-      if inv == false
+      if invert == false
         if dir == LEFT
           multiply_B_left!(mc, slice, curr_U_or_T)
         else
@@ -999,8 +997,23 @@ function allocate_tdgfs!(mc)
   Nflv = N*flv
   meas = mc.s.meas
 
-  meas.Gt0 = [zeros(G, Nflv, Nflv) for _ in 1:M]
-  meas.G0t = [zeros(G, Nflv, Nflv) for _ in 1:M]
+  nranges = length(mc.s.ranges)
+
+  meas.Gt0 = Matrix{G}[zeros(G, Nflv, Nflv) for _ in 1:M]
+  meas.G0t = Matrix{G}[zeros(G, Nflv, Nflv) for _ in 1:M]
+
+  # mc.s.meas.BT0Inv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BT0Inv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BT0Inv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BBetaT_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BBetaT_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BBetaT_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BT0_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BT0_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BT0_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BBetaTInv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BBetaTInv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  # mc.s.meas.BBetaTInv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
 
   println("Allocated memory for TDGF measurement.")
   nothing
@@ -1022,18 +1035,45 @@ function calc_tdgfs!(mc)
   safe_mult = mc.p.safe_mult
   eye_full = mc.s.eye_full
   ones_vec = mc.s.ones_vec
+  nranges = length(mc.s.ranges)
 
   Gt0 = mc.s.meas.Gt0
   G0t = mc.s.meas.G0t
 
+  # BT0Inv_u_stack = mc.s.meas.BT0Inv_u_stack
+  # BT0Inv_d_stack = mc.s.meas.BT0Inv_d_stack
+  # BT0Inv_t_stack = mc.s.meas.BT0Inv_t_stack
+  # BBetaT_u_stack = mc.s.meas.BBetaT_u_stack
+  # BBetaT_d_stack = mc.s.meas.BBetaT_d_stack
+  # BBetaT_t_stack = mc.s.meas.BBetaT_t_stack
+  # BT0_u_stack = mc.s.meas.BT0_u_stack
+  # BT0_d_stack = mc.s.meas.BT0_d_stack
+  # BT0_t_stack = mc.s.meas.BT0_t_stack
+  # BBetaTInv_u_stack = mc.s.meas.BBetaTInv_u_stack
+  # BBetaTInv_d_stack = mc.s.meas.BBetaTInv_d_stack
+  # BBetaTInv_t_stack = mc.s.meas.BBetaTInv_t_stack
+
+  BT0Inv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  BT0Inv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  BT0Inv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  BBetaT_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  BBetaT_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  BBetaT_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  BT0_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  BT0_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  BT0_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  BBetaTInv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  BBetaTInv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  BBetaTInv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+
   # ---- first, calculate Gt0 and G0t only at safe_mult slices 
   # right mult (Gt0)
-  BT0Inv_u_stack, BT0Inv_d_stack, BT0Inv_t_stack = calc_tdgf_B_udts(mc, inv=true, dir=LEFT);
-  BBetaT_u_stack, BBetaT_d_stack, BBetaT_t_stack = calc_tdgf_B_udts(mc, inv=false, dir=RIGHT);
+  calc_tdgf_B_udts!(mc, BT0Inv_u_stack, BT0Inv_d_stack, BT0Inv_t_stack, invert=true, dir=LEFT);
+  calc_tdgf_B_udts!(mc, BBetaT_u_stack, BBetaT_d_stack, BBetaT_t_stack, invert=false, dir=RIGHT);
   
   # left mult (G0t)
-  BT0_u_stack, BT0_d_stack, BT0_t_stack = calc_tdgf_B_udts(mc, inv=false, dir=LEFT);
-  BBetaTInv_u_stack, BBetaTInv_d_stack, BBetaTInv_t_stack = calc_tdgf_B_udts(mc, inv=true, dir=RIGHT);
+  calc_tdgf_B_udts!(mc, BT0_u_stack, BT0_d_stack, BT0_t_stack, invert=false, dir=LEFT);
+  calc_tdgf_B_udts!(mc, BBetaTInv_u_stack, BBetaTInv_d_stack, BBetaTInv_t_stack, invert=true, dir=RIGHT);
 
 
   safe_mult_taus = 1:safe_mult:mc.p.slices

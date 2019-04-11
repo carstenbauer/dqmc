@@ -367,6 +367,7 @@ function measure_fermionic(mp, p, obs, conf, greens, mc, i)
 
     if need_to_calc_tdgf(obs)
       calc_tdgfs!(mc)
+      GC.gc()
       Gt0 = mc.s.meas.Gt0
       G0t = mc.s.meas.G0t
     end
@@ -383,8 +384,7 @@ function measure_fermionic(mp, p, obs, conf, greens, mc, i)
         push!(obs[:zfpc_plus], mc.s.meas.zfpc_plus)
         push!(obs[:zfpc_minus], mc.s.meas.zfpc_minus)
     end
-
-    # GC.gc()
+    
     nothing
 end
 
