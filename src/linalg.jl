@@ -18,11 +18,23 @@ function decompose_udt(A::AbstractMatrix{C}) where C<:Number
 end
 
 function decompose_udt!(A::AbstractMatrix{C}, D) where C<:Number
+  n = length(D)
   F = qr!(A, Val(true))
-  @views F.p[F.p] = 1:length(F.p)
-  D .= abs.(real(diag(F.R)))
-  R = F.R
+  R = F.R # F.R is of regular matrix type
+
+  @views F.p[F.p] = 1:n
+
+  @inbounds for i in 1:n
+    D[i] = abs(real(R[i,i]))
+  end
+
+  # This (very!) strangely increases the runtime of calc_tdgfs! by a ton....
+  # @inbounds for i in diagind(R)
+  #   R[i] = sign(real(R[i]))
+  # end
+
   lmul!(Diagonal(1 ./ D), R)
+
   return Matrix(F.Q), R[:, F.p] # Q, (D is modified in-place), T  # was full(F.Q) before upgrade
 end
 
