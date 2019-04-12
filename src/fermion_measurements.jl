@@ -1069,19 +1069,7 @@ function calc_tdgfs!(mc)
   BBetaTInv_u_stack = mc.s.meas.BBetaTInv_u_stack
   BBetaTInv_d_stack = mc.s.meas.BBetaTInv_d_stack
   BBetaTInv_t_stack = mc.s.meas.BBetaTInv_t_stack
-
-  # BT0Inv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # BT0Inv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  # BT0Inv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # BBetaT_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # BBetaT_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  # BBetaT_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # BT0_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # BT0_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  # BT0_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # BBetaTInv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # BBetaTInv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  # BBetaTInv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  
 
   # ---- first, calculate Gt0 and G0t only at safe_mult slices 
   # right mult (Gt0)
