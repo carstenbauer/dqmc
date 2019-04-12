@@ -49,7 +49,7 @@ function hdf52parameters!(p::Params, input_h5::String)
         if field in fields
 
           value = read(f["params/$(field_name)"])
-          if field_name in ["global_updates", "chkr", "Bfield", "all_checks", "resume"] # handle Bools
+          if field_name in ["global_updates", "chkr", "Bfield", "all_checks", "resume", "edrun"] # handle Bools
             value = Bool(value)
           elseif field_name in ["walltimelimit"] # handle DateTimes
             value = Dates.DateTime(value)
@@ -65,6 +65,8 @@ function hdf52parameters!(p::Params, input_h5::String)
       error("Error in loading Params object from HDF5: ", e)
     end
   end
+
+  p.lattice_file = "" # let deduce_remaining_parameters handle this
 
   deduce_remaining_parameters(p)
 

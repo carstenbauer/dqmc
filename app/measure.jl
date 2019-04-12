@@ -75,8 +75,9 @@ using RecursiveArrayTools
   include_running::Bool = true
 
   outfile::String = ""
-  inxml::String = ""
+  p::Params = Params() # DQMC Params
   dqmc_outfile::String = ""
+  meas_infile::String = ""
   chunksize::Int = 100
 end
 
@@ -101,7 +102,29 @@ function measxml2MeasParams(fname)
   end
 
   mp = MeasParams(; kwargs...)
-  mp.inxml = fname[1:end-9]*".in.xml"
+  mp.meas_infile = fname
+
+  mp.dqmc_outfile = replace(mp.meas_infile, ".meas.xml" => ".out.h5")
+  if !isfile(mp.dqmc_outfile)
+      mp.dqmc_outfile = replace(mp.dqmc_outfile, ".out.h5" => ".out.h5.running")
+      isfile(mp.dqmc_outfile) || error("Couldn't find .out.h5[.running] file.")
+  end
+  mp.outfile = replace(mp.dqmc_outfile, ".out.h5" => ".meas.h5")
+
+  dqmc_infile = fname[1:end-9]*".in.xml"
+  if isfile(dqmc_infile)
+    println("Loading DQMC parameters (.in.xml)")
+    xml2parameters!(mp.p, dqmc_infile)
+  else
+    println("Loading DQMC parameters (.out.h5)")
+    try
+      hdf52parameters!(mp.p, mp.dqmc_outfile)
+    catch er
+      println("Error while loading parameters from .out.h5 file")
+      throw(er)
+    end
+  end
+
   return mp
 end
 
@@ -134,6 +157,7 @@ function initialize_stack_for_measurements(mc::AbstractDQMC, mp::MeasParams)
     # allocate for measurement run based on todos
     mp.etpc && allocate_etpc!(mc)
     mp.tdgfs && allocate_tdgfs!(mc)
+    mp.zfpc && allocate_zfpc!(mc)
 
     nothing
 end
@@ -146,16 +170,6 @@ end
 #                        Main
 # -------------------------------------------------------
 function main(mp::MeasParams)
-  # --------------- Find .out.h5 ----------------------
-  mp.dqmc_outfile = replace(mp.inxml, ".in.xml" => ".out.h5")
-  if !isfile(mp.dqmc_outfile)
-      mp.dqmc_outfile = replace(mp.dqmc_outfile, ".out.h5" => ".out.h5.running")
-      isfile(mp.dqmc_outfile) || error("Couldn't find .out.h5[.running] file.")
-  end
-
-
-  # ----------- Set .meas.h5 and todos ------------------
-  mp.outfile = replace(mp.dqmc_outfile, ".out.h5" => ".meas.h5")
   if !endswith(mp.outfile, ".running")
       # already measured
       if !mp.overwrite
@@ -206,13 +220,16 @@ function main(mp::MeasParams)
     exit()
   end
 
-  need_to_load_etgf(mp) && (greens = loadobs_frommemory(mp.dqmc_outfile, "obs/greens"))
-
-  # load dqmc params
-  p = Params(); xml2parameters!(p, mp.inxml, false);
-
+  if need_to_load_etgf(mp)
+    if "greens" in listobs(mp.dqmc_outfile)
+      greens = loadobs_frommemory(mp.dqmc_outfile, "obs/greens")
+    else
+      error("Couldn't find ETGF in $(mp.dqmc_outfile) although need_to_load_etgf == true.")
+    end
+  end
 
   # ------------------- Create Observables --------------------
+  p = mp.p
   num_confs = size(confs, ndims(confs))
   nsweeps = num_confs * p.write_every_nth
   obs = NamedTuple() # list of Observables
@@ -384,7 +401,7 @@ function measure_fermionic(mp, p, obs, conf, greens, mc, i)
         push!(obs[:zfpc_plus], mc.s.meas.zfpc_plus)
         push!(obs[:zfpc_minus], mc.s.meas.zfpc_minus)
     end
-    
+
     nothing
 end
 
@@ -470,8 +487,6 @@ elseif endswith(arg, ".in.xml")
 else
   error("No .meas.xml or .in.xml file found. Input arg was: $(arg)")
 end
-
-isfile(mp.inxml) || error("DQMC input file $(mp.inxml) not found.")
 
 
 
