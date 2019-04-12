@@ -1,3 +1,27 @@
+@inline function setblockdiag!(l::Lattice, A::AbstractSparseMatrix, row::Int, col::Int, B::AbstractVector)
+  rstart = (row-1)*l.sites+1
+  colstart = (col-1)*l.sites+1
+
+  @inbounds for shift in 0:length(B)-1
+    A[rstart+shift,colstart+shift] = B[shift+1]
+  end
+  nothing
+end
+
+@inline function setblockdiag_minus!(l::Lattice, A::AbstractSparseMatrix, row::Int, col::Int, B::AbstractVector)
+  rstart = (row-1)*l.sites+1
+  colstart = (col-1)*l.sites+1
+
+  @inbounds for shift in 0:length(B)-1
+    A[rstart+shift,colstart+shift] = -B[shift+1] # minus here!
+  end
+  nothing
+end
+
+
+
+
+
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
 function interaction_matrix_exp(mc::AbstractDQMC, slice::Int, power::Float64=1.)
   G = geltype(mc)
@@ -26,7 +50,7 @@ function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1.
     # R = zeros(G, N) #1, 4)
   # end
   @inbounds @simd for i in 1:N
-    n = norm(p.hsfield[:,i,slice])
+    @views n = norm(p.hsfield[:,i,slice])
     sh = sinh(p.lambda * p.delta_tau * n)/n
     C[i] = cosh(p.lambda * p.delta_tau * n)
     if p.opdim == 3
@@ -42,17 +66,16 @@ function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1.
   setblockdiag!(l,eV,1,1,C)
   setblockdiag!(l,eV,1,2,S)
   
-  cS = conj(S)
+  cS = conj(S) # Once julia 1.2 is out, use lazy ConjVector here.
   setblockdiag!(l,eV,2,1,cS)
   setblockdiag!(l,eV,2,2,C)
 
   if p.opdim == 3
-    mR = -R
     setblockdiag!(l,eV,1,4,R)
     
-    setblockdiag!(l,eV,2,3,mR)
+    setblockdiag_minus!(l,eV,2,3,R)
 
-    setblockdiag!(l,eV,3,2,mR)
+    setblockdiag_minus!(l,eV,3,2,R)
     setblockdiag!(l,eV,3,3,C)
     setblockdiag!(l,eV,3,4,cS)
 
@@ -63,18 +86,6 @@ function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1.
   end #timeit
   end #timeit
 end
-
-@inline function setblockdiag!(l::Lattice, A::AbstractSparseMatrix, row::Int, col::Int, B::AbstractVector)
-  rstart = (row-1)*l.sites+1
-  colstart = (col-1)*l.sites+1
-
-  @inbounds for shift in 0:length(B)-1
-    A[rstart+shift,colstart+shift] = B[shift+1]
-  end
-  nothing
-end
-
-
 
 
 
