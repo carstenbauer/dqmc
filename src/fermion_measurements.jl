@@ -982,11 +982,11 @@ function calc_tdgf_B_udts!(mc::AbstractDQMC, u_stack, d_stack, t_stack; invert::
     end
   end
 
-  if dir == LEFT
-    return u_stack, d_stack, t_stack
-  else
-    return reverse(u_stack), reverse(d_stack), reverse(t_stack)
+  if dir == RIGHT
+    reverse!(u_stack), reverse!(d_stack), reverse!(t_stack)
   end
+
+  nothing
 end
 
 
@@ -1002,25 +1002,42 @@ function allocate_tdgfs!(mc)
   meas.Gt0 = Matrix{G}[zeros(G, Nflv, Nflv) for _ in 1:M]
   meas.G0t = Matrix{G}[zeros(G, Nflv, Nflv) for _ in 1:M]
 
-  # mc.s.meas.BT0Inv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BT0Inv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BT0Inv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BBetaT_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BBetaT_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BBetaT_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BT0_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BT0_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BT0_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BBetaTInv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BBetaTInv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  # mc.s.meas.BBetaTInv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.s.meas.BT0Inv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.s.meas.BT0Inv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  mc.s.meas.BT0Inv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.s.meas.BBetaT_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.s.meas.BBetaT_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  mc.s.meas.BBetaT_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.s.meas.BT0_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.s.meas.BT0_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  mc.s.meas.BT0_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.s.meas.BBetaTInv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.s.meas.BBetaTInv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  mc.s.meas.BBetaTInv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
 
   println("Allocated memory for TDGF measurement.")
   nothing
 end
 
 
+function deallocate_tdgfs_stacks!(mc)
 
+  mc.s.meas.BT0Inv_u_stack = Matrix{G}[]
+  mc.s.meas.BT0Inv_d_stack = Vector{Float64}[]
+  mc.s.meas.BT0Inv_t_stack = Matrix{G}[]
+  mc.s.meas.BBetaT_u_stack = Matrix{G}[]
+  mc.s.meas.BBetaT_d_stack = Vector{Float64}[]
+  mc.s.meas.BBetaT_t_stack = Matrix{G}[]
+  mc.s.meas.BT0_u_stack = Matrix{G}[]
+  mc.s.meas.BT0_d_stack = Vector{Float64}[]
+  mc.s.meas.BT0_t_stack = Matrix{G}[]
+  mc.s.meas.BBetaTInv_u_stack = Matrix{G}[]
+  mc.s.meas.BBetaTInv_d_stack = Vector{Float64}[]
+  mc.s.meas.BBetaTInv_t_stack = Matrix{G}[]
+
+  println("Deallocated UDT stacks memory of TDGF measurement.")
+  nothing
+end
 
 
 
@@ -1040,31 +1057,31 @@ function calc_tdgfs!(mc)
   Gt0 = mc.s.meas.Gt0
   G0t = mc.s.meas.G0t
 
-  # BT0Inv_u_stack = mc.s.meas.BT0Inv_u_stack
-  # BT0Inv_d_stack = mc.s.meas.BT0Inv_d_stack
-  # BT0Inv_t_stack = mc.s.meas.BT0Inv_t_stack
-  # BBetaT_u_stack = mc.s.meas.BBetaT_u_stack
-  # BBetaT_d_stack = mc.s.meas.BBetaT_d_stack
-  # BBetaT_t_stack = mc.s.meas.BBetaT_t_stack
-  # BT0_u_stack = mc.s.meas.BT0_u_stack
-  # BT0_d_stack = mc.s.meas.BT0_d_stack
-  # BT0_t_stack = mc.s.meas.BT0_t_stack
-  # BBetaTInv_u_stack = mc.s.meas.BBetaTInv_u_stack
-  # BBetaTInv_d_stack = mc.s.meas.BBetaTInv_d_stack
-  # BBetaTInv_t_stack = mc.s.meas.BBetaTInv_t_stack
+  BT0Inv_u_stack = mc.s.meas.BT0Inv_u_stack
+  BT0Inv_d_stack = mc.s.meas.BT0Inv_d_stack
+  BT0Inv_t_stack = mc.s.meas.BT0Inv_t_stack
+  BBetaT_u_stack = mc.s.meas.BBetaT_u_stack
+  BBetaT_d_stack = mc.s.meas.BBetaT_d_stack
+  BBetaT_t_stack = mc.s.meas.BBetaT_t_stack
+  BT0_u_stack = mc.s.meas.BT0_u_stack
+  BT0_d_stack = mc.s.meas.BT0_d_stack
+  BT0_t_stack = mc.s.meas.BT0_t_stack
+  BBetaTInv_u_stack = mc.s.meas.BBetaTInv_u_stack
+  BBetaTInv_d_stack = mc.s.meas.BBetaTInv_d_stack
+  BBetaTInv_t_stack = mc.s.meas.BBetaTInv_t_stack
 
-  BT0Inv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  BT0Inv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  BT0Inv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  BBetaT_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  BBetaT_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  BBetaT_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  BT0_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  BT0_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  BT0_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  BBetaTInv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  BBetaTInv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  BBetaTInv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # BT0Inv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # BT0Inv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  # BT0Inv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # BBetaT_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # BBetaT_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  # BBetaT_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # BT0_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # BT0_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  # BT0_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # BBetaTInv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  # BBetaTInv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  # BBetaTInv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
 
   # ---- first, calculate Gt0 and G0t only at safe_mult slices 
   # right mult (Gt0)
