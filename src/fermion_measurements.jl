@@ -292,6 +292,81 @@ end
 
 
 
+# -------------------------------------------------------
+#      Zero-Frequency (static) Pairing Correlations
+# -------------------------------------------------------
+function allocate_zfpc!(mc)
+  L = mc.p.L
+  meas = mc.s.meas
+
+  meas.zfpc_minus = zeros(Float64,L,L)
+  meas.zfpc_plus = zeros(Float64,L,L)
+
+  println("Allocated memory for ZFPC measurements.")
+  nothing
+end
+
+
+"""
+Calculate zero-frequency pairing susceptibilities (Eq. 3 in notes)
+
+  Pη(y,x) = int_tau << Δη^†(r, tau)Δη(0, 0) >> = zfpc_plus/minus(y,x)
+
+where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
+
+x,y ∈ [0,L-1]
+
+Details:
+- we mean over r_0, that is "0".
+- we do not mean over τ_0=0.
+"""
+function zfpc!(mc::AbstractDQMC, Gt0s::AbstractVector{T}) where T <: AbstractMatrix
+  L = mc.p.L
+  N = mc.l.sites
+  M = mc.p.slices
+  Pm = mc.s.meas.zfpc_minus # d-wave
+  Pp = mc.s.meas.zfpc_plus # s-wave
+
+  fill!(Pm, zero(geltype(mc)))
+  fill!(Pp, zero(geltype(mc)))
+
+  # we only need four combinations of j1,j2,j3,j4 for etpc_ev
+  xu, yd, xd, yu = 1,2,3,4
+  js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
+
+  sql = reshape(1:N,L,L)
+
+  @inbounds for tau in 1:M
+    greens = Gt0s[tau]
+
+    # Identical to etpc now
+    @inbounds for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+      for x0 in 1:L, y0 in 1:L # r0 (origin)
+        r1 = r2 = siteidx(mc, sql, x0+x, y0+y)
+        r3 = r4 = siteidx(mc, sql, x0, y0)
+
+        ev1 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 1)
+        ev2 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 2)
+        ev3 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 3)
+        ev4 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 4)
+
+        Pm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
+        Pp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+      end
+    end
+  end
+
+  # r0 mean
+  Pm ./= N
+  Pp ./= N
+
+  nothing
+end
+
+
+
+
+
 
 
 
@@ -347,18 +422,15 @@ function etcdc!(mc::AbstractDQMC, greens::AbstractMatrix)
   fill!(Cp, zero(geltype(mc)))
 
   # xu, yd, xd, yu = 1,2,3,4
-  X = 1
-  Y = 2
-  UP = 0
-  DOWN = 2
+  X, Y = 1, 2
+  UP, DOWN = 0, 2
   flv = (band, spin) -> band + spin
 
   sql = reshape(1:N,L,L)
 
-  # sums over spins
-  @inbounds for x in 0:(L-1), y in 0:(L-1) # r (displacement)
-    for x0 in 1:L, y0 in 1:L # r0 (origin)
-      for s1 in (UP, DOWN), s2 in (UP, DOWN)
+  @inbounds for x0 in 1:L, y0 in 1:L # r0 (origin)
+    for s1 in (UP, DOWN), s2 in (UP, DOWN)
+      for x in 0:(L-1), y in 0:(L-1) # r (displacement)
         ri = siteidx(mc, sql, x0+x, y0+y)
         r0 = siteidx(mc, sql, x0, y0)
 
@@ -366,12 +438,6 @@ function etcdc!(mc::AbstractDQMC, greens::AbstractMatrix)
         ev2 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
         ev3 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
         ev4 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
-
-        # @show ev1
-        # @show ev2
-        # @show ev3
-        # @show ev4
-        # println()
 
         Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
         Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
@@ -395,7 +461,7 @@ Pairing correlation expectation value
 
 (Wick's theorem.)
 """
-@inline function _cdc_ev(mc, greens, G0t, Gt0, r1, r2, r3, r4, j1, j2, j3, j4)
+@inline function _cdc_ev(mc, greens, Gt0, G0t, r1, r2, r3, r4, j1, j2, j3, j4)
   N = mc.l.sites
   i1 = greensidx(N, j1, r1)
   i2 = greensidx(N, j2, r2)
@@ -417,34 +483,24 @@ end
 
 
 
-
-
-
-
-
-
-
-
-
 # -------------------------------------------------------
-#      Zero-Frequency (static) Pairing Correlations
+#  Zero-Frequency (static) Charge Density Correlations
 # -------------------------------------------------------
-function allocate_zfpc!(mc)
+function allocate_zfcdc!(mc)
   L = mc.p.L
   meas = mc.s.meas
 
-  meas.zfpc_minus = zeros(Float64,L,L)
-  meas.zfpc_plus = zeros(Float64,L,L)
+  meas.zfcdc_minus = zeros(Float64,L,L)
+  meas.zfcdc_plus = zeros(Float64,L,L)
 
-  println("Allocated memory for ZFPC measurements.")
+  println("Allocated memory for ZFCDC measurements.")
   nothing
 end
 
-
 """
-Calculate zero-frequency pairing susceptibilities (Eq. 3 in notes)
+Calculate zero-frequency charge density susceptibilities
 
-  Pη(y,x) = int_tau << Δη^†(r, tau)Δη(0, 0) >> = zfpc_plus/minus(y,x)
+  Cη(y,x) = int_tau << Δη^†(r, tau) Δη(0, 0) >> = zfcdc_plus/minus(y,x)
 
 where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
 
@@ -452,50 +508,63 @@ x,y ∈ [0,L-1]
 
 Details:
 - we mean over r_0, that is "0".
-- we do not mean over τ_0=0.
+- we do not mean over τ_0=0 (τ not shown above).
 """
-function zfpc!(mc::AbstractDQMC, Gt0::AbstractVector{T}) where T <: AbstractMatrix
+function zfcdc!(mc::AbstractDQMC, greens::AbstractMatrix, Gt0s::AbstractVector{T}, G0ts::AbstractVector{T}) where T <: AbstractMatrix
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
-  Pm = mc.s.meas.zfpc_minus # d-wave
-  Pp = mc.s.meas.zfpc_plus # s-wave
+  Cm = mc.s.meas.zfcdc_minus # d-wave
+  Cp = mc.s.meas.zfcdc_plus # s-wave
 
-  fill!(Pm, zero(geltype(mc)))
-  fill!(Pp, zero(geltype(mc)))
+  fill!(Cm, zero(geltype(mc)))
+  fill!(Cp, zero(geltype(mc)))
 
-  # we only need four combinations of j1,j2,j3,j4 for etpc_ev
-  xu, yd, xd, yu = 1,2,3,4
-  js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
+  # xu, yd, xd, yu = 1,2,3,4
+  X, Y = 1, 2
+  UP, DOWN = 0, 2
+  flv = (band, spin) -> band + spin
 
   sql = reshape(1:N,L,L)
 
   @inbounds for tau in 1:M
-    @views greens = Gt0[tau]
+    Gt0 = Gt0s[tau]
+    G0t = G0ts[tau]
 
-    # Identical to etpc now
-    @inbounds for x in 0:(L-1), y in 0:(L-1) # r (displacement)
-      for x0 in 1:L, y0 in 1:L # r0 (origin)
-        r1 = r2 = siteidx(mc, sql, x0+x, y0+y)
-        r3 = r4 = siteidx(mc, sql, x0, y0)
+    for x0 in 1:L, y0 in 1:L # r0 (we average over r0)
+      for s1 in (UP, DOWN), s2 in (UP, DOWN)
+        for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+          ri = siteidx(mc, sql, x0+x, y0+y)
+          r0 = siteidx(mc, sql, x0, y0)
 
-        ev1 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 1)
-        ev2 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 2)
-        ev3 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 3)
-        ev4 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 4)
+          ev1 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
+          ev2 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
+          ev3 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
+          ev4 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
 
-        Pm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
-        Pp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+          Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
+          Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+        end
       end
     end
   end
 
   # r0 mean
-  Pm ./= N
-  Pp ./= N
+  Cm ./= N
+  Cp ./= N
 
   nothing
 end
+
+
+
+
+
+
+
+
+
+
 
 
 

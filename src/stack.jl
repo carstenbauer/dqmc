@@ -1,16 +1,21 @@
 mutable struct MeasStack{G<:Number} # G = GreensEltype
 
-  # ETPCs
+  # ETPCs (pairing correlations)
   etpc_minus::Array{Float64, 2} # "P_(x,y)", i.e. d-wave
   etpc_plus::Array{Float64, 2} # "P+(x,y)", i.e. s-wave
+
+  # ZFPCs (zero-frequency)
+  zfpc_minus::Array{Float64, 2} # "P_(x,y)", i.e. d-wave
+  zfpc_plus::Array{Float64, 2} # "P+(x,y)", i.e. s-wave 
 
   # ETCDCs (charge density correlations)
   etcdc_minus::Array{Float64, 2} # "C_(x,y)", i.e. d-wave
   etcdc_plus::Array{Float64, 2} # "C+(x,y)", i.e. s-wave
 
-  # ZFPCs (zero-frequency)
-  zfpc_minus::Array{Float64, 2} # "P_(x,y)", i.e. d-wave
-  zfpc_plus::Array{Float64, 2} # "P+(x,y)", i.e. s-wave
+  # ZFCDCs (zero-frequency)
+  zfcdc_minus::Array{Float64, 2} # "C_(x,y)", i.e. d-wave
+  zfcdc_plus::Array{Float64, 2} # "C+(x,y)", i.e. s-wave
+
 
   # TDGF
   Gt0::Vector{Matrix{G}}
