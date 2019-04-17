@@ -18,7 +18,7 @@ function init_hopping_matrix_exp(mc::AbstractDQMC)
   l = mc.l
 
   println("Initializing hopping exponentials")
-  !p.Bfield || warn("You should be using `init_hopping_matrix_exp_Bfield()` or set p.Bfield = false!")
+  !p.Bfield || @warn("You should be using `init_hopping_matrix_exp_Bfield()` or set p.Bfield = false!")
 
   Tx = diagm(0 => fill(-p.mu1,l.sites))
   Ty = diagm(0 => fill(-p.mu2,l.sites))
@@ -175,7 +175,7 @@ function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)
   H = heltype(mc)
 
   println("Initializing hopping exponentials (Bfield)")
-  p.Bfield || warn("You should be using `init_hopping_matrix_exp()` or set p.Bfield = true!")
+  p.Bfield || @warn("You should be using `init_hopping_matrix_exp()` or set p.Bfield = true!")
 
   T = Matrix{Matrix{H}}(undef, 2,2) # colidx = flavor, rowidx = spin up,down
 

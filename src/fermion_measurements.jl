@@ -328,8 +328,8 @@ function etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
   Pm = mc.s.meas.etpc_minus # d-wave
   Pp = mc.s.meas.etpc_plus # s-wave
 
-  fill!(Pm, zero(geltype(mc)))
-  fill!(Pp, zero(geltype(mc)))
+  fill!(Pm, 0.0)
+  fill!(Pp, 0.0)
 
   # we only need four combinations of j1,j2,j3,j4 for etpc_ev
   xu, yd, xd, yu = 1,2,3,4
@@ -438,8 +438,8 @@ function zfpc!(mc::AbstractDQMC, Gt0s::AbstractVector{T}) where T <: AbstractMat
   Pm = mc.s.meas.zfpc_minus # d-wave
   Pp = mc.s.meas.zfpc_plus # s-wave
 
-  fill!(Pm, zero(geltype(mc)))
-  fill!(Pp, zero(geltype(mc)))
+  fill!(Pm, 0.0)
+  fill!(Pp, 0.0)
 
   # we only need four combinations of j1,j2,j3,j4 for etpc_ev
   xu, yd, xd, yu = 1,2,3,4
@@ -529,8 +529,8 @@ function etcdc!(mc::AbstractDQMC, greens::AbstractMatrix)
   Cm = mc.s.meas.etcdc_minus # d-wave
   Cp = mc.s.meas.etcdc_plus # s-wave
 
-  fill!(Cm, zero(geltype(mc)))
-  fill!(Cp, zero(geltype(mc)))
+  fill!(Cm, 0.0)
+  fill!(Cp, 0.0)
 
   # xu, yd, xd, yu = 1,2,3,4
   X, Y = 1, 2
@@ -630,8 +630,8 @@ function zfcdc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{T}, 
   Cm = mc.s.meas.zfcdc_minus # d-wave
   Cp = mc.s.meas.zfcdc_plus # s-wave
 
-  fill!(Cm, zero(geltype(mc)))
-  fill!(Cp, zero(geltype(mc)))
+  fill!(Cm, 0.0)
+  fill!(Cp, 0.0)
 
   # xu, yd, xd, yu = 1,2,3,4
   X, Y = 1, 2
@@ -729,15 +729,13 @@ Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{T}, G0ts::AbstractVector{T}) where {T <: AbstractMatrix, V <: AbstractVector, W <: AbstractMatrix}
+function zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{S}, G0ts::AbstractVector{S}) where {S <: AbstractMatrix, V <: AbstractVector, W <: AbstractMatrix}
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
-  Cm = mc.s.meas.zfcdc_minus # d-wave
-  Cp = mc.s.meas.zfcdc_plus # s-wave
+  Lambda = mc.s.meas.zfccc
 
-  fill!(Cm, zero(geltype(mc)))
-  fill!(Cp, zero(geltype(mc)))
+  fill!(Lambda, 0.0)
 
   # xu, yd, xd, yu = 1,2,3,4
   X, Y = 1, 2
@@ -754,12 +752,20 @@ function zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{T}, 
     get_G0 = (tau) -> greens[1]
   end
 
+  # OPT: Get rid of this "hack" to get the hopping matrix
+  T = log(mc.l.hopping_matrix_exp)
+  T .*= -2 / mc.p.delta_tau
+  # Check: We set tij but in the action/hamiltonian we have -tij.
+  # If we really want tij add another * (-1).
+
 
   @inbounds for tau in 1:M
     Gtau = get_Gtau(tau)
     G0 = get_G0(tau)
     Gt0 = Gt0s[tau]
     G0t = G0ts[tau]
+
+    # TODO: Maybe we can use symmetries to reduce a1,a2,s1,s2 sum?
 
     for x0 in 1:L, y0 in 1:L # r0 (we average over r0)
       for a1 in (X, Y), a2 in (X, Y)
@@ -768,30 +774,40 @@ function zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{T}, 
             ri = siteidx(mc, sql, x0+x, y0+y)
             rj = siteidx(mc, sql, x0+x+1, y0+y) # ri + x̂
             r0 = siteidx(mc, sql, x0, y0)
-            r0prime = siteidx(mc, sql, x0+1, y0) # r0 + x̂
+            r0p = siteidx(mc, sql, x0+1, y0) # r0 + x̂
+
+            ais = greensidx(N, flv(a1, s1), ri)
+            ajs = greensidx(N, flv(a1, s1), rj)
+            ap0sp = greensidx(N, flv(a2, s2), r0)
+            ap0psp = greensidx(N, flv(a2, s2), r0p)
+
+            # hoppings
+            tij = T[ais, ajs]
+            tji = T[ajs, ais]
+            t00p = T[ap0sp, ap0psp]
+            t0p0 = T[ap0psp, ap0sp]
 
 
-            # uncorrelated part
-            
+            # Uncorrelated part
+            # TODO: Yoni seems to use Gh, i.e. my Gtilde, in all terms. Why?! Numerically it doesn't seem to matter ...?!
+            # TODO: Check and add real() later
+            Lambda[y+1, x+1] += (tij * G(mc, ajs, ais, Gtau) - tji * G(mc, ais, ajs, Gtau)) *
+                                (t00p * G(mc, ap0psp, ap0sp, G0) - t0p0 * G(mc, ap0sp, ap0psp, G0))
 
-
-
-            ev1 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(a1, s1), flv(a1, s1), flv(a2, s2), flv(a2, s2))
-            ev2 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(a1, s1), flv(a1, s1), flv(a2, s2), flv(a2, s2))
-            ev3 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(a1, s1), flv(a1, s1), flv(a2, s2), flv(a2, s2))
-            ev4 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(a1, s1), flv(a1, s1), flv(a2, s2), flv(a2, s2))
-
-            Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
-            Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+            # Correlated part
+            # TODO: Check and add real() later
+            Lambda[y+1, x+1] += - tij * t00p * G(mc, ap0psp, ais, G0t) * G(mc, ajs, ap0sp, Gt0) +
+                                + tij * t0p0 * G(mc, ap0sp, ais, G0t) * G(mc, ajs, ap0psp, Gt0) +
+                                + tji * t00p * G(mc, ap0psp, ajs, G0t) * G(mc, ais, ap0sp, Gt0) +
+                                - tji * t0p0 * G(mc, ap0sp, ajs, G0t) * G(mc, ais, ap0psp, Gt0)
           end
         end
       end
     end
   end
 
-  # r0 mean
-  Cm ./= N
-  Cp ./= N
+  # r0 mean + overall minus sign due to i^2
+  Lambda ./= -N
 
   nothing
 end

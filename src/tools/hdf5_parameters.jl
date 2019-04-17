@@ -29,7 +29,7 @@ function parameters2hdf5(p::Params, filename::String)
       end
     catch e
       close(f)
-      warn("Error in dumping parameters to hdf5: ", e)
+      @warn "Error in dumping parameters to hdf5: $e"
     end
   end
   close(f)
@@ -58,7 +58,7 @@ function hdf52parameters!(p::Params, input_h5::String)
           setfield!(p, field, value)
 
         else
-          warn("HDF5 contains \"params/$(field_name)\" which is not a field of type Params! Maybe old file? Try `hdf52parameters!_old`.")
+          @warn "HDF5 contains \"params/$(field_name)\" which is not a field of type Params! Maybe old file? Try `hdf52parameters!_old`."
         end
       end
     catch e
@@ -80,7 +80,7 @@ end
 Deprecated version of `hdf52parameters!`. Use it only for old data (created before 28.11.2017).
 """
 function hdf52parameters!_old(p::Params, input_h5::String)
-  warn("DEPRECATED: Only use for old data (where we dumped `params::Dict`). Should now use `hdf52parameters!` instead.")
+  @warn "DEPRECATED: Only use for old data (where we dumped `params::Dict`). Should now use `hdf52parameters!` instead."
   # READ Params from h5 file
   if input_h5[end-2:end] == "jld"
     f = jldopen(input_h5, "r")

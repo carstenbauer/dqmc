@@ -68,7 +68,7 @@ end
 
 myrdiv!(dest, a, b) = copyto!(dest, adjoint(adjoint(b) \ adjoint(a)))
 
-Diagonal(I::UniformScaling{T}) where T <: Number = one(T)
+LinearAlgebra.Diagonal(I::UniformScaling{T}) where T <: Number = one(T)
 
 
 

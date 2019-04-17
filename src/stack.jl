@@ -19,7 +19,7 @@ mutable struct MeasStack{G<:Number} # G = GreensEltype
 
 
   # ZFCCCs (zero-frequency current-current correlations)
-  zfccc::Array{Float64, 2} # "Λxx(y,x)"
+  zfccc::Array{ComplexF64, 2} # "Λxx(y,x)"
 
 
   # TDGF
