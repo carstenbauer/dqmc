@@ -72,6 +72,17 @@ Diagonal(I::UniformScaling{T}) where T <: Number = one(T)
 
 
 
+function eye!(x)
+    o = one(eltype(x))
+    z = zero(eltype(x))
+    
+    for j in 1:size(x,2)
+        for i in 1:size(x,1)
+            @inbounds x[i, j] = i == j ? o : z
+        end
+    end
+    x
+end
 
 
 

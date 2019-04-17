@@ -335,6 +335,7 @@ end
 Calculates G(slice) using s.Ur,s.Dr,s.Tr=B(slice)' ... B(M)' and s.Ul,s.Dl,s.Tl=B(slice-1) ... B(1)
 """
 function calculate_greens(mc::AbstractDQMC)
+  # TODO: Use inv_one_plus_two_udts from linalg.jl here
   s = mc.s
   tmp = mc.s.tmp
   tmp2 = mc.s.tmp2

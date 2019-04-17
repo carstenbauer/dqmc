@@ -1,71 +1,4 @@
 # -------------------------------------------------------
-#         Measurements: Greens (ETGF)
-# -------------------------------------------------------
-function measure_greens_and_logdet(mc::AbstractDQMC, safe_mult::Int=mc.p.safe_mult, slice::Int=1)
-  greens, greens_logdet = calc_greens_and_logdet(mc, slice, safe_mult)
-  effective_greens2greens!(mc, greens)
-  return greens, greens_logdet
-end
-
-function measure_greens(mc::AbstractDQMC, safe_mult::Int=mc.p.safe_mult, slice::Int=1)
-  greens = calc_greens(mc, slice, safe_mult)
-  effective_greens2greens!(mc, greens)
-  return greens
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# -------------------------------------------------------
-#         Occupation
-# -------------------------------------------------------
-"""
-Overall occupation, averaged over sites and fermion flavors (both spin and band).
-
-Example: half-filling of spin 1/2 fermions on a lattice corresponds to `n=0.5`, not `n=1`.
-"""
-function occupation(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
-  n = mean(1 .- diag(greens))
-  # only per site:
-  # N = mc.l.sites
-  # M = mc.p.slices
-  # n = 1/(N*M) * sum(1 .- diag(greens))
-  real(n)
-end
-
-"""
-Flavor resolved occupations (only averaged over sites).
-"""
-function occupations_flv(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
-  N = mc.l.sites
-  ns = mean.(Iterators.partition(1 .- diag(greens), N))
-  # only per site:
-  # N = mc.l.sites
-  # M = mc.p.slices
-  # n = 1/(N*M) * sum(1 .- diag(greens))
-  real(ns)
-end
-
-
-
-
-
-
-
-
-
-# -------------------------------------------------------
 #           Green's function indexing stuff
 # -------------------------------------------------------
 """
@@ -112,7 +45,6 @@ Access full (4*N, 4*N) Green's function for any OPDIM efficiently.
   end
 end
 
-
 """
 Access full (4*N, 4*N) `Gtilde = I - G` where G is the Green's function for any OPDIM efficiently.
 """
@@ -123,8 +55,6 @@ Access full (4*N, 4*N) `Gtilde = I - G` where G is the Green's function for any 
     return -G(mc, i, j, greens)
   end
 end
-
-
 
 """
 Construct full (4*N, 4*N) Green's function for any OPDIM efficiently.
@@ -141,7 +71,6 @@ function fullG(mc, greens=mc.s.greens)
   end
   return g
 end
-
 
 """
 Construct full (4*N, 4*N) `Gtilde = I - G` where G is the Green's function for any OPDIM efficiently.
@@ -167,7 +96,187 @@ end
 
 
 
+# -------------------------------------------------------
+#         Postprocessing/Analysis
+# -------------------------------------------------------
+# Go from xup, ydown, xdown, yup -> xup, yup, xdown, ydown
+function permute_greens(greens::AbstractMatrix)
+  perm = [1,4,3,2] # flv*spin: xup, ydown, xdown, yup -> xup, yup, xdown, ydown
+  N = Int(sqrt(length(greens))/4)
+  return reshape(reshape(greens, (N,4,N,4))[:,perm,:,perm], (4*N,4*N)); # rfs1, rfs2
+end
 
+# try
+#   eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
+#   eval(Expr(:toplevel, Meta.parse("@pyimport numpy as np")))
+# catch
+# end
+# Assuming translational invariance go to momentum space Greens function (k, fs1, fs2)
+function fft_greens(greens::AbstractMatrix)
+  if !isdefined(:PyCall)
+    eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
+    eval(Expr(:toplevel, Meta.parse("@pyimport numpy as np")))
+    println("Loaded PyCall. Please execute again.")
+    return
+  end
+
+  L = Int(sqrt(sqrt(length(greens))/4))
+  g = reshape(greens, (L,L,4,L,L,4)); # y1, x1, fs1, y2, x2, fs2
+  g = fft(g, (1,2))*1/L; # ky1, kx1, fs1, y2, x2, fs2
+  g = fft(g, (4,5))*1/L; # ky1, kx1, fs1, ky2, kx2, fs2
+  g = reshape(g, (L*L,4,L*L,4))
+
+  # check translational invariance
+  println("translational invariance / momentum off diagonal terms")
+  for jk1 in 1:4
+      for jk2 in 1:4
+          if jk1 !=jk2
+              error1 = maximum(abs.(g[jk1,:,jk2,:]))
+              error2 = maximum(abs.(g[jk2,:,jk1,:]))
+
+              @printf("%d %d %.5e %.5e\n", jk1, jk2, error1, error2)
+          end
+      end
+  end
+
+  return np.einsum("kmkn->kmn", g); #k, fs1, fs2
+end
+
+
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------------
+#             Equal times Green's function
+# -------------------------------------------------------
+function measure_greens_and_logdet(mc::AbstractDQMC, safe_mult::Int=mc.p.safe_mult, slice::Int=1)
+  greens, greens_logdet = calc_greens_and_logdet(mc, slice, safe_mult)
+  effective_greens2greens!(mc, greens)
+  return greens, greens_logdet
+end
+
+function measure_greens(mc::AbstractDQMC, safe_mult::Int=mc.p.safe_mult, slice::Int=1)
+  greens = calc_greens(mc, slice, safe_mult)
+  effective_greens2greens!(mc, greens)
+  return greens
+end
+
+
+
+
+
+
+
+# -------------------------------------------------------
+#   Equal times Green's function (all of them, i.e. ∀τ)
+# -------------------------------------------------------
+"""
+Calculates (true i.e. not effective) equal-time Green's functions
+at every time slice, i.e. G(tau) for all tau in 1:M where M is # slices.
+"""
+function measure_all_greens(mc::AbstractDQMC)
+  etgfs = calc_all_greens(mc)
+  effective_greens2greens!.(Ref(mc), etgfs)
+  return etgfs
+end
+
+
+"""
+Calculates (effective) equal-time Green's functions at every
+time slice, i.e. G(tau) for all tau in 1:M where M is # slices.
+
+This method is using the dqmc stack and its logic.
+"""
+function calc_all_greens(mc::AbstractDQMC)
+  build_stack(mc)
+  M = mc.p.slices
+  safe_mult = mc.p.safe_mult
+
+  etgfs = Vector{Matrix{geltype(mc)}}(undef, M)
+
+  for tau in M:-1:1
+    propagate(mc)
+    # @assert tau == mc.s.current_slice
+    @inbounds etgfs[tau] = copy(mc.s.greens)
+  end
+
+  return etgfs
+end
+
+
+"""
+Calculates (effective) equal-time Green's functions at every
+time slice, i.e. G(tau) for all tau in 1:M where M is # slices.
+"""
+function calc_all_greens_explicit(mc::AbstractDQMC)
+  # TODO: remove calculation redundancy by storing intermediate Bchains
+  M = mc.p.slices
+  safe_mult = mc.p.safe_mult
+
+  etgfs = Vector{Matrix{geltype(mc)}}(undef, M)
+
+  etgfs[1] = calc_greens(mc, 1)
+
+  for tau in 2:M
+    if mod(tau-1, safe_mult) == 0
+      etgfs[tau] = calc_greens(mc, tau)
+    else
+      etgfs[tau] = wrap_greens(mc, etgfs[tau-1], tau-1, 1)
+    end
+  end
+
+  return etgfs
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------------
+#         Occupation
+# -------------------------------------------------------
+"""
+Overall occupation, averaged over sites and fermion flavors (both spin and band).
+
+Example: half-filling of spin 1/2 fermions on a lattice corresponds to `n=0.5`, not `n=1`.
+"""
+function occupation(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
+  n = mean(1 .- diag(greens))
+  # only per site:
+  # N = mc.l.sites
+  # M = mc.p.slices
+  # n = 1/(N*M) * sum(1 .- diag(greens))
+  real(n)
+end
+
+"""
+Flavor resolved occupations (only averaged over sites).
+"""
+function occupations_flv(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
+  N = mc.l.sites
+  ns = mean.(Iterators.partition(1 .- diag(greens), N))
+  # only per site:
+  # N = mc.l.sites
+  # M = mc.p.slices
+  # n = 1/(N*M) * sum(1 .- diag(greens))
+  real(ns)
+end
 
 
 
@@ -436,10 +545,10 @@ function etcdc!(mc::AbstractDQMC, greens::AbstractMatrix)
         ri = siteidx(mc, sql, x0+x, y0+y)
         r0 = siteidx(mc, sql, x0, y0)
 
-        ev1 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
-        ev2 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
-        ev3 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
-        ev4 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
+        ev1 = _cdc_ev(mc, greens, greens, greens, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
+        ev2 = _cdc_ev(mc, greens, greens, greens, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
+        ev3 = _cdc_ev(mc, greens, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
+        ev4 = _cdc_ev(mc, greens, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
 
         Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
         Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
@@ -463,7 +572,7 @@ Pairing correlation expectation value
 
 (Wick's theorem.)
 """
-@inline function _cdc_ev(mc, greens, Gt0, G0t, r1, r2, r3, r4, j1, j2, j3, j4)
+@inline function _cdc_ev(mc, Gtau, G0, Gt0, G0t, r1, r2, r3, r4, j1, j2, j3, j4)
   N = mc.l.sites
   i1 = greensidx(N, j1, r1)
   i2 = greensidx(N, j2, r2)
@@ -475,7 +584,7 @@ Pairing correlation expectation value
   # G13 = -G(mc, i1, i3, G0t) # This is what Yoni seems to have
 
   # Wick's theorem. Result is real because greens is symm. in r and has anti-unitary symm.
-  return real(Gtilde(mc, i1, i4, greens) * Gtilde(mc, i2, i3, greens) +
+  return real(Gtilde(mc, i1, i4, Gtau) * Gtilde(mc, i2, i3, G0) +
               G13 * G(mc, i2, i4, Gt0))
 end
 
@@ -508,11 +617,13 @@ where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for 
 
 x,y ∈ [0,L-1]
 
+The input `greens` can either be a single ETGF or all ETGFs, i.e. G(tau).
+
 Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function zfcdc!(mc::AbstractDQMC, greens::AbstractMatrix, Gt0s::AbstractVector{T}, G0ts::AbstractVector{T}) where T <: AbstractMatrix
+function zfcdc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{T}, G0ts::AbstractVector{T}) where {T <: AbstractMatrix, V <: AbstractVector, W <: AbstractMatrix}
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
@@ -529,7 +640,18 @@ function zfcdc!(mc::AbstractDQMC, greens::AbstractMatrix, Gt0s::AbstractVector{T
 
   sql = reshape(1:N,L,L)
 
+  if typeof(greens) <: AbstractMatrix
+    get_Gtau = (tau) -> greens
+    get_G0 = (tau) -> greens
+  else
+    get_Gtau = (tau) -> greens[tau]
+    get_G0 = (tau) -> greens[1]
+  end
+
+
   @inbounds for tau in 1:M
+    Gtau = get_Gtau(tau)
+    G0 = get_G0(tau)
     Gt0 = Gt0s[tau]
     G0t = G0ts[tau]
 
@@ -539,10 +661,10 @@ function zfcdc!(mc::AbstractDQMC, greens::AbstractMatrix, Gt0s::AbstractVector{T
           ri = siteidx(mc, sql, x0+x, y0+y)
           r0 = siteidx(mc, sql, x0, y0)
 
-          ev1 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
-          ev2 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
-          ev3 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
-          ev4 = _cdc_ev(mc, greens, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
+          ev1 = _cdc_ev(mc, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
+          ev2 = _cdc_ev(mc, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
+          ev3 = _cdc_ev(mc, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
+          ev4 = _cdc_ev(mc, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
 
           Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
           Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
@@ -601,11 +723,13 @@ where r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
 
 x,y ∈ [0,L-1]
 
+The input `greens` can either be a single ETGF or all ETGFs, i.e. G(tau).
+
 Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function zfccc!(mc::AbstractDQMC, greens::AbstractMatrix, Gt0s::AbstractVector{T}, G0ts::AbstractVector{T}) where T <: AbstractMatrix
+function zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{T}, G0ts::AbstractVector{T}) where {T <: AbstractMatrix, V <: AbstractVector, W <: AbstractMatrix}
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
@@ -622,7 +746,18 @@ function zfccc!(mc::AbstractDQMC, greens::AbstractMatrix, Gt0s::AbstractVector{T
 
   sql = reshape(1:N,L,L)
 
+  if typeof(greens) <: AbstractMatrix
+    get_Gtau = (tau) -> greens
+    get_G0 = (tau) -> greens
+  else
+    get_Gtau = (tau) -> greens[tau]
+    get_G0 = (tau) -> greens[1]
+  end
+
+
   @inbounds for tau in 1:M
+    Gtau = get_Gtau(tau)
+    G0 = get_G0(tau)
     Gt0 = Gt0s[tau]
     G0t = G0ts[tau]
 
@@ -637,7 +772,7 @@ function zfccc!(mc::AbstractDQMC, greens::AbstractMatrix, Gt0s::AbstractVector{T
 
 
             # uncorrelated part
-
+            
 
 
 
@@ -701,59 +836,6 @@ end
 
 
 
-
-
-
-
-
-
-
-
-# -------------------------------------------------------
-#         Postprocessing/Analysis
-# -------------------------------------------------------
-# Go from xup, ydown, xdown, yup -> xup, yup, xdown, ydown
-function permute_greens(greens::AbstractMatrix)
-  perm = [1,4,3,2] # flv*spin: xup, ydown, xdown, yup -> xup, yup, xdown, ydown
-  N = Int(sqrt(length(greens))/4)
-  return reshape(reshape(greens, (N,4,N,4))[:,perm,:,perm], (4*N,4*N)); # rfs1, rfs2
-end
-
-# Assuming translational invariance go to momentum space Greens function (k, fs1, fs2)
-try
-  eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
-  eval(Expr(:toplevel, Meta.parse("@pyimport numpy as np")))
-catch
-end
-function fft_greens(greens::AbstractMatrix)
-  if !isdefined(:PyCall)
-    eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
-    eval(Expr(:toplevel, Meta.parse("@pyimport numpy as np")))
-    println("Loaded PyCall. Please execute again.")
-    return
-  end
-
-  L = Int(sqrt(sqrt(length(greens))/4))
-  g = reshape(greens, (L,L,4,L,L,4)); # y1, x1, fs1, y2, x2, fs2
-  g = fft(g, (1,2))*1/L; # ky1, kx1, fs1, y2, x2, fs2
-  g = fft(g, (4,5))*1/L; # ky1, kx1, fs1, ky2, kx2, fs2
-  g = reshape(g, (L*L,4,L*L,4))
-
-  # check translational invariance
-  println("translational invariance / momentum off diagonal terms")
-  for jk1 in 1:4
-      for jk2 in 1:4
-          if jk1 !=jk2
-              error1 = maximum(abs.(g[jk1,:,jk2,:]))
-              error2 = maximum(abs.(g[jk2,:,jk1,:]))
-
-              @printf("%d %d %.5e %.5e\n", jk1, jk2, error1, error2)
-          end
-      end
-  end
-
-  return np.einsum("kmkn->kmn", g); #k, fs1, fs2
-end
 
 
 
@@ -884,17 +966,9 @@ function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int=mc.s.current_slice,
   rmul!(s.U, Diagonal(s.d))
   return s.U * s.T
 end
-# function calc_greens_udt(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
-#   s = mc.s
-#   _calc_greens_helper(mc, slice, safe_mult)
 
-#   # greens = s.T * Diagonal(s.d) * s.U
-#   lmul!(Diagonal(s.d), s.U)
-#   U, T = decompose_udt!(s.U, s.d)
-#   return s.T*U, copy(s.d), T
-# end
 
-# result in s.T, s.U and s.d
+# Result in s.U, s.d, and s.T
 function _calc_greens_helper(mc::AbstractDQMC, slice::Int, safe_mult::Int)
   flv = mc.p.flv
   N = mc.l.sites
@@ -921,149 +995,13 @@ end
 
 
 
-"""
-SVD DECOMPOSITION: Calculate effective(!) Green's function (direct, i.e. without stack)
-"""
-function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
-  # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
-  flv = mc.p.flv
-  N = mc.l.sites
-  G = geltype(mc)
-
-  @assert 0 < start <= mc.p.slices
-  @assert 0 < stop <= mc.p.slices
-  @assert start <= stop
-
-  U = Matrix{G}(I, flv*N, flv*N)
-  D = ones(Float64, flv*N)
-  Vt = Matrix{G}(I, flv*N, flv*N)
-
-  svs = zeros(flv*N,length(start:stop))
-  svc = 1
-  for k in start:stop
-    if mod(k,safe_mult) == 0 || k == stop # always decompose in the end
-      multiply_B_left!(mc,k,U)
-      rmul!(U, Diagonal(D))
-      U, D, Vtnew = decompose_udv(U)
-      mul!(mc.s.tmp, Vtnew, Vt)
-      Vt .=  mc.s.tmp
-      svs[:,svc] = log.(D)
-      svc += 1
-    else
-      multiply_B_left!(mc,k,U)
-    end
-  end
-  return (U,D,Vt,svs)
-end
-
-
-function calc_Bchain_inv_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
-  # Calculate Ul, Dl, Vtl = [B(stop) ... B(start)]^(-1) = B(start)^(-1) ... B(stop)^(-1)
-  flv = mc.p.flv
-  slices = mc.p.slices
-  N = mc.l.sites
-  G = geltype(mc)
-
-  @assert 0 < start <= slices
-  @assert 0 < stop <= slices
-  @assert start <= stop
-
-  U = Matrix{G}(I, flv*N, flv*N)
-  D = ones(Float64, flv*N)
-  Vt = Matrix{G}(I, flv*N, flv*N)
-  Vtnew = Matrix{G}(I, flv*N, flv*N)
-
-  svs = zeros(flv*N,length(start:stop))
-  svc = 1
-  for k in reverse(start:stop)
-    if mod(k,safe_mult) == 0
-      multiply_B_inv_left!(mc,k,U)
-      U *= Diagonal(D)
-      U, D, Vtnew = decompose_udv!(U)
-      # not yet in-place
-      Vt =  Vtnew * Vt
-      svs[:,svc] = log.(D)
-      svc += 1
-    else
-      multiply_B_left!(mc,k,U)
-    end
-  end
-  return (U,D,Vt,svs)
-end
-
-
-# Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its logdet in a stable manner
-function calc_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
-  flv = mc.p.flv
-  N = mc.l.sites
-  G = geltype(mc)
-
-  # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
-  Ur, Dr, Vtr = calc_Bchain_udv(mc,slice,mc.p.slices,safe_mult)
-
-  # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
-  if slice-1 >= 1
-    Ul, Dl, Vtl = calc_Bchain_udv(mc,1,slice-1,safe_mult)
-  else
-    Ul = Matrix{G}(I, flv*N, flv*N)
-    Dl = ones(Float64, flv*N)
-    Vtl = Matrix{G}(I, flv*N, flv*N)
-  end
-
-  # Calculate Greens function
-  tmp = Vtl * Ur
-  inner = adjoint(Vtr * Ul) + Diagonal(Dl) * tmp * Diagonal(Dr)
-  I = decompose_udv!(inner)
-  U = adjoint(I[3] * Vtr)
-  D = Diagonal(1 ./ I[2])
-  Vt = adjoint(Ul * I[1])
-  return U*D*Vt, sum(log.(diag(D)))
-end
 
 
 
-"""
-Calculate ETGF (slice=1) as inv_one_plus_udv(calc_Bchain_udv)
-"""
-function calc_greens_udv_simple(mc::AbstractDQMC)
-  Budv = calc_Bchain_udv(mc, 1, mc.p.slices);
-  gudv = inv_one_plus_udv_scalettar(Budv[1], Budv[2], Budv[3])
-end
 
 
-"""
-Calculates (effective) equal-time Green's functions at every
-time slice, i.e. G(tau) for all tau in 1:M where M is # slices.
-"""
-function calc_all_greens(mc::AbstractDQMC)
-  M = mc.p.slices
-  safe_mult = mc.p.safe_mult
-
-  etgfs = Vector{Matrix{geltype(mc)}}(undef, M)
-
-  etgfs[1] = calc_greens(mc, 1)
-
-  for tau in 2:M
-    if mod(tau-1, safe_mult) == 0
-      etgfs[tau] = calc_greens(mc, tau)
-    else
-      etgfs[tau] = wrap_greens(mc, etgfs[tau-1], tau-1, 1)
-    end
-  end
-
-  return etgfs
-end
 
 
-"""
-Calculates (true i.e. not effective) equal-time Green's functions
-at every time slice, i.e. G(tau) for all tau in 1:M where M is # slices.
-"""
-function measure_all_greens(mc::AbstractDQMC)
-  etgfs = calc_all_greens(mc)
-  effective_greens2greens!.(Ref(mc), etgfs)
-  return etgfs
-end
 
 
 
@@ -1604,4 +1542,155 @@ function check_unitarity(u_stack)
     !isapprox(U * adjoint(U), I) && (return false) # I was eye(U)
   end
   return true
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# SVD STUFF ----------------------------------------------------
+"""
+SVD DECOMPOSITION: Calculate effective(!) Green's function (direct, i.e. without stack)
+"""
+function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
+  # Returns: tuple of results (U, D, and V) and log singular values of the intermediate products
+  flv = mc.p.flv
+  N = mc.l.sites
+  G = geltype(mc)
+
+  @assert 0 < start <= mc.p.slices
+  @assert 0 < stop <= mc.p.slices
+  @assert start <= stop
+
+  U = Matrix{G}(I, flv*N, flv*N)
+  D = ones(Float64, flv*N)
+  Vt = Matrix{G}(I, flv*N, flv*N)
+
+  svs = zeros(flv*N,length(start:stop))
+  svc = 1
+  for k in start:stop
+    if mod(k,safe_mult) == 0 || k == stop # always decompose in the end
+      multiply_B_left!(mc,k,U)
+      rmul!(U, Diagonal(D))
+      U, D, Vtnew = decompose_udv(U)
+      mul!(mc.s.tmp, Vtnew, Vt)
+      Vt .=  mc.s.tmp
+      svs[:,svc] = log.(D)
+      svc += 1
+    else
+      multiply_B_left!(mc,k,U)
+    end
+  end
+  return (U,D,Vt,svs)
+end
+
+
+function calc_Bchain_inv_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.p.safe_mult)
+  # Calculate Ul, Dl, Vtl = [B(stop) ... B(start)]^(-1) = B(start)^(-1) ... B(stop)^(-1)
+  flv = mc.p.flv
+  slices = mc.p.slices
+  N = mc.l.sites
+  G = geltype(mc)
+
+  @assert 0 < start <= slices
+  @assert 0 < stop <= slices
+  @assert start <= stop
+
+  U = Matrix{G}(I, flv*N, flv*N)
+  D = ones(Float64, flv*N)
+  Vt = Matrix{G}(I, flv*N, flv*N)
+  Vtnew = Matrix{G}(I, flv*N, flv*N)
+
+  svs = zeros(flv*N,length(start:stop))
+  svc = 1
+  for k in reverse(start:stop)
+    if mod(k,safe_mult) == 0
+      multiply_B_inv_left!(mc,k,U)
+      U *= Diagonal(D)
+      U, D, Vtnew = decompose_udv!(U)
+      # not yet in-place
+      Vt =  Vtnew * Vt
+      svs[:,svc] = log.(D)
+      svc += 1
+    else
+      multiply_B_left!(mc,k,U)
+    end
+  end
+  return (U,D,Vt,svs)
+end
+
+
+# Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its logdet in a stable manner
+function calc_greens_and_logdet_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mult)
+  flv = mc.p.flv
+  N = mc.l.sites
+  G = geltype(mc)
+
+  # Calculate Ur,Dr,Vtr=B(M) ... B(slice)
+  Ur, Dr, Vtr = calc_Bchain_udv(mc,slice,mc.p.slices,safe_mult)
+
+  # Calculate Ul,Dl,Vtl=B(slice-1) ... B(1)
+  if slice-1 >= 1
+    Ul, Dl, Vtl = calc_Bchain_udv(mc,1,slice-1,safe_mult)
+  else
+    Ul = Matrix{G}(I, flv*N, flv*N)
+    Dl = ones(Float64, flv*N)
+    Vtl = Matrix{G}(I, flv*N, flv*N)
+  end
+
+  # Calculate Greens function
+  tmp = Vtl * Ur
+  inner = adjoint(Vtr * Ul) + Diagonal(Dl) * tmp * Diagonal(Dr)
+  I = decompose_udv!(inner)
+  U = adjoint(I[3] * Vtr)
+  D = Diagonal(1 ./ I[2])
+  Vt = adjoint(Ul * I[1])
+  return U*D*Vt, sum(log.(diag(D)))
+end
+
+
+
+"""
+Calculate ETGF (slice=1) as inv_one_plus_udv(calc_Bchain_udv)
+"""
+function calc_greens_udv_simple(mc::AbstractDQMC)
+  Budv = calc_Bchain_udv(mc, 1, mc.p.slices);
+  gudv = inv_one_plus_udv_scalettar(Budv[1], Budv[2], Budv[3])
 end
