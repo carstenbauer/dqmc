@@ -1,20 +1,25 @@
 mutable struct MeasStack{G<:Number} # G = GreensEltype
 
-  # ETPCs (pairing correlations)
-  etpc_minus::Array{Float64, 2} # "P_(x,y)", i.e. d-wave
-  etpc_plus::Array{Float64, 2} # "P+(x,y)", i.e. s-wave
+  # ETPCs (equal-time pairing correlations)
+  etpc_minus::Array{Float64, 2} # "P_(y,x)", i.e. d-wave
+  etpc_plus::Array{Float64, 2} # "P+(y,x)", i.e. s-wave
 
-  # ZFPCs (zero-frequency)
-  zfpc_minus::Array{Float64, 2} # "P_(x,y)", i.e. d-wave
-  zfpc_plus::Array{Float64, 2} # "P+(x,y)", i.e. s-wave 
+  # ZFPCs (zero-frequency pairing correlations)
+  zfpc_minus::Array{Float64, 2} # "P_(y,x)", i.e. d-wave
+  zfpc_plus::Array{Float64, 2} # "P+(y,x)", i.e. s-wave
 
-  # ETCDCs (charge density correlations)
-  etcdc_minus::Array{Float64, 2} # "C_(x,y)", i.e. d-wave
-  etcdc_plus::Array{Float64, 2} # "C+(x,y)", i.e. s-wave
 
-  # ZFCDCs (zero-frequency)
-  zfcdc_minus::Array{Float64, 2} # "C_(x,y)", i.e. d-wave
-  zfcdc_plus::Array{Float64, 2} # "C+(x,y)", i.e. s-wave
+  # ETCDCs (equal-time charge density correlations)
+  etcdc_minus::Array{Float64, 2} # "C_(y,x)", i.e. d-wave
+  etcdc_plus::Array{Float64, 2} # "C+(y,x)", i.e. s-wave
+
+  # ZFCDCs (zero-frequency charge density correlations)
+  zfcdc_minus::Array{Float64, 2} # "C_(y,x)", i.e. d-wave
+  zfcdc_plus::Array{Float64, 2} # "C+(y,x)", i.e. s-wave
+
+
+  # ZFCCCs (zero-frequency current-current correlations)
+  zfccc::Array{Float64, 2} # "Λxx(y,x)"
 
 
   # TDGF

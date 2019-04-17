@@ -66,9 +66,9 @@ function mul!(C::StridedMatrix, X::StridedMatrix, A::SparseMatrixCSC)
     C
 end
 
-
-
 myrdiv!(dest, a, b) = copyto!(dest, adjoint(adjoint(b) \ adjoint(a)))
+
+Diagonal(I::UniformScaling{T}) where T <: Number = one(T)
 
 
 
@@ -205,6 +205,84 @@ function inv_one_plus_udt!(mc, res, U,D,T)
   mul!(res, m, u')
   nothing
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+
+  inv_one_plus_two_udts!(mc, U, D, T, Ul, Dl, Tl, Ur, Dr, Tr) -> nothing
+
+Stable calculation of [1 + UlDlTl(UrDrTr)^†]^(-1).
+
+Uses preallocated memory in `mc`. Writes the result into `U`, `D`, and `T`.
+"""
+function inv_one_plus_two_udts!(mc, U,D,T, Ul,Dl,Tl, Ur,Dr,Tr)
+  s = mc.s
+  tmp = mc.s.tmp
+  tmp2 = mc.s.tmp2
+  tmp3 = mc.s.curr_U
+
+  mul!(tmp, Tl, adjoint(Tr))
+  rmul!(tmp, Diagonal(Dr))
+  lmul!(Diagonal(Dl), tmp)
+  U1, T1 = decompose_udt!(tmp, s.D)
+
+  mul!(tmp3, Ul, U1)
+  mul!(tmp2, T1, adjoint(Ur))
+  mul!(tmp, adjoint(tmp3), inv(tmp2))
+
+  tmp .+= Diagonal(s.D)
+
+  u, t = decompose_udt!(tmp, D)
+
+  mul!(tmp, t, tmp2)
+  copyto!(U, inv(tmp))
+
+  mul!(tmp, tmp3, u)
+  copyto!(T, adjoint(tmp))
+
+  D .= 1 ./ D
+
+  nothing
+end
+
+
+
+
+"""
+
+  inv_one_plus_two_udts!(mc, res, Ul, Dl, Tl, Ur, Dr, Tr) -> nothing
+
+Stable calculation of [1 + UlDlTl(UrDrTr)^†]^(-1).
+
+Uses preallocated memory in `mc`. Writes the result into `res`.
+"""
+function inv_one_plus_two_udts!(mc, res, Ul,Dl,Tl, Ur,Dr,Tr)
+  inv_one_plus_two_udts!(mc, s.U, s.d, s.T, Ul, Dl, Tl, Ur, Dr, Tr)
+  rmul!(s.U, Diagonal(s.d))
+  mul!(res, s.U, s.T)
+  nothing
+end
+
+
+
+
+
+
+
+
 
 
 
