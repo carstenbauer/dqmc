@@ -63,241 +63,9 @@ end
 
 
 
-
-
-
-
-
-
 # -------------------------------------------------------
-#                 Pairing correlations
+#           Green's function indexing stuff
 # -------------------------------------------------------
-function allocate_zfpc!(mc)
-  L = mc.p.L
-  meas = mc.s.meas
-
-  meas.pc_evs = zeros(Float64,4,L,L)
-  meas.zfpc_minus = zeros(Float64,L,L)
-  meas.zfpc_plus = zeros(Float64,L,L)
-
-  println("Allocated memory for ZFPC measurements.")
-  nothing
-end
-
-
-"""
-Calculate zero-frequency pairing susceptibilities (Eq. 3 in notes)
-
-  Pη(y,x) = int_tau << Δη^†(r, tau)Δη(0, 0) >> = zfpc_plus/minus(y,x)
-
-where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
-
-x,y ∈ [0,L-1]
-
-Details:
-- we mean over r_0, that is "0".
-- we do not mean over τ_0=0.
-"""
-function zfpc!(mc::AbstractDQMC, Gt0::AbstractVector{T}) where T<:AbstractMatrix
-  L = mc.p.L
-  G = geltype(mc)
-  ev = mc.s.meas.pc_evs
-  Pm = mc.s.meas.zfpc_minus # d-wave
-  Pp = mc.s.meas.zfpc_plus # s-wave
-
-  zfpc_evs!(mc, Gt0)
-
-  # xd,xu,xu,xd = 1
-  # xd,xu,yu,yd = 2
-  # yd,yu,xu,xd = 3
-  # yd,yu,yu,yd = 4
-
-  # fill result arrays
-  @inbounds for x in 1:L
-    @simd for y in 1:L
-      Pm[y,x] = real(ev[1,y,x] - ev[2,y,x] - ev[3,y,x] + ev[4,y,x]) # Eq. 7 in notes
-      Pp[y,x] = real(ev[1,y,x] + ev[2,y,x] + ev[3,y,x] + ev[4,y,x])
-    end
-  end
-
-  nothing
-end
-
-
-
-"""
-Zero-frequency pairing correlation expectation values
-
-  zfpc_evs(j,y,x) = 1/N Σ_r0 << c_j1(r + r0) c_j2(r + r0) c_j3(r0)^† c_j4(r0)^† >>
-
-where j ∈ 1:4 corresponds to (j1, j2, j3, j4) ∈ ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd)),
-r=(x,y), and we mean over r_0.
-
-(Calculates individual terms of Eq. 7 in the notes using Wick's theorem.)
-"""
-function zfpc_evs!(mc::AbstractDQMC, Gt0::AbstractVector{T}) where T<:AbstractMatrix
-  # OPT: Could also use G0t and mean over results.
-
-  L = mc.p.L
-  N = mc.l.sites
-  M = length(Gt0)
-  zfpc_ev = mc.s.meas.pc_evs
-
-  mc.p.slices == length(Gt0) || @warn "mc.p.slices != length(Gt0)"
-
-  # we only need four combinations of j1,j2,j3,j4 for zfpc_ev
-  xu, yd, xd, yu = 1,2,3,4
-  js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
-
-  fill!(zfpc_ev, 0.)
-  sql = reshape(collect(1:N),L,L)
-
-  @inbounds for tau in 1:M
-    @views greens = Gt0[tau]
-    for x in 0:(L-1), y in 0:(L-1) # r (displacement)
-      for x0 in 1:L, y0 in 1:L # r0 (origin)
-        r1 = r2 = siteidx(mc, sql, x0+x, y0+y)
-        r3 = r4 = siteidx(mc, sql, x0, y0)
-
-        for j in 1:length(js) # @inbounds
-          i1 = greensidx(N, js[j][1], r1)
-          i2 = greensidx(N, js[j][2], r2)
-          i3 = greensidx(N, js[j][3], r3)
-          i4 = greensidx(N, js[j][4], r4)
-
-          # Wick's theorem. Result is real because greens is symm. in r and has anti-unitary symm.
-          zfpc_ev[j, y+1, x+1] += real(G(mc, i1, i4, greens)*G(mc, i2, i3, greens) -
-                                       G(mc, i1, i3, greens)*G(mc, i2, i4, greens))
-        end
-      end
-    end
-  end
-
-  zfpc_ev ./= N # r0 mean
-
-  nothing
-end
-
-
-
-
-
-
-
-
-function allocate_etpc!(mc)
-  L = mc.p.L
-  meas = mc.s.meas
-
-  meas.pc_evs = zeros(Float64,4,L,L)
-  meas.etpc_minus = zeros(Float64,L,L)
-  meas.etpc_plus = zeros(Float64,L,L)
-
-  println("Allocated memory for ETPC measurements.")
-  nothing
-end
-
-
-"""
-Calculate equal time pairing susceptibilities (Eq. 4 in notes)
-
-  Pη(y,x) = << Δη^†(r)Δη(0) >> = etpc_plus/minus(y,x)
-
-where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
-
-x,y ∈ [0,L-1]
-
-Details:
-- we mean over r_0, that is "0".
-- we do not mean over τ_0=0 (τ not shown above).
-"""
-function etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
-  L = mc.p.L
-  G = geltype(mc)
-  ev = mc.s.meas.pc_evs
-  Pm = mc.s.meas.etpc_minus # d-wave
-  Pp = mc.s.meas.etpc_plus # s-wave
-
-  etpc_evs!(mc, greens)
-
-  # xd,xu,xu,xd = 1
-  # xd,xu,yu,yd = 2
-  # yd,yu,xu,xd = 3
-  # yd,yu,yu,yd = 4
-
-  # fill result arrays
-  @inbounds for x in 1:L
-    @simd for y in 1:L
-      Pm[y,x] = real(ev[1,y,x] - ev[2,y,x] - ev[3,y,x] + ev[4,y,x]) # Eq. 7 in notes
-      Pp[y,x] = real(ev[1,y,x] + ev[2,y,x] + ev[3,y,x] + ev[4,y,x])
-    end
-  end
-
-  nothing
-end
-
-# """
-# FFT of ETPC, i.e. P(ky, kx)
-# """
-# etpc_k!(args...) = begin etpc!(args...); rfft(mc.s.meas.etpc, (1,2)); end
-
-# """
-# P = Σ_r P(r), with P(r) from `etpc`.
-# """
-# etpc_uniform!(mc, η, greens) = begin etpc!(mc, η, greens); sum(mc.s.meas.etpc); end
-
-# """
-# P = P(q=0), with P(q)=fft(P(r)) from `etpc_k`. Slower than `etpc_uniform!`.
-# """
-# etpc_uniform_alternative!(mc, η, greens) = real(etpc_k!(mc, η, greens)[1,1])
-
-"""
-Equal time pairing correlation expectation value
-
-  etpc_evs(j,y,x) = 1/N Σ_r0 << c_j1(r + r0) c_j2(r + r0) c_j3(r0)^† c_j4(r0)^† >>
-
-where j ∈ 1:4 corresponds to (j1, j2, j3, j4) ∈ ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd)),
-r=(x,y), and we mean over r_0.
-
-(Calculates individual terms of Eq. 7 in the notes using Wick's theorem.)
-"""
-function etpc_evs!(mc::AbstractDQMC, greens::AbstractMatrix)
-  L = mc.p.L
-  N = mc.l.sites
-  etpc_ev = mc.s.meas.pc_evs
-
-  # we only need four combinations of j1,j2,j3,j4 for etpc_ev
-  xu, yd, xd, yu = 1,2,3,4
-  js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
-
-  fill!(etpc_ev, 0.)
-  sql = reshape(collect(1:N),L,L)
-
-  @inbounds for x in 0:(L-1), y in 0:(L-1) # r (displacement)
-    for x0 in 1:L, y0 in 1:L # r0 (origin)
-      r1 = r2 = siteidx(mc, sql, x0+x, y0+y)
-      r3 = r4 = siteidx(mc, sql, x0, y0)
-
-      for j in 1:length(js) # @inbounds
-        i1 = greensidx(N, js[j][1], r1)
-        i2 = greensidx(N, js[j][2], r2)
-        i3 = greensidx(N, js[j][3], r3)
-        i4 = greensidx(N, js[j][4], r4)
-
-        # Wick's theorem. Result is real because greens is symm. in r and has anti-unitary symm.
-        etpc_ev[j, y+1, x+1] += real(G(mc, i1, i4, greens)*G(mc, i2, i3, greens) -
-                                     G(mc, i1, i3, greens)*G(mc, i2, i4, greens))
-      end
-    end
-  end
-
-  etpc_ev ./= N # r0 mean
-
-  nothing
-end
-
-
-
 """
 Get linear site index of cartesian coordinates (x,y) respecting PBC.
 """
@@ -342,6 +110,20 @@ Access full (4*N, 4*N) Green's function for any OPDIM efficiently.
   end
 end
 
+
+"""
+Access full (4*N, 4*N) `Gtilde = I - G` where G is the Green's function for any OPDIM efficiently.
+"""
+@inline function Gtilde(mc, i, j, greens=mc.s.greens)
+  if i == j # on diagonal
+    return 1 - G(mc, i, j, greens)
+  else
+    return -G(mc, i, j, greens)
+  end
+end
+
+
+
 """
 Construct full (4*N, 4*N) Green's function for any OPDIM efficiently.
 """
@@ -357,6 +139,374 @@ function fullG(mc, greens=mc.s.greens)
   end
   return g
 end
+
+
+"""
+Construct full (4*N, 4*N) `Gtilde = I - G` where G is the Green's function for any OPDIM efficiently.
+"""
+function fullGtilde(mc, greens=mc.s.greens)
+  gt = eltype(greens)
+  N = mc.l.sites
+  g = zeros(gt, 4*N, 4*N)
+
+  @inbounds for j in 1:4*N
+    for i in 1:4*N
+      g[i,j] = Gtilde(mc, i, j, greens)
+    end
+  end
+  return g
+end
+
+# test: fullGtilde(mc) == (I - fullG(mc))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------------
+#           Equal-time Pairing Correlations
+# -------------------------------------------------------
+function allocate_etpc!(mc)
+  L = mc.p.L
+  meas = mc.s.meas
+
+  meas.etpc_minus = zeros(Float64,L,L)
+  meas.etpc_plus = zeros(Float64,L,L)
+
+  println("Allocated memory for ETPC measurements.")
+  nothing
+end
+
+
+"""
+Calculate equal time pairing susceptibilities (Eq. 4 in notes)
+
+  Pη(y,x) = << Δη^†(r)Δη(0) >> = etpc_plus/minus(y,x)
+
+where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
+
+x,y ∈ [0,L-1]
+
+Details:
+- we mean over r_0, that is "0".
+- we do not mean over τ_0=0 (τ not shown above).
+"""
+function etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
+  L = mc.p.L
+  N = mc.l.sites
+  Pm = mc.s.meas.etpc_minus # d-wave
+  Pp = mc.s.meas.etpc_plus # s-wave
+
+  fill!(Pm, zero(geltype(mc)))
+  fill!(Pp, zero(geltype(mc)))
+
+  # we only need four combinations of j1,j2,j3,j4 for etpc_ev
+  xu, yd, xd, yu = 1,2,3,4
+  js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
+
+  sql = reshape(1:N,L,L)
+
+
+  @inbounds for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+    for x0 in 1:L, y0 in 1:L # r0 (origin)
+      r1 = r2 = siteidx(mc, sql, x0+x, y0+y)
+      r3 = r4 = siteidx(mc, sql, x0, y0)
+
+      ev1 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 1)
+      ev2 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 2)
+      ev3 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 3)
+      ev4 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 4)
+
+      Pm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
+      Pp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+    end
+  end
+
+  # r0 mean
+  Pm ./= N
+  Pp ./= N
+
+  nothing
+end
+
+
+
+"""
+Pairing correlation expectation value
+
+  etpc_ev = << c_j1(r1) c_j2(r2) c_j3(r3)^† c_j4(r4)^† >>
+
+(Wick's theorem.)
+"""
+@inline function _pc_ev(mc, greens, r1, r2, r3, r4, js, j)
+  N = mc.l.sites
+
+  i1 = greensidx(N, js[j][1], r1)
+  i2 = greensidx(N, js[j][2], r2)
+  i3 = greensidx(N, js[j][3], r3)
+  i4 = greensidx(N, js[j][4], r4)
+
+  # Wick's theorem. Result is real because greens is symm. in r and has anti-unitary symm.
+  return real(G(mc, i1, i4, greens)*G(mc, i2, i3, greens) -
+              G(mc, i1, i3, greens)*G(mc, i2, i4, greens))
+end
+
+
+# """
+# FFT of ETPC, i.e. P(ky, kx)
+# """
+# etpc_k!(args...) = begin etpc!(args...); rfft(mc.s.meas.etpc, (1,2)); end
+
+# """
+# P = Σ_r P(r), with P(r) from `etpc`.
+# """
+# etpc_uniform!(mc, η, greens) = begin etpc!(mc, η, greens); sum(mc.s.meas.etpc); end
+
+# """
+# P = P(q=0), with P(q)=fft(P(r)) from `etpc_k`. Slower than `etpc_uniform!`.
+# """
+# etpc_uniform_alternative!(mc, η, greens) = real(etpc_k!(mc, η, greens)[1,1])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------------
+#         Equal-time Charge Density Correlations
+# -------------------------------------------------------
+function allocate_etcdc!(mc)
+  L = mc.p.L
+  meas = mc.s.meas
+
+  meas.etcdc_minus = zeros(Float64,L,L)
+  meas.etcdc_plus = zeros(Float64,L,L)
+
+  println("Allocated memory for ETCDC measurements.")
+  nothing
+end
+
+
+"""
+Calculate equal time charge density susceptibilities
+
+  Cη(y,x) = << Δη^†(r)Δη(0) >> = etcdc_plus/minus(y,x)
+
+where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
+
+x,y ∈ [0,L-1]
+
+Details:
+- we mean over r_0, that is "0".
+- we do not mean over τ_0=0 (τ not shown above).
+"""
+function etcdc!(mc::AbstractDQMC, greens::AbstractMatrix)
+  L = mc.p.L
+  N = mc.l.sites
+  Cm = mc.s.meas.etcdc_minus # d-wave
+  Cp = mc.s.meas.etcdc_plus # s-wave
+
+  fill!(Cm, zero(geltype(mc)))
+  fill!(Cp, zero(geltype(mc)))
+
+  # xu, yd, xd, yu = 1,2,3,4
+  X = 1
+  Y = 2
+  UP = 0
+  DOWN = 2
+  flv = (band, spin) -> band + spin
+
+  sql = reshape(1:N,L,L)
+
+  # sums over spins
+  @inbounds for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+    for x0 in 1:L, y0 in 1:L # r0 (origin)
+      for s1 in (UP, DOWN), s2 in (UP, DOWN)
+        ri = siteidx(mc, sql, x0+x, y0+y)
+        r0 = siteidx(mc, sql, x0, y0)
+
+        ev1 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
+        ev2 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
+        ev3 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
+        ev4 = _cdc_ev(mc, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
+
+        # @show ev1
+        # @show ev2
+        # @show ev3
+        # @show ev4
+        # println()
+
+        Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
+        Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+      end
+    end
+  end
+
+  # r0 mean
+  Cm ./= N
+  Cp ./= N
+
+  nothing
+end
+
+
+
+"""
+Pairing correlation expectation value
+
+  etcdc_ev = << c_j1^†(r1) c_j2(r2) c_j3^†(r3) c_j4(r4) >>
+
+(Wick's theorem.)
+"""
+@inline function _cdc_ev(mc, greens, G0t, Gt0, r1, r2, r3, r4, j1, j2, j3, j4)
+  N = mc.l.sites
+  i1 = greensidx(N, j1, r1)
+  i2 = greensidx(N, j2, r2)
+  i3 = greensidx(N, j3, r3)
+  i4 = greensidx(N, j4, r4)
+
+  # Isn't something like this missing in Yoni's code?
+  G13 = i1 == i3 ? Gtilde(mc, i1, i3, G0t) : -G(mc, i1, i3, G0t)
+  # G13 = -G(mc, i1, i3, G0t) # This is what Yoni seems to have
+
+  # Wick's theorem. Result is real because greens is symm. in r and has anti-unitary symm.
+  return real(Gtilde(mc, i1, i4, greens) * Gtilde(mc, i2, i3, greens) +
+              G13 * G(mc, i2, i4, Gt0))
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------------
+#      Zero-Frequency (static) Pairing Correlations
+# -------------------------------------------------------
+function allocate_zfpc!(mc)
+  L = mc.p.L
+  meas = mc.s.meas
+
+  meas.zfpc_minus = zeros(Float64,L,L)
+  meas.zfpc_plus = zeros(Float64,L,L)
+
+  println("Allocated memory for ZFPC measurements.")
+  nothing
+end
+
+
+"""
+Calculate zero-frequency pairing susceptibilities (Eq. 3 in notes)
+
+  Pη(y,x) = int_tau << Δη^†(r, tau)Δη(0, 0) >> = zfpc_plus/minus(y,x)
+
+where η=± (s and d-wave), r=(y,x), and <<·>> indicates a fermion average for fixed ϕ.
+
+x,y ∈ [0,L-1]
+
+Details:
+- we mean over r_0, that is "0".
+- we do not mean over τ_0=0.
+"""
+function zfpc!(mc::AbstractDQMC, Gt0::AbstractVector{T}) where T <: AbstractMatrix
+  L = mc.p.L
+  N = mc.l.sites
+  M = mc.p.slices
+  Pm = mc.s.meas.zfpc_minus # d-wave
+  Pp = mc.s.meas.zfpc_plus # s-wave
+
+  fill!(Pm, zero(geltype(mc)))
+  fill!(Pp, zero(geltype(mc)))
+
+  # we only need four combinations of j1,j2,j3,j4 for etpc_ev
+  xu, yd, xd, yu = 1,2,3,4
+  js = ((xd,xu,xu,xd), (xd,xu,yu,yd), (yd,yu,xu,xd), (yd,yu,yu,yd))
+
+  sql = reshape(1:N,L,L)
+
+  @inbounds for tau in 1:M
+    @views greens = Gt0[tau]
+
+    # Identical to etpc now
+    @inbounds for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+      for x0 in 1:L, y0 in 1:L # r0 (origin)
+        r1 = r2 = siteidx(mc, sql, x0+x, y0+y)
+        r3 = r4 = siteidx(mc, sql, x0, y0)
+
+        ev1 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 1)
+        ev2 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 2)
+        ev3 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 3)
+        ev4 = _pc_ev(mc, greens, r1, r2, r3, r4, js, 4)
+
+        Pm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
+        Pp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+      end
+    end
+  end
+
+  # r0 mean
+  Pm ./= N
+  Pp ./= N
+
+  nothing
+end
+
+
+
+
+
+
+
+
+
+
+
 
 
 
