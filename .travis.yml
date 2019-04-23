@@ -10,6 +10,10 @@ julia:
 #     packages:
 #       - python3-matplotlib
 
+addons:
+  hosts:
+    - travis.dev
+
 notifications:
   email: false
 
