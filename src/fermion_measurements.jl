@@ -1002,7 +1002,7 @@ function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int=mc.s.current_slice,
   ldet = real(log(complex(det(s.U))) + sum(log.(s.d)) + log(complex(det(s.T))))
 
   rmul!(s.U, Diagonal(s.d))
-  return s.U * s.T
+    return s.U * s.T, ldet
 end
 
 
