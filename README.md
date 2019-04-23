@@ -1,3 +1,10 @@
+[![travis][travis-img]](https://travis-ci.org/crstnbr/dqmc)
+[![codecov][codecov-img]](http://codecov.io/github/crstnbr/BinningAnalysis.jl?branch=master)
+
+[travis-img]: https://img.shields.io/travis/crstnbr/dqmc/master.svg?label=linux
+[codecov-img]: https://img.shields.io/codecov/c/github/crstnbr/dqmc/master.svg?label=codecov
+
+
 **Determinant quantum Monte Carlo (DQMC)** code for simulating quantum critical metals in two dimensions.
 
 ### Settings
