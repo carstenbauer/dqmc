@@ -163,7 +163,6 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         # p.hsfield[:,randsite,randslice]
         # isapprox( == )
 
-
         # TODO: test global_update_backup_swap!
     end
 
