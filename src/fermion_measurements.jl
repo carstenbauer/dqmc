@@ -106,44 +106,70 @@ function permute_greens(greens::AbstractMatrix)
   return reshape(reshape(greens, (N,4,N,4))[:,perm,:,perm], (4*N,4*N)); # rfs1, rfs2
 end
 
-# try
-#   eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
-#   eval(Expr(:toplevel, Meta.parse("@pyimport numpy as np")))
-# catch
-# end
-# Assuming translational invariance go to momentum space Greens function (k, fs1, fs2)
-function fft_greens(greens::AbstractMatrix)
-  if !isdefined(:PyCall)
-    eval(Expr(:toplevel, Expr(:using, Symbol("PyCall"))))
-    eval(Expr(:toplevel, Meta.parse("@pyimport numpy as np")))
-    println("Loaded PyCall. Please execute again.")
-    return
+"""
+    fft_greens(greens; fftshift=false, flv=4, L=sqrt(size(greens, 1)/flv))
+
+Fourier transform real-space Green's function (`flv*N, flv*N`) to momentum space.
+
+If `fftshift == true` momenta are shifted such that k=0 (Γ point) is centered.
+"""
+function fft_greens(greens::AbstractMatrix; fftshift=false, flv::Integer=4, L::Integer=Int(sqrt(size(greens, 1)/flv)))
+  N = L^2
+  g = reshape(greens, (L,L,flv,L,L,flv)) # y1,x1,f1, y2,x2,f2
+  gk = ifft( fft(g, (1,2)), (4,5))
+  if fftshift
+    gk = FFTW.fftshift(gk, (1,2,4,5))
+  end
+  gk = reshape(gk, (flv*N,flv*N))
+end
+
+fft_greens(mc::AbstractDQMC, greens::AbstractMatrix; fftshift=false) = fft_greens(greens; fftshift=fftshift, flv=mc.p.flv, L=mc.p.L)
+
+
+"""
+    ifft_greens(gk; ifftshift=false, flv=4, L=sqrt(size(greens, 1)/flv))
+
+Inverse Fourier transform momentum-space Green's function (`flv*N, flv*N`) to real space.
+Assumes fftshifted momenta as it applies ifftshift before the transformation.
+
+Inverse of `fft_greens`.
+"""
+function ifft_greens(gk::AbstractMatrix; ifftshift=false, flv::Integer=4, L::Integer=Int(sqrt(size(gk, 1)/flv)))
+  N = L^2
+  g = reshape(gk, (L,L,flv,L,L,flv)) # y1,x1,f1, y2,x2,f2
+  if ifftshift
+    g = FFTW.ifftshift(g, (1,2,4,5))
+  end
+  greens = fft( ifft(g, (1,2)), (4,5))
+  greens = reshape(greens, (flv*N,flv*N))
+end
+
+ifft_greens(mc::AbstractDQMC, gk::AbstractMatrix; ifftshift=false) = fft_greens(gk; ifftshift=ifftshift, flv=mc.p.flv, L=mc.p.L)
+
+
+
+
+"""
+    fftmomenta(L; fftshift=false)
+
+Returns momenta of a finite size system (Brillouin zone discretization).
+
+If `fftshift==true` the momenta are shifted such that k=0 (Γ point) is centered.
+
+The momenta are those of the output of `fft_greens`.
+"""
+function fftmomenta(L::Int; fftshift=false)
+  qs = 2*pi*fftfreq(L) # 2*pi because fftfreq returns linear momenta
+  if fftshift
+    qs = FFTW.fftshift(qs)
   end
 
-  L = Int(sqrt(sqrt(length(greens))/4))
-  g = reshape(greens, (L,L,4,L,L,4)); # y1, x1, fs1, y2, x2, fs2
-  g = fft(g, (1,2))*1/L; # ky1, kx1, fs1, y2, x2, fs2
-  g = fft(g, (4,5))*1/L; # ky1, kx1, fs1, ky2, kx2, fs2
-  g = reshape(g, (L*L,4,L*L,4))
-
-  # check translational invariance
-  println("translational invariance / momentum off diagonal terms")
-  for jk1 in 1:4
-      for jk2 in 1:4
-          if jk1 !=jk2
-              error1 = maximum(abs.(g[jk1,:,jk2,:]))
-              error2 = maximum(abs.(g[jk2,:,jk1,:]))
-
-              @printf("%d %d %.5e %.5e\n", jk1, jk2, error1, error2)
-          end
-      end
-  end
-
-  return np.einsum("kmkn->kmn", g); #k, fs1, fs2
+  # ωs = 2*pi*fftfreq(M, 1/Δτ)
+  return qs
 end
 
 
-
+fftmomenta(mc::AbstractDQMC; kwargs...) = fftmomenta(mc.l.sites; kwargs...)
 
 
 
@@ -566,7 +592,7 @@ end
 
 
 """
-Pairing correlation expectation value
+Charge density correlation expectation value
 
   etcdc_ev = << c_j1^†(r1) c_j2(r2) c_j3^†(r3) c_j4(r4) >>
 
@@ -579,16 +605,12 @@ Pairing correlation expectation value
   i3 = greensidx(N, j3, r3)
   i4 = greensidx(N, j4, r4)
 
-  # Isn't something like this missing in Yoni's code?
-  G13 = i1 == i3 ? Gtilde(mc, i1, i3, G0t) : -G(mc, i1, i3, G0t)
-  # G13 = -G(mc, i1, i3, G0t) # This is what Yoni seems to have
+  uncorr = (kd(i1, i2) - G(mc, i2, i1, Gtau)) * (kd(i3, i4) - G(mc, i4, i3, G0)) # optimize wrt speed?
+  corr1 = (kd(i1, i4) - G(mc, i4, i1, G0t))
+  corr2 = G(mc, i2, i3, Gt0)
 
-  # Wick's theorem. Result is real because greens is symm. in r and has anti-unitary symm.
-  return real(Gtilde(mc, i1, i4, Gtau) * Gtilde(mc, i2, i3, G0) +
-              G13 * G(mc, i2, i4, Gt0))
+  return uncorr + corr1 * corr2
 end
-
-
 
 
 

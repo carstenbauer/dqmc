@@ -85,7 +85,10 @@ function eye!(x)
 end
 
 
-
+"""
+Kronecker Delta
+"""
+@inline kd(a,b) = a == b
 
 
 
