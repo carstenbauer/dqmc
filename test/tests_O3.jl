@@ -179,10 +179,12 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
             mc.s.Ul = load("data/O3.jld", "Ul")
             mc.s.Dl = load("data/O3.jld", "Dl")
             mc.s.Tl = load("data/O3.jld", "Tl")
+            greens = load("data/O3.jld", "greens")
             calculate_greens(mc)
             ld = calculate_logdet(mc)
             gfresh, ldfresh = calc_greens_and_logdet(mc, 1)
-            @test isapprox(mc.s.greens, gfresh) # compare against "exact" greens
+            @test isapprox(mc.s.greens, greens) # compare against dumped greens
+            @test isapprox(mc.s.greens, gfresh) # compare against "exact" freshly calculated greens
             @test isapprox(ld, ldfresh) # compare against "exact" logdet
         end
 
@@ -195,13 +197,28 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         end
 
         init!(mc)
-        @testset "propagate a bit" begin
+        @testset "propagation" begin
             @assert mc.s.current_slice == mc.p.slices
             while mc.s.current_slice != 1
                 propagate(mc)
             end
             propagate(mc) # we want to go in direction up
-            @test isapprox(mc.s.Ur, load("data/O3.jld", "Ur")) # TODO: compare greens here?!
+            greens = load("data/O3.jld", "greens")
+            @test isapprox(mc.s.greens, greens) # compare against dumped greens
+        end
+
+        init!(mc)
+        @testset "propagation: greens always within bounds" begin
+            @assert mc.s.current_slice == mc.p.slices
+            @assert mc.s.direction == -1
+
+            propagate(mc)
+            while !(mc.s.current_slice == mc.p.slices && mc.s.direction == -1)
+                mc.s.greens
+                greens = calc_greens(mc, mc.s.current_slice)
+                @test maximum(absdiff(greens, mc.s.greens)) < 1e-12
+                propagate(mc)
+            end
         end
     end
 
