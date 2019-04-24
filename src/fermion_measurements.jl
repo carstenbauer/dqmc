@@ -406,8 +406,11 @@ Pairing correlation expectation value
   i4 = greensidx(N, js[j][4], r4)
 
   # Wick's theorem. Result is real because greens is symm. in r and has anti-unitary symm.
-  return real(G(mc, i1, i4, greens)*G(mc, i2, i3, greens) -
-              G(mc, i1, i3, greens)*G(mc, i2, i4, greens))
+  result = G(mc, i1, i4, greens)*G(mc, i2, i3, greens) -
+              G(mc, i1, i3, greens)*G(mc, i2, i4, greens)
+  # @show maximum(imag(result))
+  # @assert isreal(result)
+  return real(result)
 end
 
 
@@ -813,7 +816,6 @@ function zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{S}, 
 
 
             # Uncorrelated part
-            # TODO: Yoni seems to use Gh, i.e. my Gtilde, in all terms. Why?! Numerically it doesn't seem to matter ...?!
             # TODO: Check and add real() later
             Lambda[y+1, x+1] += (tij * G(mc, ajs, ais, Gtau) - tji * G(mc, ais, ajs, Gtau)) *
                                 (t00p * G(mc, ap0psp, ap0sp, G0) - t0p0 * G(mc, ap0sp, ap0psp, G0))

@@ -10,12 +10,12 @@ mutable struct MeasStack{G<:Number} # G = GreensEltype
 
 
   # ETCDCs (equal-time charge density correlations)
-  etcdc_minus::Array{Float64, 2} # "C_(y,x)", i.e. d-wave
-  etcdc_plus::Array{Float64, 2} # "C+(y,x)", i.e. s-wave
+  etcdc_minus::Array{ComplexF64, 2} # "C_(y,x)", i.e. d-wave
+  etcdc_plus::Array{ComplexF64, 2} # "C+(y,x)", i.e. s-wave
 
   # ZFCDCs (zero-frequency charge density correlations)
-  zfcdc_minus::Array{Float64, 2} # "C_(y,x)", i.e. d-wave
-  zfcdc_plus::Array{Float64, 2} # "C+(y,x)", i.e. s-wave
+  zfcdc_minus::Array{ComplexF64, 2} # "C_(y,x)", i.e. d-wave
+  zfcdc_plus::Array{ComplexF64, 2} # "C+(y,x)", i.e. s-wave
 
 
   # ZFCCCs (zero-frequency current-current correlations)
