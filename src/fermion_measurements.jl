@@ -37,7 +37,7 @@ Access full (4*N, 4*N) Green's function for any OPDIM efficiently.
       return zero(gt)
 
     elseif i>half && j>half # lower right block
-      return conj(greens[j - half, i - half])
+      return conj(greens[i - half, j - half])
 
     else # upper left block
       return greens[i, j]

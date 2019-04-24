@@ -36,6 +36,89 @@ end
 
 
 @testset "Fermion measurements" begin
+
+    @testset "Helpers" begin
+        @testset "Accessing Greens" begin
+            sql = reshape(1:16, (4,4))
+            N = mc.l.sites
+            greens = mc.s.greens[1:2*N,1:2*N] # fake O(2) greens
+
+            f = () -> begin
+                for x in 1:4
+                    for y in 1:4
+                        siteidx(mc, sql, x, y) == sql[y,x] || return false
+                    end
+                end
+                return true
+            end
+            @test f()
+            
+            # PBC
+            @test siteidx(mc, sql, 5, 1) == 1
+            @test siteidx(mc, sql, 1, 5) == 1
+            @test siteidx(mc, sql, 5, 5) == 1
+            @test siteidx(mc, sql, 3, 7) == 11
+            @test siteidx(mc, sql, 128, 32) == 16
+            
+            # greensidx
+            f = () -> begin
+                for i in 1:N
+                    greensidx(N, 1, i) == i || return false
+                    greensidx(N, 2, i) == N+i || return false
+                    greensidx(N, 3, i) == 2*N+i || return false
+                    greensidx(N, 4, i) == 3*N+i || return false
+                end
+                return true
+            end
+            @test f()
+            
+            
+            # G for O(3) equal to indexing greens
+            f = () -> begin
+                for i in 1:4*N, j in 1:4*N
+                    G(mc, i, j) == mc.s.greens[i, j] || return false
+                end
+                return true
+            end
+            @test f()
+            
+            # Gtilde for O(3) equal to indexing I - greens
+            f = () -> begin
+                for i in 1:4*N, j in 1:4*N
+                    Gtilde(mc, i, j) == kd(i,j) - mc.s.greens[i, j] || return false
+                end
+                return true
+            end
+            @test f()
+            
+            @test isapprox(fullG(mc, mc.s.greens), mc.s.greens)
+            @test isapprox(fullGtilde(mc, mc.s.greens), I - mc.s.greens)
+            
+            
+            mc.p.opdim = 2
+            
+            # G for O(2)/O(1)
+            f = () -> begin
+                for i in 1:2*N, j in 1:2*N
+                    isapprox(G(mc, 2*N+i, 2*N+j, greens), conj(greens[i, j])) || return false
+                    isapprox(Gtilde(mc, 2*N+i, 2*N+j, greens), kd(2*N+i, 2*N+j) - conj(greens[i, j])) || return false
+                end
+                return true
+            end
+            @test f()
+            
+            @test isapprox(fullG(mc, greens), I - fullGtilde(mc, greens))
+            
+            mc.p.opdim = 3
+        end
+
+
+        @testset "Permute and FFT Greens" begin
+            
+            
+        end
+    end
+
     # TODO: ETGF
     # TODO: ETPC etc.
 
