@@ -1,3 +1,5 @@
+import DSP.fftfreq
+
 # -------------------------------------------------------
 #           Green's function indexing stuff
 # -------------------------------------------------------
@@ -144,7 +146,7 @@ function ifft_greens(gk::AbstractMatrix; ifftshift=false, flv::Integer=4, L::Int
   greens = reshape(greens, (flv*N,flv*N))
 end
 
-ifft_greens(mc::AbstractDQMC, gk::AbstractMatrix; ifftshift=false) = fft_greens(gk; ifftshift=ifftshift, flv=mc.p.flv, L=mc.p.L)
+ifft_greens(mc::AbstractDQMC, gk::AbstractMatrix; ifftshift=false) = ifft_greens(gk; ifftshift=ifftshift, flv=mc.p.flv, L=mc.p.L)
 
 
 

@@ -114,8 +114,37 @@ end
 
 
         @testset "Permute and FFT Greens" begin
+            N = mc.l.sites
+            xu, yd, xd, yu = 1, 2, 3, 4 # definition = old order
+
+            flvtrafo = Dict{Int64, Int64}(xu => xu, yd => yu, xd => xd, yu => yd)
+            
+            @test isapprox(permute_greens(permute_greens(mc.s.greens)), mc.s.greens)
+            
+            gperm = PseudoBlockArray(permute_greens(mc.s.greens), [N,N,N,N], [N,N,N,N])
+            g = PseudoBlockArray(mc.s.greens, [N,N,N,N], [N,N,N,N])
+                
+            f = () -> begin
+                for j in (xu, yd, xd, yu)
+                    for i in (xu, yd, xd, yu)
+                        isapprox(getblock(gperm, i, j), getblock(g, flvtrafo[i], flvtrafo[j])) || return false
+                    end
+                end
+                return true
+            end
+            @test f()
             
             
+            # FFT
+            @test isapprox(ifft_greens(mc, fft_greens(mc, mc.s.greens; fftshift=false); ifftshift=false), mc.s.greens)
+            @test isapprox(ifft_greens(mc, fft_greens(mc, mc.s.greens; fftshift=true); ifftshift=true), mc.s.greens)
+            
+            gk = fft_greens(mc, mc.s.greens)
+            @test isapprox(gk, load("data/O3.jld", "greens_fft"))
+            
+            ks = [0.0, 0.392699, 0.785398, 1.1781, 1.5708, 1.9635, 2.35619, 2.74889, -3.14159, -2.74889, -2.35619, -1.9635, -1.5708, -1.1781, -0.785398, -0.392699]
+            @test isapprox(fftmomenta(mc), ks, atol=1e-4)
+            @test isapprox(fftmomenta(mc; fftshift=true), fftshift(ks), atol=1e-4)
         end
     end
 

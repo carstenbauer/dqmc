@@ -30,6 +30,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 [extras]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 
 [targets]
-test = ["Test", "Arpack"]
+test = ["Test", "Arpack", "BlockArrays"]
