@@ -1,5 +1,22 @@
 @testset "Boson measurements" begin
-    # TODO
+    copyto!(mc.p.hsfield, randconf)
+
+    @test isapprox(measure_chi_dynamic(mc.p.hsfield), load("data/O3.jld", "chi_dyn"))
+    @test isapprox(measure_chi_static(mc.p.hsfield), 12.420575691388407)
+    @test all(isapprox.(measure_binder_factors(mc.p.hsfield), (0.7762859807117749, 0.6026199238496421)))
+    a,b = measure_op(mc.p.hsfield)
+    @test isapprox(a, 0.5080018386458331)
+    @test isapprox(b, [0.514548, 0.536541, 0.472916], atol=1e-4)
+
+    qy, qx, ws = get_momenta_and_frequencies(mc)
+    @test qy == qx
+    @test isapprox(qy, [0.0, 1.5708, 3.14159], atol=1e-4)
+    @test isapprox(ws, [0.0, 6.28319, 12.5664, 18.8496, 25.1327, 31.4159], atol=1e-4)
+
+    qy, qx, ws = get_momenta_and_frequencies(mc.p.hsfield)
+    @test qy == qx
+    @test isapprox(qy, [0.0, 1.5708, 3.14159], atol=1e-4)
+    @test isapprox(ws, [0.0, 6.28319, 12.5664, 18.8496, 25.1327, 31.4159], atol=1e-4)
 end
 
 
