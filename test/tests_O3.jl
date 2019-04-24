@@ -24,6 +24,7 @@ using JLD, LinearAlgebra, SparseArrays
 
 # set up minimal O3 simulation
 mc = mc_from_inxml("parameters/O3_generic_small_system.in.xml", randconf)
+mc_odd_L = mc_from_inxml("parameters/O3_odd_L_small_system.in.xml", load("data/O3.jld", "randconf_odd_L"))
 mc_nob = mc_from_inxml("parameters/O3_no_bfield_small_system.in.xml", randconf)
 mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.xml", randconf)
 # set to nothing at the end of this file to trigger GC
@@ -240,26 +241,54 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
 
 
     @testset "slice matrices" begin
-        @test isapprox(slice_matrix(mc, 3, 1.), load("data/O3.jld", "Bplus"))
-        @test isapprox(slice_matrix(mc, 3, -1.), load("data/O3.jld", "Bminus"))
+        init!(mc)
+        init!(mc_nob_nochkr)
+        init!(mc_odd_L)
+        
+        get_mc_and_suffix = (chkr) -> begin
+            if chkr === CBAssaad
+                return mc, ""
+            elseif chkr === CBFalse
+                return mc_nob_nochkr, "_CBFalse"
+            else
+                return mc_odd_L, "_CBGeneric"
+            end
+        end
 
-        A = rand!(similar(mc.s.greens))
-        Aorig = copy(A)
-        multiply_B_left!(mc, 3, A)
-        multiply_B_inv_left!(mc, 3, A)
-        @test isapprox(A, Aorig)
-        multiply_B_right!(mc, 3, A)
-        multiply_B_inv_right!(mc, 3, A)
-        @test isapprox(A, Aorig)
+        for chkr in [CBAssaad, CBFalse, CBGeneric]
+            mc, suffix = get_mc_and_suffix(chkr)
 
-        A = Matrix{geltype(mc)}(I, size(mc.s.greens)...)
-        Aorig = copy(A)
-        multiply_B_left!(mc, 3, A)
-        multiply_B_inv_right!(mc, 3, A)
-        @test isapprox(A, Aorig)
-        multiply_B_right!(mc, 3, A)
-        multiply_B_inv_left!(mc, 3, A)
-        @test isapprox(A, Aorig)
+            B = slice_matrix(mc, 3, 1.)
+            Binv = slice_matrix(mc, 3, -1.)
+            @test isapprox(B, load("data/O3.jld", "Bplus"*suffix))
+            @test isapprox(Binv, load("data/O3.jld", "Bminus"*suffix))
+
+            # multiply_daggered_B_left!
+            A = rand!(similar(mc.s.greens))
+            Ares = adjoint(B) * A
+            multiply_daggered_B_left!(mc, 3, A)
+            @test isapprox(A, Ares)
+
+            # Binv * B * A == A and A * B * Binv == A
+            A = rand!(similar(mc.s.greens))
+            Aorig = copy(A)
+            multiply_B_left!(mc, 3, A)
+            multiply_B_inv_left!(mc, 3, A)
+            @test isapprox(A, Aorig)
+            multiply_B_right!(mc, 3, A)
+            multiply_B_inv_right!(mc, 3, A)
+            @test isapprox(A, Aorig)
+
+            # B * A * Binv == A and Binv * A * B == A
+            A = Matrix{geltype(mc)}(I, size(mc.s.greens)...)
+            Aorig = copy(A)
+            multiply_B_left!(mc, 3, A)
+            multiply_B_inv_right!(mc, 3, A)
+            @test isapprox(A, Aorig)
+            multiply_B_right!(mc, 3, A)
+            multiply_B_inv_left!(mc, 3, A)
+            @test isapprox(A, Aorig)
+        end
     end
 
 
@@ -281,6 +310,7 @@ end # O3 model
 
 
 mc = nothing
+mc_odd_L = nothing
 mc_nob = nothing
 mc_nob_nochkr = nothing
 

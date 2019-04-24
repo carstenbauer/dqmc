@@ -4,7 +4,7 @@
 function slice_matrix(mc::AbstractDQMC, slice::Int, power::Float64=1.)
   a = mc.a
 
-  res = Matrix{heltype(mc)}(I, mc.p.flv*mc.l.sites, mc.p.flv*mc.l.sites)
+  res = Matrix{geltype(mc)}(I, mc.p.flv*mc.l.sites, mc.p.flv*mc.l.sites)
 
   @mytimeit a.to "slice_matrix" begin
   if power > 0
