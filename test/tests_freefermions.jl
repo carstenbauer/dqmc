@@ -85,6 +85,7 @@ function perform_ed_k_space(; L::Integer = 4, beta::Float64 = 8.)
     obs["greens"] = real(g) # Full (4xN, 4xN) real-space Green's function
 
 
+
     # TDGF
     taus = collect(0.0:0.1:beta)[1:end-1]
 
@@ -95,7 +96,10 @@ function perform_ed_k_space(; L::Integer = 4, beta::Float64 = 8.)
     obs["Gt0"] = real.(ifft_greens.(gt0_k; ifftshift=true, flv=2));
     
     # G0t
-    # TODO: TDGF_k_space_G0t
+    g0t_k_x = [TDGF_k_space(params_x, L, beta, tau; G0t=true) for tau in taus]
+    g0t_k_y = [TDGF_k_space(params_y, L, beta, tau; G0t=true) for tau in taus]
+    g0t_k = concat_greens_k_space.(g0t_k_x, g0t_k_y)
+    obs["G0t"] = real.(ifft_greens.(g0t_k; ifftshift=true, flv=2));
 
     return obs
 end
@@ -148,6 +152,7 @@ end
     allocate_tdgfs!(mc_edk)
     calc_tdgfs!(mc_edk)
     
+    # Gt0
     f = () -> begin
         for i in 1:mc_edk.p.slices
             isapprox(mc_edk.s.meas.Gt0[i], edk["Gt0"][i]) || return false
@@ -156,14 +161,14 @@ end
     end
     @test f()
   
-    # TODO: G0t
-#     f = () -> begin
-#         for i in 1:mc_edk.p.slices
-#             isapprox(mc_edk.s.meas.G0t[i], edk["G0t"][i]) || return false
-#         end
-#         return true
-#     end
-#     @test_broken f()
+    # G0t
+    f = () -> begin
+        for i in 1:mc_edk.p.slices
+            isapprox(mc_edk.s.meas.G0t[i], edk["G0t"][i]) || return false
+        end
+        return true
+    end
+    @test f()
 end
 
 
