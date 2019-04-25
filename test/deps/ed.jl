@@ -340,11 +340,40 @@ function generate_H_SDW(params, ns, cup, cdn)
     return H
 end
 
-
-
-
-
+using BlockArrays
 function generate_H_SDW_spbasis(params, ns, c)
+    txh = params["txh"]
+    txv = params["txv"]
+    tyh = params["tyh"]
+    tyv = params["tyv"]
+    mu = params["mu"]
+
+    p = copy(params)
+    p["th"] = txh
+    p["tv"] = txv
+    p["mu"] = mu
+    H1 = generate_H_SDW_spbasis_single_flavor(p, ns, c)
+
+    p["th"] = tyh
+    p["tv"] = tyv
+    p["mu"] = mu
+    H2 = generate_H_SDW_spbasis_single_flavor(p, ns, c)
+
+    L = Int(sqrt(ns))
+    N = L^2
+
+    H = BlockArray(zeros(4*N, 4*N), [N,N,N,N], [N,N,N,N]) # xup, yup, xdown, ydown
+    setblock!(H, H1, 1, 1)
+    setblock!(H, H2, 2, 2)
+    setblock!(H, H1, 3, 3)
+    setblock!(H, H2, 4, 4)
+    setblock!(H, zeros(N,N), 1, 2)
+    setblock!(H, zeros(N,N), 2, 1)
+    Matrix(H)
+end
+
+
+function generate_H_SDW_spbasis_single_flavor(params, ns, c)
     th = params["th"]
     tv = params["tv"]
     mu = params["mu"]
@@ -375,8 +404,22 @@ function generate_H_SDW_spbasis(params, ns, c)
     end
 
     @assert ishermitian(H)
-    return H
+    return Matrix(H[2:end, 2:end]) # cut off all zeros (no particles) state
 end
+
+
+function ϵ(params, ky, kx)
+    th = params["th"]
+    tv = params["tv"]
+    mu = params["mu"]
+    
+    gamma = -2*th*cos(kx) - 2*tv*cos(ky)    
+    ϵ = gamma - mu
+end
+
+generate_H_SDW_k_space_single_flavor(params, ky, kx) = ϵ(params, ky, kx) # H is diagonal in k-space
+
+
 
 
 
@@ -526,6 +569,65 @@ function GF(cs, evecs, evals, beta)
 end
 
 """
+Calculate GF directly from single-particle basis eigenvalue decomposition
+via (stabilized) version of G_ij = [I / (I + e^(-βH)]_ij.
+
+The result matches the output of function GF above when calculated from full basis.
+"""
+function GF_free_spbasis(evals, evecs, beta)
+    U = evecs
+    D = exp.(-beta .* evals)
+    Vd = copy(U')
+    
+    inv_one_plus_udv_scalettar(U,D,Vd)
+end
+
+
+GF_element_k_space(ϵ, beta) = 1 / (1 + exp(-beta * ϵ))
+
+function GF_k_space(params, L, beta)
+    # momentum grid
+    kxs = kys = LinRange(-pi, pi, L+1)[1:end-1]
+    nk = length(kxs)
+
+    gk = zeros(Float64, nk, nk)
+
+    for j in 1:nk
+        for i in 1:nk
+            E = ϵ(params, kys[i], kxs[j])
+            gk[i,j] = GF_element_k_space(E, beta)
+        end 
+    end
+    gk
+end
+
+
+
+TDGF_element_k_space(ϵ, beta, tau) = exp(-tau * ϵ) / (1 + exp(-beta * ϵ))
+TDGF_element_k_space_G0t(ϵ, beta, tau) = -exp(-tau * ϵ) / (1 + exp(-beta * ϵ))
+
+function TDGF_k_space(params, L, beta, tau; G0t=false)
+    kxs = kys = LinRange(-pi, pi, L+1)[1:end-1]
+    nk = length(kxs)
+
+    gk = zeros(Float64, nk, nk)
+
+    for j in 1:nk
+        for i in 1:nk
+            E = ϵ(params, kys[i], kxs[j])
+            if !G0t
+                gk[i,j] = TDGF_element_k_space(E, beta, tau)
+            else
+                gk[i,j] = TDGF_element_k_space_G0t(E, beta, tau)
+            end
+        end 
+    end
+    gk
+end
+
+
+
+"""
 Calculates G(τ, 0)
 """
 function TDGF(cs, tau, evecs, evals, beta)
@@ -536,6 +638,36 @@ function TDGF(cs, tau, evecs, evals, beta)
         end
     end
     return tdgf
+end
+
+
+
+"""
+Calculates G(τ,0) as G_ij = [e^(-τH) * (I / (I + e^(-βH))]_ij (the multiplication with e^(-τH) is not stabilized)
+"""
+function TDGF_free_spbasis_naive(evals, evecs, beta, tau)
+    @warn "This calculation isn't stabilized and might lead to wrong results! Use `TDGF_free_spbasis` instead."
+    nom = evecs * (Diagonal(exp.(-tau .* evals)) * evecs')
+    GF_free_spbasis(evals, evecs, beta) * nom
+end
+
+
+"""
+Calculates G(τ,0) as G_ij = [e^(-τH) / (I + e^(-βH)]_ij = [I / {e^(τH) + e^((τ-β)H)}]_ij
+
+Stabilized through inv_sum_udvs.
+"""
+function TDGF_free_spbasis(evals, evecs, beta, tau)
+    Ua = evecs
+    Da = exp.(tau .* evals)
+    Vda = copy(Ua')
+    
+    Ub = evecs
+    Db = exp.((tau-beta) .* evals)
+    Vdb = copy(Ub')
+    
+    U, D, Vd = inv_sum_udvs(Ua,Da,Vda, Ub,Db,Vdb)
+    U * Diagonal(D) * Vd
 end
 
 # using PyCall
@@ -576,6 +708,108 @@ function einsum_explicit(u1,A_trans,u2,B_trans)
     end
     s
 end
+
+
+
+function siteidx(L,N,sql,x,y)
+  xpbc = mod1(x, L)
+  ypbc = mod1(y, L)
+  sql[ypbc, xpbc] # to linear idx
+end
+
+(@isdefined UP) || (const UP, DOWN = 0,1)
+(@isdefined X) || (const X, Y = 0,1)
+getop(cs, i, band, spin) = cs[spin*8 + band*4 + i]
+
+
+"""
+Calculate ETPC from real-space ED -> etpc_minus, etpc_plus
+"""
+function etpc(cs, evecs, evals, beta)
+    L = 2
+    N = 4
+    sql = reshape(1:N,L,L)
+
+    pc_minus = zeros(L,L)
+    pc_plus = zeros(L,L)
+
+    for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+        for x0 in 1:L, y0 in 1:L # r0 (origin)
+            ri = siteidx(L,N,sql, x0+x, y0+y)
+            r0 = siteidx(L,N,sql, x0, y0)
+
+            op1 = getop(cs, ri, X, DOWN) * getop(cs, ri, X, UP) * getop(cs, r0, X, UP)' * getop(cs, r0, X, DOWN)'
+            op2 = getop(cs, ri, X, DOWN) * getop(cs, ri, X, UP) * getop(cs, r0, Y, UP)' * getop(cs, r0, Y, DOWN)'
+            op3 = getop(cs, ri, Y, DOWN) * getop(cs, ri, Y, UP) * getop(cs, r0, X, UP)' * getop(cs, r0, X, DOWN)'
+            op4 = getop(cs, ri, Y, DOWN) * getop(cs, ri, Y, UP) * getop(cs, r0, Y, UP)' * getop(cs, r0, Y, DOWN)'
+
+            pc_minus[y+1, x+1] += EV(op1, evecs, evals, beta)
+            pc_minus[y+1, x+1] -= EV(op2, evecs, evals, beta)
+            pc_minus[y+1, x+1] -= EV(op3, evecs, evals, beta)
+            pc_minus[y+1, x+1] += EV(op4, evecs, evals, beta)
+            
+            pc_plus[y+1, x+1] += EV(op1, evecs, evals, beta)
+            pc_plus[y+1, x+1] += EV(op2, evecs, evals, beta)
+            pc_plus[y+1, x+1] += EV(op3, evecs, evals, beta)
+            pc_plus[y+1, x+1] += EV(op4, evecs, evals, beta)
+        end
+    end
+
+    pc_minus ./=N
+    pc_plus ./=N
+
+    return pc_minus, pc_plus
+end
+
+
+"""
+Calculate ETCDC from real-space ED -> etcdc_minus, etcdc_plus
+"""
+function etcdc(cs, evecs, evals, beta)
+    L = 2
+    N = 4
+    sql = reshape(1:N,L,L)
+
+    cdc_minus = zeros(L,L)
+    cdc_plus = zeros(L,L)
+
+    for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+        for s1 in (UP, DOWN), s2 in (UP, DOWN)
+            for x0 in 1:L, y0 in 1:L # r0 (origin)
+                ri = siteidx(L,N,sql, x0+x, y0+y)
+                r0 = siteidx(L,N,sql, x0, y0)
+
+                op1 = getop(cs, ri, X, s1)' * getop(cs, ri, X, s1) * getop(cs, r0, X, s2)' * getop(cs, r0, X, s2)
+                op2 = getop(cs, ri, X, s1)' * getop(cs, ri, X, s1) * getop(cs, r0, Y, s2)' * getop(cs, r0, Y, s2)
+                op3 = getop(cs, ri, Y, s1)' * getop(cs, ri, Y, s1) * getop(cs, r0, X, s2)' * getop(cs, r0, X, s2)
+                op4 = getop(cs, ri, Y, s1)' * getop(cs, ri, Y, s1) * getop(cs, r0, Y, s2)' * getop(cs, r0, Y, s2)
+                
+                cdc_minus[y+1, x+1] += EV(op1, evecs, evals, beta)
+                cdc_minus[y+1, x+1] -= EV(op2, evecs, evals, beta)
+                cdc_minus[y+1, x+1] -= EV(op3, evecs, evals, beta)
+                cdc_minus[y+1, x+1] += EV(op4, evecs, evals, beta)
+                
+                cdc_plus[y+1, x+1] += EV(op1, evecs, evals, beta)
+                cdc_plus[y+1, x+1] += EV(op2, evecs, evals, beta)
+                cdc_plus[y+1, x+1] += EV(op3, evecs, evals, beta)
+                cdc_plus[y+1, x+1] += EV(op4, evecs, evals, beta)
+            end
+        end
+    end
+
+    cdc_minus ./=N
+    cdc_plus ./=N
+
+    return cdc_minus, cdc_plus
+end
+
+
+
+
+
+
+
+
 
 
 
