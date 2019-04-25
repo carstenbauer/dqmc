@@ -1237,14 +1237,8 @@ end
 function calc_tdgfs!(mc)
   G = geltype(mc)
   M = mc.p.slices
-  N = mc.l.sites
-  flv = mc.p.flv
-  Nflv = N * flv
   safe_mult = mc.p.safe_mult
-  eye_full = mc.s.eye_full
-  ones_vec = mc.s.ones_vec
-  nranges = length(mc.s.ranges)
-
+  
   Gt0 = mc.s.meas.Gt0
   G0t = mc.s.meas.G0t
 
@@ -1326,10 +1320,7 @@ function calc_Bchain_udts!(mc::AbstractDQMC, u_stack, d_stack, t_stack; invert::
   G = geltype(mc)
   flv = mc.p.flv
   N = mc.l.sites
-  nranges= length(mc.s.ranges)
   curr_U_or_T = mc.s.curr_U
-  eye_full = mc.s.eye_full
-  ones_vec = mc.s.ones_vec
   ranges = mc.s.ranges
 
   rightmult = false
@@ -1344,7 +1335,7 @@ function calc_Bchain_udts!(mc::AbstractDQMC, u_stack, d_stack, t_stack; invert::
   @inbounds for (i, rngidx) in enumerate(rng)
 
     if i == 1
-      copyto!(curr_U_or_T, eye_full)
+      copyto!(curr_U_or_T, I)
     else
       if !rightmult
         copyto!(curr_U_or_T, u_stack[i-1])
@@ -1389,9 +1380,9 @@ function calc_Bchain_udts!(mc::AbstractDQMC, u_stack, d_stack, t_stack; invert::
 
     if i == 1
       if !rightmult
-        mul!(t_stack[i], T, eye_full)
+        mul!(t_stack[i], T, I)
       else
-        mul!(u_stack[i], eye_full, U)
+        mul!(u_stack[i], I, U)
       end
     else
       if !rightmult
@@ -1445,13 +1436,13 @@ function calc_tdgf_direct(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe
   if slice != 1
     Ul, Dl, Tl = calc_Bchain_inv(mc, 1, slice-1, safe_mult)
   else
-    Ul, Dl, Tl = mc.s.eye_full, mc.s.ones_vec, mc.s.eye_full
+    Ul, Dl, Tl = I, I, I
   end
 
   if slice != mc.p.slices
     Ur, Dr, Tr = calc_Bchain(mc, slice, mc.p.slices, safe_mult)
   else
-    Ur, Dr, Tr = mc.s.eye_full, mc.s.ones_vec, mc.s.eye_full
+    Ur, Dr, Tr = I, I, I
   end
 
   # time displace
