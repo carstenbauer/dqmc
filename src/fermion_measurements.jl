@@ -152,13 +152,12 @@ ifft_greens(mc::AbstractDQMC, gk::AbstractMatrix; ifftshift=false) = ifft_greens
 
 
 """
-    fftmomenta(L; fftshift=false)
+    fftmomenta(L; fftshift=false) -> qs (= qxs = qys)
 
 Returns momenta of a finite size system (Brillouin zone discretization).
 
 If `fftshift==true` the momenta are shifted such that k=0 (Γ point) is centered.
-
-The momenta are those of the output of `fft_greens`.
+In this case, the output is identical to `collect(range(-pi, pi, length=7))[1:end-1]`.
 """
 function fftmomenta(L::Int; fftshift=false)
   qs = 2*pi*fftfreq(L) # 2*pi because fftfreq returns linear momenta
@@ -170,8 +169,7 @@ function fftmomenta(L::Int; fftshift=false)
   return qs
 end
 
-
-fftmomenta(mc::AbstractDQMC; kwargs...) = fftmomenta(mc.l.sites; kwargs...)
+fftmomenta(mc::AbstractDQMC; kwargs...) = fftmomenta(mc.p.L; kwargs...)
 
 
 
@@ -783,7 +781,8 @@ function zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{S}, 
   T = log(mc.l.hopping_matrix_exp)
   T .*= -2 / mc.p.delta_tau
   # Check: We set tij but in the action/hamiltonian we have -tij.
-  # If we really want tij add another * (-1).
+  # If we really want tij add another * (-1)
+  # (this doesn't seem to matter, which makes sense as tijs come in "pairs")
 
 
   @inbounds for tau in 1:M
@@ -849,9 +848,25 @@ end
 
 
 
+# -------------------------------------------------------
+#  Superfluid density
+# -------------------------------------------------------
 
+"""
+    sfdensity(mc, zfccc=mc.s.meas.zfccc)
 
+Calculate the superfluid density from zero-frequency
+current-current correlations `zfccc`.
+"""
+function sfdensity(mc, zfccc=mc.s.meas.zfccc)
+  Λ = zfccc
 
+  # K = similar(Λ)
+  # @. K = 1/4 * (Λ[1,2] - Λ) # qy = 0, qx = 2π/L
+  # ρs = K[2,1] # qx = 0, qy = 2π/L
+  
+  ρs = 1/4 * (real(Λ[1,2]) - real(Λ[2,1]))
+end
 
 
 

@@ -115,6 +115,7 @@ end
 
         @testset "Permute and FFT Greens" begin
             N = mc.l.sites
+            L = mc.p.L
             xu, yd, xd, yu = 1, 2, 3, 4 # definition = old order
 
             flvtrafo = Dict{Int64, Int64}(xu => xu, yd => yu, xd => xd, yu => yd)
@@ -142,9 +143,12 @@ end
             gk = fft_greens(mc, mc.s.greens)
             @test isapprox(gk, load("data/O3.jld", "greens_fft"))
             
-            ks = [0.0, 0.392699, 0.785398, 1.1781, 1.5708, 1.9635, 2.35619, 2.74889, -3.14159, -2.74889, -2.35619, -1.9635, -1.5708, -1.1781, -0.785398, -0.392699]
-            @test isapprox(fftmomenta(mc), ks, atol=1e-4)
-            @test isapprox(fftmomenta(mc; fftshift=true), fftshift(ks), atol=1e-4)
+            qs = collect(range(-pi, pi, length=L+1))[1:end-1]
+            qs7 = [-2.6927937030769655, -1.7951958020513104, -0.8975979010256552, 0.0, 0.8975979010256552, 1.7951958020513104, 2.6927937030769655]
+            @test all(isapprox.(fftmomenta(7; fftshift=true), qs7))
+            @test all(isapprox.(fftmomenta(mc; fftshift=true), qs))
+            @test all(isapprox.(fftmomenta(7; fftshift=false), ifftshift(qs7)))
+            @test all(isapprox.(fftmomenta(mc; fftshift=false), ifftshift(qs)))
         end
     end
 
