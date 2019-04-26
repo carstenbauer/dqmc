@@ -2,6 +2,9 @@ using SparseArrays, LinearAlgebra, Arpack
 include("deps/ed.jl")
 
 
+# -----------------------------------------------------
+#              Real-space ED (free)
+# -----------------------------------------------------
 """
     perform_ed(beta = 8., nmax::Integer = 22) -> obs
 
@@ -54,6 +57,55 @@ function perform_ed(; beta::Float64 = 8., nmax::Integer = 22)
 end
 
 
+
+
+
+
+@testset "Compare to real-space ED (free)" begin
+    mc_ed = mc_from_inxml("parameters/free_L_2_B_8.in.xml")
+    ed = perform_ed(beta = 8.0)
+
+    L, N = 2, 4
+    flv = 2
+
+    # ETGF must be real
+    @test isreal(mc_ed.s.greens)
+    g = real(mc_ed.s.greens)
+    
+    # Compare ETGF (not exactly because real-space ED isn't exact)
+    @test maximum(g - ed["greens"][1:8, 1:8]) < 1e-6
+    
+    @test abs(occupation(mc_ed)*N*flv - ed["occupation"]/2) < 1e-6
+    
+    # Compare ETPC
+    allocate_etpc!(mc_ed)
+    etpc!(mc_ed, g)
+    @test isapprox(mc_ed.s.meas.etpc_minus, ed["etpc_minus"], atol=1e-6)
+    @test isapprox(mc_ed.s.meas.etpc_plus, ed["etpc_plus"], atol=1e-6)
+    
+    # Compare ETCDC
+    allocate_etcdc!(mc_ed)
+    etcdc!(mc_ed, g)
+    @test isapprox(mc_ed.s.meas.etcdc_minus, ed["etcdc_minus"], atol=1e-6)
+    @test isapprox(mc_ed.s.meas.etcdc_plus, ed["etcdc_plus"], atol=1e-6)
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -----------------------------------------------------
+#              Momentum-space ED (free)
+# -----------------------------------------------------
 function concat_greens_k_space(gkx, gky)
     Gkx = Diagonal(gkx[:])
     Gky = Diagonal(gky[:])
@@ -68,7 +120,7 @@ Perform ED for L=2 system in momentum-space single mode basis.
 
 Returns a couple of observable `obs` as a `Dict{String, Any}`.
 """
-function perform_ed_k_space(; L::Integer = 4, beta::Float64 = 8.)
+function perform_ed_k_space(; L::Integer = 8, beta::Float64 = 10.)
     N = L^2
     params_x = Dict("th" => 1.0, "tv" => 0.5, "mu" => -0.5)
     params_y = Dict("th" => -0.5, "tv" => -1.0, "mu" => -0.5)
@@ -106,69 +158,141 @@ end
 
 
 
-mc_ed = mc_from_inxml("parameters/free_L_2_B_8.in.xml")
-ed = perform_ed(beta = 8.0)
-
-mc_edk = mc_from_inxml("parameters/free_L_4_B_10.in.xml")
-edk = perform_ed_k_space(L = 4, beta = 10.)
 
 
-@testset "Compare to real-space ED" begin
-    L, N = 2, 4
-    flv = 2
-
-    # ETGF must be real
-    @test isreal(mc_ed.s.greens)
-    g = real(mc_ed.s.greens)
-    
-    # Compare ETGF (not exactly because real-space ED isn't exact)
-    @test maximum(g - ed["greens"][1:8, 1:8]) < 1e-6
-    
-    @test abs(occupation(mc_ed)*N*flv - ed["occupation"]/2) < 1e-6
-    
-    # Compare ETPC
-    allocate_etpc!(mc_ed)
-    etpc!(mc_ed, g)
-    @test isapprox(mc_ed.s.meas.etpc_minus, ed["etpc_minus"], atol=1e-6)
-    @test isapprox(mc_ed.s.meas.etpc_plus, ed["etpc_plus"], atol=1e-6)
-    
-    # Compare ETCDC
-    allocate_etcdc!(mc_ed)
-    etcdc!(mc_ed, g)
-    @test isapprox(mc_ed.s.meas.etcdc_minus, ed["etcdc_minus"], atol=1e-6)
-    @test isapprox(mc_ed.s.meas.etcdc_plus, ed["etcdc_plus"], atol=1e-6)
-end
 
 
-@testset "Compare to momentum-space ED" begin
+
+
+@testset "Compare to momentum-space ED (free)" begin
+    mc_edk = mc_from_inxml("parameters/free_L_8_B_10.in.xml")
+    edk = perform_ed_k_space(L = 8, beta = 10.)
+
     L = mc_edk.p.L
     N = mc_edk.l.sites
+    M = mc_edk.p.slices
 
-    # ETGF
-    @test isapprox(mc_edk.s.greens, edk["greens"])
-    
-    
-    # TDGFs: Gt0, G0t
+    # Calculate TDGFs: Gt0, G0t
     allocate_tdgfs!(mc_edk)
     calc_tdgfs!(mc_edk)
+    Gt0 = mc_edk.s.meas.Gt0
+    G0t = mc_edk.s.meas.G0t
+
     
-    # Gt0
-    f = () -> begin
-        for i in 1:mc_edk.p.slices
-            isapprox(mc_edk.s.meas.Gt0[i], edk["Gt0"][i]) || return false
-        end
-        return true
+    @testset "ETGF" begin
+        # ETGF
+        @test isapprox(mc_edk.s.greens, edk["greens"])
     end
-    @test f()
-  
-    # G0t
-    f = () -> begin
-        for i in 1:mc_edk.p.slices
-            isapprox(mc_edk.s.meas.G0t[i], edk["G0t"][i]) || return false
+
+
+    @testset "TDGF" begin
+        # --------------- DQMC self-consistency checks -----------
+        # TDGF == ETGF consistency
+        @test isapprox(Gt0[1], mc_edk.s.greens)
+
+        # TDGF: tau = 0 difference btw Gt0 and G0t
+        @test isapprox(Gt0[1] - G0t[1], I)
+
+        # TDGF: G(tau,0) == -G(0,beta-tau)
+        should_be_zeros = Vector{Float64}(undef, length(2:M))
+        t = () -> begin
+            for (i, tau) in enumerate(2:M)
+                should_be_zero = maximum(Gt0[tau] + G0t[end-(tau-2)])
+                should_be_zeros[i] = should_be_zero
+                should_be_zero < 1e-10 || (return false)
+            end
+            return true
         end
-        return true
+        @test t()
+
+        # TDGF: Check realness of FFTs
+        @test maximum(maximum.(imag.(fft_greens.(Gt0, flv=2)))) < 1e-12
+        @test maximum(maximum.(imag.(fft_greens.(G0t, flv=2)))) < 1e-12
+        
+        
+        # --------------- DQMC vs ED -----------        
+        # Gt0
+        f = () -> begin
+            for i in 1:M
+                isapprox(Gt0[i], edk["Gt0"][i]) || return false
+            end
+            return true
+        end
+        @test f()
+      
+        # G0t
+        f = () -> begin
+            for i in 1:M
+                isapprox(G0t[i], edk["G0t"][i]) || return false
+            end
+            return true
+        end
+        @test f()
     end
-    @test f()
+
+
+
+    @testset "ETPC" begin
+        allocate_etpc!(mc_edk)
+        etpc!(mc_edk, mc_edk.s.greens)
+        Pm = mc_edk.s.meas.etpc_minus
+        Pp = mc_edk.s.meas.etpc_plus
+
+        @test isreal(Pm)
+        @test isreal(Pp)
+        @test is_reflection_symmetric(Pm)
+        @test is_reflection_symmetric(Pp)
+    end
+
+    @testset "ETCDC" begin
+        allocate_etcdc!(mc_edk)
+        etcdc!(mc_edk, mc_edk.s.greens)
+        Cm = mc_edk.s.meas.etcdc_minus
+        Cp = mc_edk.s.meas.etcdc_plus
+
+        @test isreal(Cm)
+        @test isreal(Cp)
+        @test is_reflection_symmetric(Cm)
+        @test is_reflection_symmetric(Cp)
+    end
+
+    @testset "ZFPC" begin
+        allocate_zfpc!(mc_edk)
+        zfpc!(mc_edk, Gt0)
+        Pm = mc_edk.s.meas.zfpc_minus
+        Pp = mc_edk.s.meas.zfpc_plus
+
+        @test isreal(Pm)
+        @test isreal(Pp)
+        @test is_reflection_symmetric(Pm)
+        @test is_reflection_symmetric(Pp)
+    end
+
+    @testset "ZFCDC" begin
+        allocate_zfcdc!(mc_edk)
+        zfcdc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
+        Cm = mc_edk.s.meas.zfcdc_minus
+        Cp = mc_edk.s.meas.zfcdc_plus
+
+        @test isreal(Cm)
+        @test isreal(Cp)
+        @test is_reflection_symmetric(Cm)
+        @test is_reflection_symmetric(Cp)
+    end
+
+
+
+    @testset "ZFCCC + Superfluid density" begin
+        allocate_zfccc!(mc_edk)
+        zfccc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
+        Λ = mc_edk.s.meas.zfccc
+
+        @test isreal(Λ)
+        @test is_reflection_symmetric(Λ)
+
+        @test isapprox(sfdensity(mc_edk, Λ), 0.2095159287034012) # This value is only self-consistent.
+    end
+    
 end
 
 

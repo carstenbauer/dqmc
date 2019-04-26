@@ -17,6 +17,7 @@ end
 Get column/row idx of particular flv ∈ (xu, yd, xd, yu) and site ∈ 1:N in Green's function.
 """
 @inline greensidx(N::Int, flv, site) = (flv-1)*N + site
+@inline greensidx(mc::AbstractDQMC, flv, site) = greensidx(mc.l.sites, flv, site)
 
 """
 Access full (4*N, 4*N) Green's function for any OPDIM efficiently.
@@ -170,6 +171,42 @@ function fftmomenta(L::Int; fftshift=false)
 end
 
 fftmomenta(mc::AbstractDQMC; kwargs...) = fftmomenta(mc.p.L; kwargs...)
+
+
+
+
+"""
+Checks whether a correlation function, like etpc_minus, is reflection symmetric.
+"""
+function is_reflection_symmetric(x; tol=1e-12)
+  @views inner = x[2:end, 2:end]
+
+  tmp = inner - reverse(inner, dims=1)
+  maximum(real(tmp)) < tol || return false
+  maximum(imag(tmp)) < tol || return false
+
+  tmp = inner - reverse(inner, dims=2)
+  maximum(real(tmp)) < tol || return false
+  maximum(imag(tmp)) < tol || return false
+
+  @views border_top = x[1,2:end]
+  tmp = border_top - reverse(border_top)
+  maximum(real(tmp)) < tol || return false
+  maximum(imag(tmp)) < tol || return false
+
+  @views border_left = x[2:end, 1]
+  tmp = border_left - reverse(border_left)
+  maximum(real(tmp)) < tol || return false
+  maximum(imag(tmp)) < tol || return false
+
+  return true
+end
+
+
+
+
+
+
 
 
 
@@ -808,10 +845,10 @@ function zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{S}, 
             ap0psp = greensidx(N, flv(a2, s2), r0p)
 
             # hoppings
-            tij = T[ais, ajs]
-            tji = T[ajs, ais]
-            t00p = T[ap0sp, ap0psp]
-            t0p0 = T[ap0psp, ap0sp]
+            tij = G(mc, ais, ajs, T)
+            tji = G(mc, ajs, ais, T)
+            t00p = G(mc, ap0sp, ap0psp, T)
+            t0p0 = G(mc, ap0psp, ap0sp, T)
 
 
             # Uncorrelated part

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <SIMULATION>
   <PARAMETERS>
-    <PARAMETER name="L">4</PARAMETER>
+    <PARAMETER name="L">8</PARAMETER>
 	<PARAMETER name="SLICES">100</PARAMETER>
     <PARAMETER name="DELTA_TAU">0.1</PARAMETER>
     <PARAMETER name="WARMUP">100</PARAMETER>
