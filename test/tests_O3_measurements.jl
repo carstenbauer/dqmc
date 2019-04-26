@@ -214,7 +214,7 @@ end
         @test maximum(imag(Λ)) < 1e-12
         @test is_reflection_symmetric(Λ, tol=2e-3) # is 2e-3 a problem?
 
-        @test isapprox(sfdensity(mc, Λ), 0.03754002597437336) # This value is only self-consistent.
+        @test isapprox(sfdensity(mc, Λ), -0.07010697381209852) # This value is only self-consistent.
     end
 
 end

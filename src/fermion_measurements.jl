@@ -896,13 +896,13 @@ Calculate the superfluid density from zero-frequency
 current-current correlations `zfccc`.
 """
 function sfdensity(mc, zfccc=mc.s.meas.zfccc)
-  Λ = zfccc
+  Λq = rfft(real(zfccc))
 
-  # K = similar(Λ)
-  # @. K = 1/4 * (Λ[1,2] - Λ) # qy = 0, qx = 2π/L
+  # K = similar(Λq)
+  # @. K = 1/4 * (Λq[1,2] - Λq) # qy = 0, qx = 2π/L
   # ρs = K[2,1] # qx = 0, qy = 2π/L
   
-  ρs = 1/4 * (real(Λ[1,2]) - real(Λ[2,1]))
+  ρs = 1/4 * (real(Λq[1,2]) - real(Λq[2,1]))
 end
 
 

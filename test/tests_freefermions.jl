@@ -290,7 +290,7 @@ end
         @test isreal(Λ)
         @test is_reflection_symmetric(Λ)
 
-        @test isapprox(sfdensity(mc_edk, Λ), 0.2095159287034012) # This value is only self-consistent.
+        @test isapprox(sfdensity(mc_edk, Λ), -0.5356976525573391) # This value is only self-consistent.
     end
     
 end
