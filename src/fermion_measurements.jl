@@ -1473,17 +1473,17 @@ function calc_tdgf_direct(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe
   if slice != 1
     Ul, Dl, Tl = calc_Bchain_inv(mc, 1, slice-1, safe_mult)
   else
-    Ul, Dl, Tl = I, I, I
+    Ul, Dl, Tl = mc.s.eye_full, mc.s.ones_vec, mc.s.eye_full
   end
 
   if slice != mc.p.slices
     Ur, Dr, Tr = calc_Bchain(mc, slice, mc.p.slices, safe_mult)
   else
-    Ur, Dr, Tr = I, I, I
+    Ur, Dr, Tr = mc.s.eye_full, mc.s.ones_vec, mc.s.eye_full
   end
 
   # time displace
-  if scalettar
+  if !scalettar
     U, D, T = inv_sum_udts(Ul, Dl, Tl, Ur, Dr, Tr)
   else
     U, D, T = inv_sum_udts_scalettar(Ul, Dl, Tl, Ur, Dr, Tr)

@@ -36,6 +36,7 @@ end
 
 
 @testset "Fermion measurements" begin
+    init!(mc)
 
     @testset "Helpers" begin
         @testset "Accessing Greens" begin
@@ -152,14 +153,74 @@ end
         end
     end
 
+    # @testset "Effective -> Actual GF" begin
+    #     # TODO
+    # end
+
+
+    # Calculate ETGF and logdet
+    g = effective_greens2greens(mc, mc.s.greens)
+    lgdet = calculate_logdet(mc)
+
+    # Calculate TDGFs
     allocate_tdgfs!(mc)
     calc_tdgfs!(mc)
     Gt0 = mc.s.meas.Gt0
     G0t = mc.s.meas.G0t
 
+
+    @testset "ETGF(s)" begin
+        gmeas = measure_greens(mc, mc.p.safe_mult, mc.s.current_slice);
+        gmeas2, lgdetmeas = measure_greens_and_logdet(mc, mc.p.safe_mult, mc.s.current_slice);
+
+        @test isapprox(g, gmeas)
+        @test isapprox(gmeas, gmeas2)
+        @test isapprox(lgdet, lgdetmeas)
+
+        # ETGFs at all time slices
+        a = calc_all_greens_explicit(mc);
+        b = calc_all_greens(mc);
+
+        @test maximum(maximum.(real.(a .- b))) < 1e-12
+        @test maximum(maximum.(imag.(a .- b))) < 1e-12
+    end
+
+
+    @testset "Occupation" begin
+        @test isapprox(occupation(mc, g), 0.4216, atol=1e-4)
+        @test all(isapprox.(occupations_flv(mc, g), 0.4216, atol=1e-4))
+    end
+
+
+    @testset "TDGFs" begin
+        @test isapprox(calc_tdgf_direct(mc, 1), Gt0[1])
+        # @test_broken isapprox(calc_tdgf_direct(mc, 4), Gt0[4])
+
+
+        check_unitarity = (u_stack) -> begin
+          for i in 1:length(u_stack)
+            U = u_stack[i]
+            !isapprox(U * adjoint(U), I) && (return false)
+          end
+          return true
+        end
+
+        @test check_unitarity(mc.s.meas.BT0Inv_u_stack)
+        @test check_unitarity(mc.s.meas.BBetaT_u_stack)
+        @test check_unitarity(mc.s.meas.BT0_u_stack)
+        @test check_unitarity(mc.s.meas.BBetaTInv_u_stack)
+
+        # TODO: Check stacks values?
+    end
+
+
+
     @testset "ETPC" begin
         allocate_etpc!(mc)
-        etpc!(mc, mc.s.greens)
+        @test mc.s.meas.etpc_minus == zero(mc.s.meas.etpc_minus)
+        @test mc.s.meas.etpc_plus == zero(mc.s.meas.etpc_plus)
+
+        etpc!(mc, g)
         Pm = mc.s.meas.etpc_minus
         Pp = mc.s.meas.etpc_plus
 
@@ -171,7 +232,10 @@ end
 
     @testset "ETCDC" begin
         allocate_etcdc!(mc)
-        etcdc!(mc, mc.s.greens)
+        @test mc.s.meas.etcdc_minus == zero(mc.s.meas.etcdc_minus)
+        @test mc.s.meas.etcdc_plus == zero(mc.s.meas.etcdc_plus)
+
+        etcdc!(mc, g)
         Cm = mc.s.meas.etcdc_minus
         Cp = mc.s.meas.etcdc_plus
 
@@ -183,6 +247,9 @@ end
 
     @testset "ZFPC" begin
         allocate_zfpc!(mc)
+        @test mc.s.meas.zfpc_minus == zero(mc.s.meas.zfpc_minus)
+        @test mc.s.meas.zfpc_plus == zero(mc.s.meas.zfpc_plus)
+
         zfpc!(mc, Gt0)
         Pm = mc.s.meas.zfpc_minus
         Pp = mc.s.meas.zfpc_plus
@@ -195,7 +262,10 @@ end
 
     @testset "ZFCDC" begin
         allocate_zfcdc!(mc)
-        zfcdc!(mc, mc.s.greens, Gt0, G0t)
+        @test mc.s.meas.zfcdc_minus == zero(mc.s.meas.zfcdc_minus)
+        @test mc.s.meas.zfcdc_plus == zero(mc.s.meas.zfcdc_plus)
+
+        zfcdc!(mc, g, Gt0, G0t)
         Cm = mc.s.meas.zfcdc_minus
         Cp = mc.s.meas.zfcdc_plus
 
@@ -208,14 +278,31 @@ end
 
     @testset "ZFCCC + Superfluid density" begin
         allocate_zfccc!(mc)
-        zfccc!(mc, mc.s.greens, Gt0, G0t)
+        @test mc.s.meas.zfccc == zero(mc.s.meas.zfccc)
+
+        zfccc!(mc, g, Gt0, G0t)
         Λ = mc.s.meas.zfccc
 
         @test maximum(imag(Λ)) < 1e-12
         @test is_reflection_symmetric(Λ, tol=2e-3) # is 2e-3 a problem?
 
-        @test isapprox(sfdensity(mc, Λ), -0.07010697381209852) # This value is only self-consistent.
+        @test isapprox(sfdensity(mc, Λ), -0.07187888915764207) # This value is only self-consistent.
     end
+
+
+    @test isnothing(deallocate_tdgfs_stacks!(mc))
+    @test length(mc.s.meas.BT0Inv_u_stack) == 0
+    @test length(mc.s.meas.BT0Inv_d_stack) == 0
+    @test length(mc.s.meas.BT0Inv_t_stack) == 0
+    @test length(mc.s.meas.BBetaT_u_stack) == 0
+    @test length(mc.s.meas.BBetaT_d_stack) == 0
+    @test length(mc.s.meas.BBetaT_t_stack) == 0
+    @test length(mc.s.meas.BT0_u_stack) == 0
+    @test length(mc.s.meas.BT0_d_stack) == 0
+    @test length(mc.s.meas.BT0_t_stack) == 0
+    @test length(mc.s.meas.BBetaTInv_u_stack) == 0
+    @test length(mc.s.meas.BBetaTInv_d_stack) == 0
+    @test length(mc.s.meas.BBetaTInv_t_stack) == 0
 
 end
 

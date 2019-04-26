@@ -68,11 +68,14 @@ end
 
 myrdiv!(dest, a, b) = copyto!(dest, adjoint(adjoint(b) \ adjoint(a)))
 
-LinearAlgebra.Diagonal(I::UniformScaling{T}) where T <: Number = one(T)
+LinearAlgebra.Diagonal(I::UniformScaling{T}) where T <: Number = I.λ
 
 
 
 function eye!(x)
+    @assert ndims(x) == 2
+    @assert size(x,1) == size(x,2)
+
     o = one(eltype(x))
     z = zero(eltype(x))
     

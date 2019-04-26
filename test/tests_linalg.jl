@@ -81,7 +81,26 @@ B_QR_T = load("data/linalg.jld", "B_QR_T")
         end
     end
 
+    @testset "Other" begin
+        # Diagonal(I)
+        @test Diagonal(I) == true
+        @test Diagonal(3*I) == 3
+        @test Diagonal(4.2*I) == 4.2
 
+        # eye!
+        x = rand(4,4)
+        eye!(x)
+        @test x == I
+
+        # Kronecker Delta
+        @test kd(1,3) == false
+        @test kd(1,1) == true
+        @test kd(1.2,1.3) == false
+        @test kd(1.2,1.2) == true
+        @test kd(1.,1) == true
+        @test kd(3+im*4, 3+im*4) == true
+        @test kd(3+im*4, 3+im*2) == false
+    end
 
     @testset "Safe multiply UDT and UDV" begin
         # UDT - calculating square of ill-conditioned slice matrix
