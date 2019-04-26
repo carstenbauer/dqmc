@@ -152,10 +152,70 @@ end
         end
     end
 
-    # TODO: ETGF
-    # TODO: ETPC etc.
+    allocate_tdgfs!(mc)
+    calc_tdgfs!(mc)
+    Gt0 = mc.s.meas.Gt0
+    G0t = mc.s.meas.G0t
 
-    
+    @testset "ETPC" begin
+        allocate_etpc!(mc)
+        etpc!(mc, mc.s.greens)
+        Pm = mc.s.meas.etpc_minus
+        Pp = mc.s.meas.etpc_plus
+
+        @test isreal(Pm)
+        @test isreal(Pp)
+        @test is_reflection_symmetric(Pm, tol=1e-3)
+        @test is_reflection_symmetric(Pp, tol=1e-3)
+    end
+
+    @testset "ETCDC" begin
+        allocate_etcdc!(mc)
+        etcdc!(mc, mc.s.greens)
+        Cm = mc.s.meas.etcdc_minus
+        Cp = mc.s.meas.etcdc_plus
+
+        @test maximum(imag(Cm)) < 1e-12
+        @test maximum(imag(Cp)) < 1e-12
+        @test is_reflection_symmetric(Cm, tol=1e-3)
+        @test is_reflection_symmetric(Cp, tol=1e-3)
+    end
+
+    @testset "ZFPC" begin
+        allocate_zfpc!(mc)
+        zfpc!(mc, Gt0)
+        Pm = mc.s.meas.zfpc_minus
+        Pp = mc.s.meas.zfpc_plus
+
+        @test isreal(Pm)
+        @test isreal(Pp)
+        @test is_reflection_symmetric(Pm, tol=1e-3)
+        @test is_reflection_symmetric(Pp, tol=1e-3)
+    end
+
+    @testset "ZFCDC" begin
+        allocate_zfcdc!(mc)
+        zfcdc!(mc, mc.s.greens, Gt0, G0t)
+        Cm = mc.s.meas.zfcdc_minus
+        Cp = mc.s.meas.zfcdc_plus
+
+        @test maximum(imag(Cm)) < 1e-12
+        @test maximum(imag(Cp)) < 1e-12
+        @test is_reflection_symmetric(Cm, tol=1e-3)
+        @test is_reflection_symmetric(Cp, tol=2e-3) # is 2e-3 a problem?
+    end
+
+
+    @testset "ZFCCC + Superfluid density" begin
+        allocate_zfccc!(mc)
+        zfccc!(mc, mc.s.greens, Gt0, G0t)
+        Λ = mc.s.meas.zfccc
+
+        @test maximum(imag(Λ)) < 1e-12
+        @test is_reflection_symmetric(Λ, tol=2e-3) # is 2e-3 a problem?
+
+        @test isapprox(sfdensity(mc, Λ), 0.03754002597437336) # This value is only self-consistent.
+    end
 
 end
 
