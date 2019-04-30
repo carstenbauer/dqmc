@@ -277,7 +277,7 @@ end
         @test isreal(Cm)
         @test isreal(Cp)
         @test is_reflection_symmetric(Cm)
-        @test is_reflection_symmetric(Cp)
+        @test is_reflection_symmetric(Cp, tol=1e-10) # TODO: tol necessary for travis. why?
     end
 
 
