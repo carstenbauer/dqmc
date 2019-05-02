@@ -1,4 +1,4 @@
-using SparseArrays, LinearAlgebra, Arpack
+using SparseArrays, LinearAlgebra, KrylovKit #Arpack
 include("deps/ed.jl")
 
 
@@ -28,7 +28,14 @@ function perform_ed(; beta::Float64 = 8., nmax::Integer = 22)
 
     H = generate_H_SDW(params, ns, cup, cdn);
 
-    evals, evecs, nconverged = eigs(H, nev=nmax+1, which=:SR); # eigenstates are columns of evecs
+    # ARPACK:
+    # evals, evecs, nconverged = eigs(H, nev=nmax+1, which=:SR); # eigenstates are columns of evecs
+
+    # KrylovKit:
+    r = eigsolve(H, nmax+1, :SR)
+    evecs = hcat(r[2]...)
+    evals = r[1]
+
     idcs = findall(x -> abs(x) < 1e-15, evecs)
     evecs[idcs] .= 0.;
 

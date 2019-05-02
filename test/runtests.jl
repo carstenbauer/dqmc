@@ -1,5 +1,5 @@
 println("Running tests on ", gethostname(), ".")
-using Test, Random, Arpack, BlockArrays
+using Test, Random, KrylovKit, BlockArrays
 include("../src/dqmc_framework.jl") # to be replaced by using DQMC or similar
 
 function mc_from_inxml(inxml::AbstractString)
