@@ -493,8 +493,8 @@ function set_walltimelimit!(p, start_time)
     p.walltimelimit = wtl2DateTime("9-23:30:00", start_time) # CHEOPS
     println("Set CHEOPS walltime limit, i.e. 9-23:30:00.")
   elseif occursin("jw", gethostname())
-    p.walltimelimit = wtl2DateTime("0-05:30:00", start_time) # JUWELS, was "0-23:30:00"
-    println("Set JUWELS walltime limit, i.e. 0-05:30:00.")
+    p.walltimelimit = wtl2DateTime("0-23:30:00", start_time) # JUWELS, was "0-23:30:00"
+    println("Set JUWELS walltime limit, i.e. 0-23:30:00.")
   end
 
   nothing
