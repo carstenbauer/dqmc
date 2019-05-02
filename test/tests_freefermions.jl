@@ -80,7 +80,7 @@ end
     g = real(mc_ed.s.greens)
     
     # Compare ETGF (not exactly because real-space ED isn't exact)
-    @test maximum(g - ed["greens"][1:8, 1:8]) < 1e-6
+    @test maximum(g - ed["greens"][1:8, 1:8]) < 1e-5
     
     @test abs(occupation(mc_ed)*N*flv - ed["occupation"]/2) < 1e-5
     
@@ -94,7 +94,7 @@ end
     allocate_etcdc!(mc_ed)
     etcdc!(mc_ed, g)
     @test isapprox(mc_ed.s.meas.etcdc_minus, ed["etcdc_minus"], atol=1e-5)
-    @test isapprox(mc_ed.s.meas.etcdc_plus, ed["etcdc_plus"], atol=1e-5)
+    @test isapprox(mc_ed.s.meas.etcdc_plus, ed["etcdc_plus"], atol=1e-4)
 end
 
 
