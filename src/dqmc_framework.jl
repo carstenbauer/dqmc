@@ -459,6 +459,7 @@ function Base.show(io::IO, mc::DQMC{C}) where C<:Checkerboard
   print(io, "DQMC of O($(mc.p.opdim)) model\n")
   print(io, "r = ", mc.p.r, ", λ = ", mc.p.lambda, ", c = ", mc.p.c, ", u = ", mc.p.u, "\n")
   print(io, "Beta: ", mc.p.beta, " (T ≈ $(round(1/mc.p.beta, digits=3)))", "\n")
+  print(io, "L: ", mc.p.L, " (N = ", mc.l.sites , ")\n")
   print(io, "Checkerboard: ", C, "\n")
   print(io, "B-field: ", mc.p.Bfield)
 end
