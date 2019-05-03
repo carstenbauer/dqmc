@@ -122,6 +122,11 @@ end
 @inline heltype(mc::DQMC{CB, G, H}) where {CB, G, H} = H
 @inline cbtype(mc::DQMC{CB, G, H}) where {CB, G, H} = CB
 
+"""
+Memory usage of the `AbstractDQMC` in MB.
+"""
+memory_usage(mc::AbstractDQMC) = round(Base.summarysize(mc) / 1024 / 1024, digits=1)
+
 
 
 # -------------------------------------------------------

@@ -854,12 +854,10 @@ function measure_zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
 
 
             # Uncorrelated part
-            # TODO: Check and add real() later
             Lambda[y+1, x+1] += (tij * G(mc, ajs, ais, Gtau) - tji * G(mc, ais, ajs, Gtau)) *
                                 (t00p * G(mc, ap0psp, ap0sp, G0) - t0p0 * G(mc, ap0sp, ap0psp, G0))
 
             # Correlated part
-            # TODO: Check and add real() later
             Lambda[y+1, x+1] += - tij * t00p * G(mc, ap0psp, ais, G0t) * G(mc, ajs, ap0sp, Gt0) +
                                 + tij * t0p0 * G(mc, ap0sp, ais, G0t) * G(mc, ajs, ap0psp, Gt0) +
                                 + tji * t00p * G(mc, ap0psp, ajs, G0t) * G(mc, ais, ap0sp, Gt0) +
@@ -1270,6 +1268,61 @@ function deallocate_tdgfs_stacks!(mc)
   println("Deallocated UDT stacks memory of TDGF measurement.")
   nothing
 end
+
+"""
+Returns the actual memory usage of fields related to `measure_tdgfs` (in MB).
+"""
+function memory_usage_tdgfs(mc)
+  s = x -> Base.summarysize(x) / 1024 / 1024 # size in MB
+  m = mc.s.meas
+
+  mem = 0.
+
+  mem += s(m.Gt0)
+  mem += s(m.G0t)
+
+  mem += s(m.BT0Inv_u_stack)
+  mem += s(m.BT0Inv_d_stack)
+  mem += s(m.BT0Inv_t_stack)
+  mem += s(m.BBetaT_u_stack)
+  mem += s(m.BBetaT_d_stack)
+  mem += s(m.BBetaT_t_stack)
+  mem += s(m.BT0_u_stack)
+  mem += s(m.BT0_d_stack)
+  mem += s(m.BT0_t_stack)
+  mem += s(m.BBetaTInv_u_stack)
+  mem += s(m.BBetaTInv_d_stack)
+  mem += s(m.BBetaTInv_t_stack)
+
+  return mem
+end
+
+
+"""
+    estimate_memory_usage_tdgfs(N, M; flv=4, safe_mult=10)
+
+Estimates the expected memory usage of fields related to `measure_tdgfs` (in MB).
+"""
+function estimate_memory_usage_tdgfs(L, beta; flv=4, safe_mult=10, delta_tau=0.1)
+  N = L^2
+  M = Int(beta / delta_tau)
+
+  gfmem = (N * flv)^2 * 128 / 8 # gfmem in bytes
+
+  mem = 2 * gfmem * M # Gt0, G0t
+  mem += 8 * gfmem * M / mc.p.safe_mult # u and t stacks
+  mem += 4 * (N * 64 / 8) # d_stack
+
+  return round(mem / 1024 / 1024, digits=1)
+end
+
+"""
+Estimates the expected memory usage of fields related to `measure_tdgfs` (in MB).
+"""
+estimate_memory_usage_tdgfs(mc) = estimate_memory_usage_tdgfs(mc.p.L, mc.p.beta;
+                                                                flv=mc.p.flv,
+                                                                safe_mult=mc.p.safe_mult,
+                                                                delta_tau=mc.p.delta_tau)
 
 
 # TODO: Comment!
