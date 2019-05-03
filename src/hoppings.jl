@@ -82,9 +82,11 @@ function init_hopping_matrix_exp(mc::AbstractDQMC)
   eTy_plus = exp(0.5 * p.delta_tau * Ty)
 
   if p.opdim == 3
+    l.hopping_matrix = cat(Tx, Ty, Tx, Ty, dims=(1,2))
     l.hopping_matrix_exp = cat(eTx_minus,eTy_minus,eTx_minus,eTy_minus, dims=(1,2))
     l.hopping_matrix_exp_inv = cat(eTx_plus,eTy_plus,eTx_plus,eTy_plus, dims=(1,2))
   else # O(1) and O(2)
+    l.hopping_matrix = cat(Tx, Ty, dims=(1,2))
     l.hopping_matrix_exp = cat(eTx_minus,eTy_minus, dims=(1,2))
     l.hopping_matrix_exp_inv = cat(eTx_plus,eTy_plus, dims=(1,2))
   end
@@ -239,9 +241,11 @@ function init_hopping_matrix_exp_Bfield(mc::AbstractDQMC)
   eT_plus = map(Ti -> exp(0.5 * p.delta_tau * Ti), T)
 
   if p.opdim == 3
+    l.hopping_matrix = cat(T[1,1], T[2,2], T[2,1], T[1,2], dims=(1,2))
     l.hopping_matrix_exp = cat(eT_minus[1,1], eT_minus[2,2], eT_minus[2,1], eT_minus[1,2], dims=(1,2))
     l.hopping_matrix_exp_inv = cat(eT_plus[1,1], eT_plus[2,2], eT_plus[2,1], eT_plus[1,2], dims=(1,2))
   else # O(1) and O(2)
+    l.hopping_matrix = cat(T[1,1], T[2,2], dims=(1,2))
     l.hopping_matrix_exp = cat(eT_minus[1,1], eT_minus[2,2], dims=(1,2))
     l.hopping_matrix_exp_inv = cat(eT_plus[1,1], eT_plus[2,2], dims=(1,2))
   end

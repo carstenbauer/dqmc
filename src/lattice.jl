@@ -17,6 +17,7 @@ mutable struct Lattice{H<:Number} # H = HoppingEltype
 
   peirls::Matrix{Matrix{Float64}} # phis and NOT exp(im*phi); cols = flavor, row = spin; each inner matrix: trg, src (linidx)
 
+  hopping_matrix::Matrix{H} # mu included
   hopping_matrix_exp::Matrix{H} # mu included
   hopping_matrix_exp_inv::Matrix{H}
 

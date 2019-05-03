@@ -798,6 +798,7 @@ function measure_zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
   N = mc.l.sites
   M = mc.p.slices
   Lambda = mc.s.meas.zfccc
+  T = mc.l.hopping_matrix
 
   fill!(Lambda, 0.0)
 
@@ -816,13 +817,12 @@ function measure_zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
     get_G0 = (tau) -> greens[1]
   end
 
-  # OPT: Get rid of this "hack" to get the hopping matrix
-  T = log(mc.l.hopping_matrix_exp)
-  T .*= -2 / mc.p.delta_tau
+  # We used to use this "hack" to get the hopping matrix
+  # T = log(mc.l.hopping_matrix_exp)
+  # T .*= -2 / mc.p.delta_tau
   # Check: We set tij but in the action/hamiltonian we have -tij.
   # If we really want tij add another * (-1)
   # (this doesn't seem to matter, which makes sense as tijs come in "pairs")
-
 
   @inbounds for tau in 1:M
     Gtau = get_Gtau(tau)
