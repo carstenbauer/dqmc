@@ -211,6 +211,9 @@ end
         @test check_unitarity(mc.s.meas.BBetaTInv_u_stack)
 
         # TODO: Check stacks values?
+
+        @test isapprox(estimate_memory_usage_tdgfs(mc), 1.8, atol=1e-1)
+        @test isapprox(memory_usage_tdgfs(mc), 1.8, atol=1e-1)
     end
 
 
