@@ -86,13 +86,13 @@ end
     
     # Compare ETPC
     allocate_etpc!(mc_ed)
-    etpc!(mc_ed, g)
+    measure_etpc!(mc_ed, g)
     @test isapprox(mc_ed.s.meas.etpc_minus, ed["etpc_minus"], atol=1e-5)
     @test isapprox(mc_ed.s.meas.etpc_plus, ed["etpc_plus"], atol=1e-5)
     
     # Compare ETCDC
     allocate_etcdc!(mc_ed)
-    etcdc!(mc_ed, g)
+    measure_etcdc!(mc_ed, g)
     @test isapprox(mc_ed.s.meas.etcdc_minus, ed["etcdc_minus"], atol=1e-5)
     @test isapprox(mc_ed.s.meas.etcdc_plus, ed["etcdc_plus"], atol=1e-4)
 end
@@ -181,7 +181,7 @@ end
 
     # Calculate TDGFs: Gt0, G0t
     allocate_tdgfs!(mc_edk)
-    calc_tdgfs!(mc_edk)
+    measure_tdgfs!(mc_edk)
     Gt0 = mc_edk.s.meas.Gt0
     G0t = mc_edk.s.meas.G0t
 
@@ -241,7 +241,7 @@ end
 
     @testset "ETPC" begin
         allocate_etpc!(mc_edk)
-        etpc!(mc_edk, mc_edk.s.greens)
+        measure_etpc!(mc_edk, mc_edk.s.greens)
         Pm = mc_edk.s.meas.etpc_minus
         Pp = mc_edk.s.meas.etpc_plus
 
@@ -253,7 +253,7 @@ end
 
     @testset "ETCDC" begin
         allocate_etcdc!(mc_edk)
-        etcdc!(mc_edk, mc_edk.s.greens)
+        measure_etcdc!(mc_edk, mc_edk.s.greens)
         Cm = mc_edk.s.meas.etcdc_minus
         Cp = mc_edk.s.meas.etcdc_plus
 
@@ -265,7 +265,7 @@ end
 
     @testset "ZFPC" begin
         allocate_zfpc!(mc_edk)
-        zfpc!(mc_edk, Gt0)
+        measure_zfpc!(mc_edk, Gt0)
         Pm = mc_edk.s.meas.zfpc_minus
         Pp = mc_edk.s.meas.zfpc_plus
 
@@ -277,7 +277,7 @@ end
 
     @testset "ZFCDC" begin
         allocate_zfcdc!(mc_edk)
-        zfcdc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
+        measure_zfcdc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
         Cm = mc_edk.s.meas.zfcdc_minus
         Cp = mc_edk.s.meas.zfcdc_plus
 
@@ -291,13 +291,13 @@ end
 
     @testset "ZFCCC + Superfluid density" begin
         allocate_zfccc!(mc_edk)
-        zfccc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
+        measure_zfccc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
         Λ = mc_edk.s.meas.zfccc
 
         @test isreal(Λ)
         @test is_reflection_symmetric(Λ)
 
-        @test isapprox(sfdensity(mc_edk, Λ), -0.5356976525573391) # This value is only self-consistent.
+        @test isapprox(measure_sfdensity(mc_edk, Λ), -0.5356976525573391) # This value is only self-consistent.
     end
     
 end

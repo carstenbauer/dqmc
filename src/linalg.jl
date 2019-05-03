@@ -28,7 +28,7 @@ function decompose_udt!(A::AbstractMatrix{C}, D) where C<:Number
     D[i] = abs(real(R[i,i]))
   end
 
-  # This (very!) strangely increases the runtime of calc_tdgfs! by a ton....
+  # This (very!) strangely increases the runtime of measure_tdgfs! by a ton....
   # @inbounds for i in diagind(R)
   #   R[i] = sign(real(R[i]))
   # end

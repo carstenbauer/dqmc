@@ -377,13 +377,13 @@ function measure_fermionic(mp, p, obs, conf, greens, mc, i)
 
     # etpc
     if :etpc_plus in keys(obs)
-        etpc!(mc, greens)
+        measure_etpc!(mc, greens)
         push!(obs[:etpc_plus], mc.s.meas.etpc_plus)
         push!(obs[:etpc_minus], mc.s.meas.etpc_minus)
     end
 
     if need_to_calc_tdgf(obs)
-      calc_tdgfs!(mc)
+      measure_tdgfs!(mc)
       GC.gc()
       Gt0 = mc.s.meas.Gt0
       G0t = mc.s.meas.G0t
@@ -397,7 +397,7 @@ function measure_fermionic(mp, p, obs, conf, greens, mc, i)
 
     # zfpc
     if :zfpc_plus in keys(obs)
-        zfpc!(mc, Gt0)
+        measure_zfpc!(mc, Gt0)
         push!(obs[:zfpc_plus], mc.s.meas.zfpc_plus)
         push!(obs[:zfpc_minus], mc.s.meas.zfpc_minus)
     end

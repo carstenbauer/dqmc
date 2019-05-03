@@ -242,6 +242,8 @@ end
 """
 Calculates (true i.e. not effective) equal-time Green's functions
 at every time slice, i.e. G(tau) for all tau in 1:M where M is # slices.
+
+This method is using the dqmc stack and its logic.
 """
 function measure_all_greens(mc::AbstractDQMC)
   etgfs = calc_all_greens(mc)
@@ -385,7 +387,7 @@ Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
+function measure_etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
   L = mc.p.L
   N = mc.l.sites
   Pm = mc.s.meas.etpc_minus # d-wave
@@ -452,17 +454,17 @@ end
 # """
 # FFT of ETPC, i.e. P(ky, kx)
 # """
-# etpc_k!(args...) = begin etpc!(args...); rfft(mc.s.meas.etpc, (1,2)); end
+# measure_etpc_k!(args...) = begin measure_etpc!(args...); rfft(mc.s.meas.etpc, (1,2)); end
 
 # """
 # P = Σ_r P(r), with P(r) from `etpc`.
 # """
-# etpc_uniform!(mc, η, greens) = begin etpc!(mc, η, greens); sum(mc.s.meas.etpc); end
+# measure_etpc_uniform!(mc, η, greens) = begin measure_etpc!(mc, η, greens); sum(mc.s.meas.etpc); end
 
 # """
 # P = P(q=0), with P(q)=fft(P(r)) from `etpc_k`. Slower than `etpc_uniform!`.
 # """
-# etpc_uniform_alternative!(mc, η, greens) = real(etpc_k!(mc, η, greens)[1,1])
+# measure_etpc_uniform_alternative!(mc, η, greens) = real(measure_etpc_k!(mc, η, greens)[1,1])
 
 
 
@@ -497,7 +499,7 @@ Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0.
 """
-function zfpc!(mc::AbstractDQMC, Gt0s::AbstractVector{T}) where T <: AbstractMatrix
+function measure_zfpc!(mc::AbstractDQMC, Gt0s::AbstractVector{T}) where T <: AbstractMatrix
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
@@ -589,7 +591,7 @@ Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function etcdc!(mc::AbstractDQMC, greens::AbstractMatrix)
+function measure_etcdc!(mc::AbstractDQMC, greens::AbstractMatrix)
   L = mc.p.L
   N = mc.l.sites
   Cm = mc.s.meas.etcdc_minus # d-wave
@@ -685,7 +687,7 @@ Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function zfcdc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{T}, G0ts::AbstractVector{T}) where {T <: AbstractMatrix, V <: AbstractVector, W <: AbstractMatrix}
+function measure_zfcdc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{T}, G0ts::AbstractVector{T}) where {T <: AbstractMatrix, V <: AbstractVector, W <: AbstractMatrix}
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
@@ -791,7 +793,7 @@ Details:
 - we mean over r_0, that is "0".
 - we do not mean over τ_0=0 (τ not shown above).
 """
-function zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{S}, G0ts::AbstractVector{S}) where {S <: AbstractMatrix, V <: AbstractVector, W <: AbstractMatrix}
+function measure_zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{S}, G0ts::AbstractVector{S}) where {S <: AbstractMatrix, V <: AbstractVector, W <: AbstractMatrix}
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
@@ -890,12 +892,12 @@ end
 # -------------------------------------------------------
 
 """
-    sfdensity(mc, zfccc=mc.s.meas.zfccc)
+    measure_sfdensity(mc, zfccc=mc.s.meas.zfccc)
 
 Calculate the superfluid density from zero-frequency
 current-current correlations `zfccc`.
 """
-function sfdensity(mc, zfccc=mc.s.meas.zfccc)
+function measure_sfdensity(mc, zfccc=mc.s.meas.zfccc)
   Λq = rfft(real(zfccc))
 
   # K = similar(Λq)
@@ -1271,7 +1273,7 @@ end
 
 
 # TODO: Comment!
-function calc_tdgfs!(mc)
+function measure_tdgfs!(mc)
   G = geltype(mc)
   M = mc.p.slices
   safe_mult = mc.p.safe_mult
@@ -1495,139 +1497,88 @@ function calc_tdgf_direct(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe
 end
 
 
-function test_Gt0(mc::AbstractDQMC)
-  Nflv = mc.l.sites * mc.p.flv
-  G = geltype(mc)
-  s = mc.s
+# function test_stacks()
+#   nr = length(mc.s.ranges)
 
-  eye_full = mc.s.eye_full
-  ones_vec = mc.s.ones_vec
-
-  Gt0 = fill(zero(G), Nflv, Nflv)
-
-  # i = 3
-  # i = 11 # == 101, almost beta half = 100
-  i = 1
-
-  if i != 1
-    U,D,T = inv_sum_udts(s.BT0Inv_u_stack[i-1], s.BT0Inv_d_stack[i-1], s.BT0Inv_t_stack[i-1],
-                 s.BBetaT_u_stack[i], s.BBetaT_d_stack[i], s.BBetaT_t_stack[i])
-    UDT_to_mat!(Gt0, U, D, T) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
-    effective_greens2greens!(mc, Gt0)
-  else
-    U,D,T = inv_sum_udts(eye_full, ones_vec, eye_full,
-                 s.BBetaT_u_stack[i], s.BBetaT_d_stack[i], s.BBetaT_t_stack[i])
-    UDT_to_mat!(Gt0, U, D, T) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
-    effective_greens2greens!(mc, Gt0)
-  end
-
-  tdgf = calc_tdgf_direct(mc, mc.s.ranges[i][1]);
-  compare(tdgf, Gt0)
-
-  # compare G(0,0) with G(0) for i=1
-  g = calc_greens(mc, 1);
-  compare(Gt0, g) # 1e-16 for i=1
-
-
-  # test all Gt0 at safe mult slices
-  safe_mult_taus = 1:safe_mult:mc.p.slices
-  for tau in safe_mult_taus
-    i = ceil(Int, tau/safe_mult)
-    tdgf = calc_tdgf_direct(mc, mc.s.ranges[i][1]);
-    if !isapprox(tdgf, Gt0[tau])
-      @show tau
-      @show i
-      break
-    end
-  end
-  # worked!
-
-  # TODO: test all G0t at safe mult slices
-end
-
-
-function test_stacks()
-  nr = length(mc.s.ranges)
-
-  check_unitarity(BT0_u_stack)
-  check_unitarity(BBetaTInv_u_stack)
-  check_unitarity(BT0Inv_u_stack)
-  check_unitarity(BBetaT_u_stack)
+#   check_unitarity(BT0_u_stack)
+#   check_unitarity(BBetaTInv_u_stack)
+#   check_unitarity(BT0Inv_u_stack)
+#   check_unitarity(BBetaT_u_stack)
 
 
 
-  # test left multiplications
-  B2 = BT0_u_stack[3] * Diagonal(BT0_d_stack[3]) * BT0_t_stack[3];
-  U, D, T = calc_Bchain(mc, 1, mc.s.ranges[3][end]); B1 = U*Diagonal(D)*T;
-  compare(B1, B2) # this is exactly the same
+#   # test left multiplications
+#   B2 = BT0_u_stack[3] * Diagonal(BT0_d_stack[3]) * BT0_t_stack[3];
+#   U, D, T = calc_Bchain(mc, 1, mc.s.ranges[3][end]); B1 = U*Diagonal(D)*T;
+#   compare(B1, B2) # this is exactly the same
 
-  B2 = BBetaTInv_u_stack[3] * Diagonal(BBetaTInv_d_stack[3]) * BBetaTInv_t_stack[3];
-  U, D, T = calc_Bchain_inv(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
-  compare(B1, B2) # why is there a difference here at all?
+#   B2 = BBetaTInv_u_stack[3] * Diagonal(BBetaTInv_d_stack[3]) * BBetaTInv_t_stack[3];
+#   U, D, T = calc_Bchain_inv(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
+#   compare(B1, B2) # why is there a difference here at all?
 
 
-  # test right multiplications
-  B2 = BT0Inv_u_stack[3] * Diagonal(BT0Inv_d_stack[3]) * BT0Inv_t_stack[3];
-  U, D, T = calc_Bchain_inv(mc, 1, mc.s.ranges[3][end]); B1 = U*Diagonal(D)*T;
-  compare(B1, B2)
+#   # test right multiplications
+#   B2 = BT0Inv_u_stack[3] * Diagonal(BT0Inv_d_stack[3]) * BT0Inv_t_stack[3];
+#   U, D, T = calc_Bchain_inv(mc, 1, mc.s.ranges[3][end]); B1 = U*Diagonal(D)*T;
+#   compare(B1, B2)
 
-  B2 = BBetaT_u_stack[3] * Diagonal(BBetaT_d_stack[3]) * BBetaT_t_stack[3];
-  U, D, T = calc_Bchain(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
-  compare(B1, B2)
+#   B2 = BBetaT_u_stack[3] * Diagonal(BBetaT_d_stack[3]) * BBetaT_t_stack[3];
+#   U, D, T = calc_Bchain(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
+#   compare(B1, B2)
 
 
 
 
 
 
-  # compare B(beta,1) from BT0 and BBetaT
-  BT0_full = BT0_u_stack[end] * Diagonal(BT0_d_stack[end]) * BT0_t_stack[end];
-  BBetaT_full = BBetaT_u_stack[1] * Diagonal(BBetaT_d_stack[1]) * BBetaT_t_stack[1];
-  U, D, T = calc_Bchain(mc, 1, mc.s.ranges[end][end]); BBeta0 = U*Diagonal(D)*T;
-  compare(BT0_full, BBeta0)
-  compare(BBetaT_full, BBeta0) # we have (large) abs errors here. maybe it's still ok
+#   # compare B(beta,1) from BT0 and BBetaT
+#   BT0_full = BT0_u_stack[end] * Diagonal(BT0_d_stack[end]) * BT0_t_stack[end];
+#   BBetaT_full = BBetaT_u_stack[1] * Diagonal(BBetaT_d_stack[1]) * BBetaT_t_stack[1];
+#   U, D, T = calc_Bchain(mc, 1, mc.s.ranges[end][end]); BBeta0 = U*Diagonal(D)*T;
+#   compare(BT0_full, BBeta0)
+#   compare(BBetaT_full, BBeta0) # we have (large) abs errors here. maybe it's still ok
 
-  # compare resulting greens
-  gT0_full = inv_one_plus_udt(BT0_u_stack[end], BT0_d_stack[end], BT0_t_stack[end])
-  gBetaT_full = inv_one_plus_udt(BBetaT_u_stack[1], BBetaT_d_stack[1], BBetaT_t_stack[1])
-  gBeta0 = calc_greens(mc, 1)
-  compare(gT0_full, gBeta0) # 1e-16
-  compare(gBetaT_full, gBeta0) # 1e-16
-
-
+#   # compare resulting greens
+#   gT0_full = inv_one_plus_udt(BT0_u_stack[end], BT0_d_stack[end], BT0_t_stack[end])
+#   gBetaT_full = inv_one_plus_udt(BBetaT_u_stack[1], BBetaT_d_stack[1], BBetaT_t_stack[1])
+#   gBeta0 = calc_greens(mc, 1)
+#   compare(gT0_full, gBeta0) # 1e-16
+#   compare(gBetaT_full, gBeta0) # 1e-16
 
 
 
 
-  # compare B(beta, 1), build by combining BBetaT and BT0
-  i = floor(Int, nr/2)
 
-  U = BBetaT_t_stack[i+1] * BT0_u_stack[i]
-  rmul!(U, Diagonal(BT0_d_stack[i]))
-  lmul!(Diagonal(BBetaT_d_stack[i+1]), U)
-  u,d,t = decompose_udt(U)
-  u = BBetaT_u_stack[i+1] * u
-  t = t * BT0_t_stack[i]
-  Bfull = u * Diagonal(d) * t
-  Bfull_d = copy(d)
-  U, D, T = calc_Bchain(mc, 1, mc.p.slices); Bfull2 = U * Diagonal(D) * T;
-  Bfull2_d = copy(D)
-  compare(Bfull, Bfull2) # max absdiff: 7.7e+03, max reldiff: 3.4e+01
-  compare(Bfull_d, Bfull2_d) # max absdiff: 9.2e+03, max reldiff: 2.3e-13
 
-  # compare resulting greens
-  g1 = inv_one_plus_udt(u, d, t)
-  g2 = calc_greens(mc, 1)
-  compare(g1, g2) # 1e-15
-end
+#   # compare B(beta, 1), build by combining BBetaT and BT0
+#   i = floor(Int, nr/2)
 
-function check_unitarity(u_stack)
-  for i in 1:length(u_stack)
-    U = u_stack[i]
-    !isapprox(U * adjoint(U), I) && (return false) # I was eye(U)
-  end
-  return true
-end
+#   U = BBetaT_t_stack[i+1] * BT0_u_stack[i]
+#   rmul!(U, Diagonal(BT0_d_stack[i]))
+#   lmul!(Diagonal(BBetaT_d_stack[i+1]), U)
+#   u,d,t = decompose_udt(U)
+#   u = BBetaT_u_stack[i+1] * u
+#   t = t * BT0_t_stack[i]
+#   Bfull = u * Diagonal(d) * t
+#   Bfull_d = copy(d)
+#   U, D, T = calc_Bchain(mc, 1, mc.p.slices); Bfull2 = U * Diagonal(D) * T;
+#   Bfull2_d = copy(D)
+#   compare(Bfull, Bfull2) # max absdiff: 7.7e+03, max reldiff: 3.4e+01
+#   compare(Bfull_d, Bfull2_d) # max absdiff: 9.2e+03, max reldiff: 2.3e-13
+
+#   # compare resulting greens
+#   g1 = inv_one_plus_udt(u, d, t)
+#   g2 = calc_greens(mc, 1)
+#   compare(g1, g2) # 1e-15
+# end
+
+# function check_unitarity(u_stack)
+#   for i in 1:length(u_stack)
+#     U = u_stack[i]
+#     !isapprox(U * adjoint(U), I) && (return false) # I was eye(U)
+#   end
+#   return true
+# end
 
 
 

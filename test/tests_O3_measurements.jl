@@ -164,7 +164,7 @@ end
 
     # Calculate TDGFs
     allocate_tdgfs!(mc)
-    calc_tdgfs!(mc)
+    measure_tdgfs!(mc)
     Gt0 = mc.s.meas.Gt0
     G0t = mc.s.meas.G0t
 
@@ -220,7 +220,7 @@ end
         @test mc.s.meas.etpc_minus == zero(mc.s.meas.etpc_minus)
         @test mc.s.meas.etpc_plus == zero(mc.s.meas.etpc_plus)
 
-        etpc!(mc, g)
+        measure_etpc!(mc, g)
         Pm = mc.s.meas.etpc_minus
         Pp = mc.s.meas.etpc_plus
 
@@ -235,7 +235,7 @@ end
         @test mc.s.meas.etcdc_minus == zero(mc.s.meas.etcdc_minus)
         @test mc.s.meas.etcdc_plus == zero(mc.s.meas.etcdc_plus)
 
-        etcdc!(mc, g)
+        measure_etcdc!(mc, g)
         Cm = mc.s.meas.etcdc_minus
         Cp = mc.s.meas.etcdc_plus
 
@@ -250,7 +250,7 @@ end
         @test mc.s.meas.zfpc_minus == zero(mc.s.meas.zfpc_minus)
         @test mc.s.meas.zfpc_plus == zero(mc.s.meas.zfpc_plus)
 
-        zfpc!(mc, Gt0)
+        measure_zfpc!(mc, Gt0)
         Pm = mc.s.meas.zfpc_minus
         Pp = mc.s.meas.zfpc_plus
 
@@ -265,7 +265,7 @@ end
         @test mc.s.meas.zfcdc_minus == zero(mc.s.meas.zfcdc_minus)
         @test mc.s.meas.zfcdc_plus == zero(mc.s.meas.zfcdc_plus)
 
-        zfcdc!(mc, g, Gt0, G0t)
+        measure_zfcdc!(mc, g, Gt0, G0t)
         Cm = mc.s.meas.zfcdc_minus
         Cp = mc.s.meas.zfcdc_plus
 
@@ -280,13 +280,13 @@ end
         allocate_zfccc!(mc)
         @test mc.s.meas.zfccc == zero(mc.s.meas.zfccc)
 
-        zfccc!(mc, g, Gt0, G0t)
+        measure_zfccc!(mc, g, Gt0, G0t)
         Λ = mc.s.meas.zfccc
 
         @test maximum(imag(Λ)) < 1e-12
         @test is_reflection_symmetric(Λ, tol=2e-3) # is 2e-3 a problem?
 
-        @test isapprox(sfdensity(mc, Λ), -0.07187888915764207) # This value is only self-consistent.
+        @test isapprox(measure_sfdensity(mc, Λ), -0.07187888915764207) # This value is only self-consistent.
     end
 
 
