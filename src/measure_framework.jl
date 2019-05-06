@@ -311,7 +311,7 @@ function main(mp::MeasParams)
   local confs
 
   try
-    confs = ts_flat(mp.dqmc_outfile, "obs/configurations") # TODO: lazy load?
+    confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations") # TODO: lazy load?
   catch err
     println("Couldn't read configuration data. Probably no configurations yet? Exiting.")
     exit()
@@ -334,7 +334,7 @@ function main(mp::MeasParams)
 
 
   # ------------------- Create list of observables to measure --------------------
-  num_confs = size(confs, ndims(confs))
+  num_confs = length(confs)
   nsweeps = num_confs * mp.p.write_every_nth
   obs = NamedTuple() # list of observables to measure
 
@@ -429,7 +429,7 @@ end
 # -------------------------------------------------------
 function measure(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc) where {K,V}
     # greens = (lazy) observable of greens functions or nothing
-    num_confs = size(confs, ndims(confs))
+    num_confs = length(confs)
     nsweeps = num_confs * mp.p.write_every_nth
 
     # ----------------- Measure loop ------------------------
@@ -437,9 +437,9 @@ function measure(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc) where 
     flush(stdout)
 
     @mytimeit mp.to "measure loop" begin
-      @inbounds @views @showprogress for i in 1:num_confs
+      @inbounds @views @showprogress for i in mp.confs_iterator_start:num_confs
           println(i); flush(stdout);
-          conf = confs[:,:,:,i]
+          @mytimeit mp.to "load conf" conf = confs[i]
 
           @mytimeit mp.to "bosonic" measure_bosonic(mp, obs, conf, i)
 
