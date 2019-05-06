@@ -32,6 +32,21 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
 
 @testset "O3 model" begin
 
+    @testset "types" begin
+        @test geltype(mc) == ComplexF64
+        @test heltype(mc) == ComplexF64
+        @test cbtype(mc) == CBAssaad
+
+        @test geltype(mc_nob) == ComplexF64
+        @test heltype(mc_nob) == Float64
+        @test cbtype(mc_nob) == CBAssaad
+
+        @test geltype(mc_nob_nochkr) == ComplexF64
+        @test heltype(mc_nob_nochkr) == Float64
+        @test cbtype(mc_nob_nochkr) == CBFalse
+    end
+
+
     @testset "boson action" begin
         @test isapprox(calc_boson_action(mc, randconf), 75.57712964980982)
         @test isapprox(calc_boson_action_diff(mc, 3, 10, [0.370422, 0.797014, 0.956094]), 0.015453643701304112)
