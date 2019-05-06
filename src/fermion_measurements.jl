@@ -1299,7 +1299,7 @@ end
 
 
 """
-    estimate_memory_usage_tdgfs(N, M; flv=4, safe_mult=10)
+    estimate_memory_usage_tdgfs(L, beta; flv=4, safe_mult=10, delta_tau=0.1)
 
 Estimates the expected memory usage of fields related to `measure_tdgfs` (in MB).
 """
@@ -1310,7 +1310,7 @@ function estimate_memory_usage_tdgfs(L, beta; flv=4, safe_mult=10, delta_tau=0.1
   gfmem = (N * flv)^2 * 128 / 8 # gfmem in bytes
 
   mem = 2 * gfmem * M # Gt0, G0t
-  mem += 8 * gfmem * M / mc.p.safe_mult # u and t stacks
+  mem += 8 * gfmem * M / safe_mult # u and t stacks
   mem += 4 * (N * 64 / 8) # d_stack
 
   return round(mem / 1024 / 1024, digits=1)
