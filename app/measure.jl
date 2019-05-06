@@ -45,6 +45,11 @@ end
 # -------------------------------------------------------
 include(joinpath(__FILE__, "../src/measure_framework.jl"))
 
+if HDF5.libversion.minor |> Int < 10
+  @warn "You are using a HDF5 version < 1.10 in which space isn't freed automatically.
+          Files might become very large, in particular for small values of SAVE_AFTER!"
+end
+
 
 
 # #######################################################

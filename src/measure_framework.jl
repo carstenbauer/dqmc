@@ -25,6 +25,7 @@ include("dqmc_framework.jl")
 using Parameters
 using ProgressMeter
 using TimerOutputs
+using BinningAnalysis
 
 
 const OBSERVABLES = (:chi_dyn,
@@ -252,12 +253,16 @@ function create_todolist!(mp::MeasParams)
       for o in mp.requested
         o == :binder && continue # special case binder cumulant
 
-        p = joinpath("obs/", string(o))
+        # p = joinpath("obs/", string(o))
+        p = joinpath("obj/", string(o))
+        @show p
 
         if !HDF5.has(f, p)
           push!(mp.todo, o)
         else
-          count = read(f[joinpath(p, "count")])
+          # count = read(f[joinpath(p, "count")])
+          count = length(read(f[p]))
+          @show count
           if count != N
             push!(mp.todo, o)
             counts[o] = count
@@ -302,6 +307,16 @@ function main(mp::MeasParams)
     exit()
   end
 
+  # Overwrite mode?
+  if isfile(mp.outfile) && mp.overwrite
+    jldopen(mp.outfile, "r+") do f
+      for o in mp.todo
+        p = joinpath("obj/", string(o))
+        HDF5.has(f.plain, p) && o_delete(f, p)
+      end
+    end
+  end
+
 
   # -------------- Load DQMC params/results -----------------
   println("\nLoading DQMC results...")
@@ -311,7 +326,7 @@ function main(mp::MeasParams)
   local confs
 
   try
-    confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations") # TODO: lazy load?
+    confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations")
   catch err
     println("Couldn't read configuration data. Probably no configurations yet? Exiting.")
     exit()
@@ -416,7 +431,20 @@ end
 
 
 
+function save_obs_objects(mp, obs)
+  println("Intermediate save..."); flush(stdout)
+  jldopen(mp.outfile, isfile(mp.outfile) ? "r+" : "w") do f
+    for (o, obj) in pairs(obs)
+      p = joinpath("obj/", string(o))
+      HDF5.has(f.plain, p) && JLD.o_delete(f, p)
+      f[p] = obj
+    end
+  end
 
+  # TODO: Be smarter for Observable objects (bosonic observables)
+
+  nothing
+end
 
 
 
@@ -445,8 +473,17 @@ function measure(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc) where 
 
           @mytimeit mp.to "load etgf" g = need_to_load_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
           @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, g, mc, i)
+
+
+          @mytimeit mp.to "intermediate save" if mod1(i, mp.save_after) == mp.save_after
+            save_obs_objects(mp, obs)
+          end
+
+          # TODO: save and exit(42) when WLT is reached in next iteration
       end
     end
+
+    @mytimeit mp.to "final save" save_obs_objects(mp.obs)
 
     if TIMING
       println()
@@ -625,15 +662,18 @@ Create or load LightObservable
 """
 function create_or_load_lightobs(abbrev::String, args...; kwargs...)
   if isfile(mp.outfile)
-    jldopen(mp.outfile, "r") do f
-      p = joinpath("obs/", abbrev)
+    x = jldopen(mp.outfile, "r") do f
+      p = joinpath("obj/", abbrev)
       if HDF5.has(f.plain, p)
-        return read(f[p])
+        # println("loaded old lightobs")
+        read(f[p])
       end
     end
+    !isnothing(x) && return x
   end
 
   # couldn't be loaded -> create new LightObservable
+  # println("created new lightobs")
   return LightObservable(args...; kwargs...)
 end
 
@@ -642,12 +682,13 @@ Create or load Observable
 """
 function create_or_load_obs(abbrev::String, args...; kwargs...)
   if isfile(mp.outfile)
-    jldopen(mp.outfile, "r") do f
-      p = joinpath("obs/", abbrev)
+    x = jldopen(mp.outfile, "r") do f
+      p = joinpath("obj/", abbrev)
       if HDF5.has(f.plain, p)
-        return read(f[p])
+        read(f[p])
       end
     end
+    !isnothing(x) && return x
   end
 
   # couldn't be loaded -> create new LightObservable
