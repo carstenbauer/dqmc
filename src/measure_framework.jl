@@ -270,6 +270,7 @@ function create_todolist!(mp::MeasParams)
     println("Measurement file found.");
     println("Checking what is left todo...")
 
+    local confs
     try
       confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations")
     catch err
@@ -366,7 +367,7 @@ function measure(mp::MeasParams; debug=false)
 
   if isempty(mp.todo)
     println("Nothing on the todo list. Exiting.")
-    # exit()
+    exit()
   end
 
   group_todos!(mp)
@@ -564,9 +565,10 @@ function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
     length(obs) > 0 && println("---------------------- Measuring (in-steps) ----------------------");
     flush(stdout)
 
-    @mytimeit mp.to "measure loop" begin
-      @inbounds @views @showprogress for i in mp.confs_iterator_start:length(confs)
+    @inbounds @views @showprogress for i in mp.confs_iterator_start:length(confs)
+        @mytimeit mp.to "iteration" begin
           println(i); flush(stdout);
+          # sleep(2)
           @mytimeit mp.to "load conf" conf = confs[i]
 
           @mytimeit mp.to "bosonic" measure_bosonic(mp, obs, conf, i)
@@ -577,10 +579,23 @@ function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
 
           @mytimeit mp.to "intermediate save" if mod1(i, mp.save_after) == mp.save_after
             save_obs_objects(mp, obs)
-          end
 
-          # TODO: save and exit(42) when WLT is reached in next iteration
-      end
+            # Estimate whether we'll make it to another save before hitting WTL. If not, flush and restart.
+            titer = mp.to["iteration"]
+            iterdur = TimerOutputs.time(titer) *10.0^(-9)/TimerOutputs.ncalls(titer)
+            secs_to_save = mp.save_after * iterdur
+            secs_to_save *= 1.1 # add 10 percent buffer
+            next_save_date = now() + Millisecond(ceil(Int, secs_to_save * 1000))
+
+            if next_save_date >= mp.walltimelimit
+              println("Approaching wall-time limit. Won't make it to next save.")
+              println("Exporting intermediate results.")
+              export_results(mp, obs, nothing)
+              println("Safely exiting. (i = $(i)). Current date: $(Dates.format(now(), "d.u yyyy HH:MM")).")
+              exit(42)
+            end
+          end # if save
+        end # time one iteration
     end
 
     @mytimeit mp.to "final save" save_obs_objects(mp, obs)
@@ -602,9 +617,7 @@ function save_obs_objects(mp, obs)
       f[p] = obj
     end
   end
-
-  # TODO: Be smarter for Observable objects (bosonic observables)
-
+  # OPT: Be smarter for Observable objects (bosonic observables)
   nothing
 end
 
@@ -732,11 +745,13 @@ function export_results(mp, obs, nsweeps)
     # :tdgfs_G0t in keys(obs) && export_result(obs[:tdgfs_G0t], mp.outfile, "obs/tdgfs_G0t")
 
     # meta data
-    h5open(mp.outfile, "r+") do fout
-        HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
-        HDF5.has(fout, "write_every_nth") && HDF5.o_delete(fout, "write_every_nth")
-        fout["nsweeps"] = nsweeps
-        fout["write_every_nth"] = mp.p.write_every_nth
+    if !isnothing(nsweeps)
+      h5open(mp.outfile, "r+") do fout
+          HDF5.has(fout, "nsweeps") && HDF5.o_delete(fout, "nsweeps")
+          HDF5.has(fout, "write_every_nth") && HDF5.o_delete(fout, "write_every_nth")
+          fout["nsweeps"] = nsweeps
+          fout["write_every_nth"] = mp.p.write_every_nth
+      end
     end
     println("Done. Exported to $(mp.outfile).")
     flush(stdout)
@@ -773,7 +788,7 @@ Create or load LightObservable
 function create_or_load_lightobs(abbrev::String, args...; kwargs...)
   print(abbrev, ": looking for old LightObservable ... ")
   if isfile(mp.outfile)
-    local x
+    x = nothing
     jldopen(mp.outfile, "r") do f
       p = joinpath("obj/", abbrev)
       if HDF5.has(f.plain, p)
@@ -796,7 +811,7 @@ Create or load Observable
 function create_or_load_obs(abbrev::String, args...; kwargs...)
   print(abbrev, ": looking for old Observable ... ")
   if isfile(mp.outfile)
-    local x
+    x = nothing
     jldopen(mp.outfile, "r") do f
       p = joinpath("obj/", abbrev)
       if HDF5.has(f.plain, p)
