@@ -28,21 +28,27 @@ using TimerOutputs
 using BinningAnalysis
 
 
-const OBSERVABLES = (:chi_dyn,
-                     :chi_dyn_symm,
-                     :binder,
-                     :etpc,
-                     :zfpc,
-                     :etcdc,
-                     :zfcdc,
-                     :sfdensity
-)
+const OBSERVABLES = Set((:chi_dyn,
+                         :chi_dyn_symm,
+                         :binder,
+                         :etpc,
+                         :zfpc,
+                         :etcdc,
+                         :zfcdc,
+                         :sfdensity
+))
 
-const PLUSMINUS_OBSERVABLES = (:etpc,
-                               :zfpc,
-                               :etcdc,
-                               :zfcdc
-)
+const PLUSMINUS_OBSERVABLES = Set((:etpc,
+                                   :zfpc,
+                                   :etcdc,
+                                   :zfcdc
+))
+
+
+const CALC_IN_ONE_GO = Set((:chi_dyn,       # always in one go
+                            :chi_dyn_symm,  # always in one go
+                            :binder         # always in one go
+))
 
 
 
@@ -53,18 +59,34 @@ const PLUSMINUS_OBSERVABLES = (:etpc,
 # -------------------------------------------------------
 macro addlightobs(name, zero)
   nc = esc(:(num_confs))
-  o = esc(:(obs))
+  o_inonego = esc(:(obs_inonego))
+  o_insteps = esc(:(obs_insteps))
+  mp = esc(:(mp))
   n = "$name"
   z = esc(:($zero))
-  return :( $o = add($o, $name = create_or_load_lightobs($n, $z, name = $n, alloc = $nc)) )
+  return quote
+    if Symbol($n) in $(mp).todo_insteps
+      $(o_insteps) = add($(o_insteps), $name = create_or_load_lightobs($n, $z, name = $n, alloc = $nc))
+    else
+      $(o_inonego) = add($(o_inonego), $name = LightObservable($z, name = $n, alloc = $nc))
+    end
+  end
 end
 
 macro addobs(name, T)
   nc = esc(:(num_confs))
-  o = esc(:(obs))
+  o_inonego = esc(:(obs_inonego))
+  o_insteps = esc(:(obs_insteps))
+  mp = esc(:(mp))
   n = "$name"
   t = esc(:($T))
-  return :( $o = add($o, $name = create_or_load_obs($n, $t, name = $n, alloc = $nc)) )
+  return quote 
+    if Symbol($n) in $(mp).todo_insteps
+      $(o_insteps) = add($(o_insteps), $name = create_or_load_obs($n, $t, name = $n, alloc = $nc))
+    else
+      $(o_inonego) = add($(o_inonego), $name = Observable($t, name = $n, alloc = $nc))
+    end
+  end
 end
 
 
@@ -75,8 +97,10 @@ end
 #                  Define MeasParams
 # -------------------------------------------------------
 @with_kw mutable struct MeasParams
-  requested::Vector{Symbol} = Symbol[]
-  todo::Vector{Symbol} = Symbol[]
+  requested::Set{Symbol} = Set{Symbol}()
+  todo::Set{Symbol} = Set{Symbol}()
+  todo_inonego::Set{Symbol} = Set{Symbol}()
+  todo_insteps::Set{Symbol} = Set{Symbol}()
 
   # input & output files
   meas_infile::String = ""
@@ -228,44 +252,64 @@ end
 
 
 
-
+"""
+Groups todos according to whether they should be calculated
+ * in one go
+ * step by step with intermediate saves
+"""
 function create_todolist!(mp::MeasParams)
-  mp.todo = Symbol[]
+  mp.todo = Set{Symbol}()
 
   if !endswith(mp.outfile, ".running") && isfile(mp.outfile*".running")
     # job has finished since last measurement run
     mv(mp.outfile*".running", mp.outfile)
   end
 
-
   if isfile(mp.outfile) && !mp.overwrite
     # Start/continue unfinished measurements but don't overwrite anything
     println("Measurement file found.");
     println("Checking what is left todo...")
 
+    try
+      confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations")
+    catch err
+      println("Couldn't read configuration data. Probably no configurations yet? Exiting.")
+      exit()
+    end
     allobs = listobs(mp.outfile)
-    confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations")
     N = length(confs)
-
     counts = Dict{Symbol, Int64}()
 
-    h5open(mp.outfile, "r") do f
+    jldopen(mp.outfile, "r") do f
       for o in mp.requested
+
         o == :binder && continue # special case binder cumulant
 
-        # p = joinpath("obs/", string(o))
-        p = joinpath("obj/", string(o))
-        @show p
+        # IN-ONE-GO
+        if strip_plusminus(o) in CALC_IN_ONE_GO
+          p = joinpath("obs/", string(o))
 
-        if !HDF5.has(f, p)
-          push!(mp.todo, o)
-        else
-          # count = read(f[joinpath(p, "count")])
-          count = length(read(f[p]))
-          @show count
-          if count != N
+          if !HDF5.has(f.plain, p)
             push!(mp.todo, o)
-            counts[o] = count
+          else
+            count = read(f[joinpath(p, "count")])
+            if count != N
+              push!(mp.todo, o)
+              counts[o] = count
+            end
+          end
+        else
+          # IN-STEPS
+          p = joinpath("obj/", string(o))
+
+          if !HDF5.has(f.plain, p)
+            push!(mp.todo, o)
+          else
+            count = length(read(f[p]))
+            if count != N
+              push!(mp.todo, o)
+              counts[o] = count
+            end
           end
         end
 
@@ -281,7 +325,7 @@ function create_todolist!(mp::MeasParams)
 
     # Special case: binder
     if :binder in mp.requested && :chi_dyn in mp.todo
-      push!(:binder, mp.todo)
+      push!(mp.todo, :binder)
     end
 
     mp.confs_iterator_start = try unique(values(counts))[1] + 1 catch er 1 end
@@ -294,27 +338,61 @@ function create_todolist!(mp::MeasParams)
 end
 
 
+function group_todos!(mp)
+  mp.todo_inonego
+
+  for o in mp.todo
+    if strip_plusminus(o) in CALC_IN_ONE_GO
+      push!(mp.todo_inonego, o)
+    else
+      push!(mp.todo_insteps, o)
+    end
+  end
+
+  nothing
+end
+
+strip_plusminus(str::AbstractString) = replace(replace(str, "_plus" => ""), "_minus" => "")
+strip_plusminus(s::Symbol) = Symbol(strip_plusminus(string(s)))
+
+
 
 # -------------------------------------------------------
 #                        Main
 # -------------------------------------------------------
-function main(mp::MeasParams)
+function prepare(mp::MeasParams)
 
   create_todolist!(mp)
 
   if isempty(mp.todo)
     @info "Nothing on the todo list. Exiting."
-    exit()
+    # exit()
   end
+
+  group_todos!(mp)
+
+  @show mp.todo_inonego
+  @show mp.todo_insteps
+  flush(stdout)
 
   # Overwrite mode?
   if isfile(mp.outfile) && mp.overwrite
+    println("\nOVERWRITE MODE")
     jldopen(mp.outfile, "r+") do f
       for o in mp.todo
         p = joinpath("obj/", string(o))
-        HDF5.has(f.plain, p) && o_delete(f, p)
+        if HDF5.has(f.plain, p)
+          println("Clearing $p")
+          o_delete(f, p)
+        end
+        p = joinpath("obs/", string(o))
+        if HDF5.has(f.plain, p)
+          println("Clearing $p")
+          o_delete(f, p)
+        end
       end
     end
+    println()
   end
 
 
@@ -325,12 +403,7 @@ function main(mp::MeasParams)
   mc = nothing;
   local confs
 
-  try
-    confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations")
-  catch err
-    println("Couldn't read configuration data. Probably no configurations yet? Exiting.")
-    exit()
-  end
+  confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations")
 
   if need_to_load_etgf(mp)
     if "greens" in listobs(mp.dqmc_outfile)
@@ -349,9 +422,11 @@ function main(mp::MeasParams)
 
 
   # ------------------- Create list of observables to measure --------------------
+  println("\nPreparing observables......................")
   num_confs = length(confs)
   nsweeps = num_confs * mp.p.write_every_nth
-  obs = NamedTuple() # list of observables to measure
+  obs_inonego = NamedTuple()
+  obs_insteps = NamedTuple()
 
   # chi_dyn
   if :chi_dyn_symm in mp.todo
@@ -366,7 +441,7 @@ function main(mp::MeasParams)
   if :binder in mp.todo
     @addobs m2s Float64
     @addobs m4s Float64
-    obs = add(obs, binder = Observable(Float64, name="binder"))
+    obs_inonego = add(obs_inonego, binder = Observable(Float64, name="binder"))
   end
 
   # etpc
@@ -415,14 +490,32 @@ function main(mp::MeasParams)
 
 
   # --------------------- Measure -------------------------
-  print("\nPrepared Observables ");
-  println(keys(obs))
-  println()
-  reset_timer!(mp.to)
-  measure(mp, obs, confs, greens, mc)
+  print("........................... Done. ");
+  # println(keys(obs))
+  println("\n")
+  @show keys(obs_inonego)
+  @show keys(obs_insteps)
+  println("\n")
+end
 
-  # ------------ Export results   ----------------
-  export_results(mp, obs, nsweeps)
+
+function main(mp::MeasParams)
+  prepare(mp)
+  measure(mp)
+end
+
+function measure(mp::MeasParams)
+  if length(obs_inonego) > 0
+    reset_timer!(mp.to)
+    measure_inonego(mp, obs_inonego, confs, greens, mc)
+    export_results(mp, obs_inonego, nsweeps)
+  end
+
+  if length(obs_insteps) > 0
+    reset_timer!(mp.to)
+    measure_insteps(mp, obs_insteps, confs, greens, mc)
+    export_results(mp, obs_insteps, nsweeps)
+  end
 end
 
 
@@ -430,6 +523,79 @@ end
 
 
 
+
+
+
+
+# -------------------------------------------------------
+#                 MEASUREMENT LOOPS
+# -------------------------------------------------------
+function measure_inonego(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc) where {K,V}
+    length(obs) > 0 && println("---------------------- Measuring (in-one-go) ----------------------");
+    flush(stdout)
+
+    @mytimeit mp.to "measure loop" begin
+      @inbounds @views @showprogress for i in mp.confs_iterator_start:length(confs)
+          # println(i); flush(stdout);
+          @mytimeit mp.to "load conf" conf = confs[i]
+
+          @mytimeit mp.to "bosonic" measure_bosonic(mp, obs, conf, i)
+
+          @mytimeit mp.to "load etgf" g = need_to_load_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
+          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, g, mc, i)
+      end
+    end
+
+    if TIMING
+      println()
+      display(mp.to)
+      println()
+      flush(stdout)
+    end
+
+    if :binder in keys(obs)
+        # binder postprocessing
+        m2ev2 = mean(obs[:m2s])^2
+        m4ev = mean(obs[:m4s])
+
+        push!(obs[:binder], m4ev/m2ev2)
+    end
+end
+
+
+
+function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc) where {K,V}
+    length(obs) > 0 && println("---------------------- Measuring (in-steps) ----------------------");
+    flush(stdout)
+
+    @mytimeit mp.to "measure loop" begin
+      @inbounds @views @showprogress for i in mp.confs_iterator_start:length(confs)
+          println(i); flush(stdout);
+          @mytimeit mp.to "load conf" conf = confs[i]
+
+          @mytimeit mp.to "bosonic" measure_bosonic(mp, obs, conf, i)
+
+          @mytimeit mp.to "load etgf" g = need_to_load_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
+          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, g, mc, i)
+
+
+          @mytimeit mp.to "intermediate save" if mod1(i, mp.save_after) == mp.save_after
+            save_obs_objects(mp, obs)
+          end
+
+          # TODO: save and exit(42) when WLT is reached in next iteration
+      end
+    end
+
+    @mytimeit mp.to "final save" save_obs_objects(mp, obs)
+
+    if TIMING
+      println()
+      display(mp.to)
+      println()
+      flush(stdout)
+    end
+end
 
 function save_obs_objects(mp, obs)
   println("Intermediate save..."); flush(stdout)
@@ -455,59 +621,6 @@ end
 # -------------------------------------------------------
 #                      MEASUREMENTS
 # -------------------------------------------------------
-function measure(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc) where {K,V}
-    # greens = (lazy) observable of greens functions or nothing
-    num_confs = length(confs)
-    nsweeps = num_confs * mp.p.write_every_nth
-
-    # ----------------- Measure loop ------------------------
-    length(obs) > 0 && println("Measuring ...");
-    flush(stdout)
-
-    @mytimeit mp.to "measure loop" begin
-      @inbounds @views @showprogress for i in mp.confs_iterator_start:num_confs
-          println(i); flush(stdout);
-          @mytimeit mp.to "load conf" conf = confs[i]
-
-          @mytimeit mp.to "bosonic" measure_bosonic(mp, obs, conf, i)
-
-          @mytimeit mp.to "load etgf" g = need_to_load_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
-          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, g, mc, i)
-
-
-          @mytimeit mp.to "intermediate save" if mod1(i, mp.save_after) == mp.save_after
-            save_obs_objects(mp, obs)
-          end
-
-          # TODO: save and exit(42) when WLT is reached in next iteration
-      end
-    end
-
-    @mytimeit mp.to "final save" save_obs_objects(mp.obs)
-
-    if TIMING
-      println()
-      display(mp.to)
-      println()
-      flush(stdout)
-    end
-
-    # ------------ Postprocessing   ----------------
-    if :binder in keys(obs)
-        # binder postprocessing
-        m2ev2 = mean(obs[:m2s])^2
-        m4ev = mean(obs[:m4s])
-
-        push!(obs[:binder], m4ev/m2ev2)
-    end
-end
-
-
-
-
-
-
-
 function measure_bosonic(mp, obs, conf, i)
       # chi_dyn
       @mytimeit mp.to "chi" if :chi_dyn in keys(obs)
@@ -533,21 +646,20 @@ end
 
 
 
-function measure_fermionic(mp, obs, conf, greens, mc, i)
+function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where {K,V}
     if !isnothing(mc)
       mc.p.hsfield = conf
     end
-    todo = keys(obs)
 
     # etpc
-    @mytimeit mp.to "etpc" if :etpc_plus in todo
+    @mytimeit mp.to "etpc" if :etpc_plus in K
         measure_etpc!(mc, greens)
         push!(obs[:etpc_plus], mc.s.meas.etpc_plus)
         push!(obs[:etpc_minus], mc.s.meas.etpc_minus)
     end
 
     # etcdc
-    @mytimeit mp.to "etcdc" if :etcdc_plus in todo
+    @mytimeit mp.to "etcdc" if :etcdc_plus in K
         measure_etcdc!(mc, greens)
         push!(obs[:etcdc_plus], mc.s.meas.etcdc_plus)
         push!(obs[:etcdc_minus], mc.s.meas.etcdc_minus)
@@ -566,20 +678,20 @@ function measure_fermionic(mp, obs, conf, greens, mc, i)
     end
 
     # zfpc
-    @mytimeit mp.to "zfpc" if :zfpc_plus in todo
+    @mytimeit mp.to "zfpc" if :zfpc_plus in K
         measure_zfpc!(mc, Gt0)
         push!(obs[:zfpc_plus], mc.s.meas.zfpc_plus)
         push!(obs[:zfpc_minus], mc.s.meas.zfpc_minus)
     end
 
     # zfcdc
-    @mytimeit mp.to "zfcdc" if :zfcdc_plus in todo
+    @mytimeit mp.to "zfcdc" if :zfcdc_plus in K
         measure_zfcdc!(mc, greens, Gt0, G0t)
         push!(obs[:zfcdc_plus], mc.s.meas.zfcdc_plus)
         push!(obs[:zfcdc_minus], mc.s.meas.zfcdc_minus)
     end
 
-    @mytimeit mp.to "sfdensity" if :sfdensity in todo
+    @mytimeit mp.to "sfdensity" if :sfdensity in K
         push!(obs[:sfdensity], measure_sfdensity(mc, zfccc))
     end
 
@@ -599,7 +711,9 @@ end
 
 
 
-
+# -------------------------------------------------------
+#                      Export
+# -------------------------------------------------------
 function export_results(mp, obs, nsweeps)
     println("Calculating errors and exporting..."); flush(stdout)
 
@@ -661,12 +775,13 @@ combine(x::NamedTuple, y::NamedTuple) = NamedTuple{(keys(x)..., keys(y)...)}((x.
 Create or load LightObservable
 """
 function create_or_load_lightobs(abbrev::String, args...; kwargs...)
+  print(abbrev, ": looking for old LightObservable ... ")
   if isfile(mp.outfile)
     x = jldopen(mp.outfile, "r") do f
       p = joinpath("obj/", abbrev)
       if HDF5.has(f.plain, p)
-        # println("loaded old lightobs")
         read(f[p])
+        println("found and loaded!")
       end
     end
     !isnothing(x) && return x
@@ -674,6 +789,7 @@ function create_or_load_lightobs(abbrev::String, args...; kwargs...)
 
   # couldn't be loaded -> create new LightObservable
   # println("created new lightobs")
+  println("not found.")
   return LightObservable(args...; kwargs...)
 end
 
@@ -681,10 +797,12 @@ end
 Create or load Observable
 """
 function create_or_load_obs(abbrev::String, args...; kwargs...)
+  print(abbrev, ": looking for old Observable ... ")
   if isfile(mp.outfile)
     x = jldopen(mp.outfile, "r") do f
       p = joinpath("obj/", abbrev)
       if HDF5.has(f.plain, p)
+        println("found and loaded!")
         read(f[p])
       end
     end
@@ -692,6 +810,7 @@ function create_or_load_obs(abbrev::String, args...; kwargs...)
   end
 
   # couldn't be loaded -> create new LightObservable
+  println("not found.")
   return Observable(args...; kwargs...)
 end
 
