@@ -295,7 +295,7 @@ function create_todolist!(mp::MeasParams)
             count = read(f[joinpath(p, "count")])
             if count != N
               push!(mp.todo, o)
-              counts[o] = count
+              # counts[o] = count
             end
           end
         else
@@ -360,12 +360,12 @@ strip_plusminus(s::Symbol) = Symbol(strip_plusminus(string(s)))
 # -------------------------------------------------------
 #                        Main
 # -------------------------------------------------------
-function prepare(mp::MeasParams)
+function measure(mp::MeasParams; debug=false)
 
   create_todolist!(mp)
 
   if isempty(mp.todo)
-    @info "Nothing on the todo list. Exiting."
+    println("Nothing on the todo list. Exiting.")
     # exit()
   end
 
@@ -489,35 +489,31 @@ function prepare(mp::MeasParams)
 
 
 
-  # --------------------- Measure -------------------------
   print("........................... Done. ");
-  # println(keys(obs))
   println("\n")
   @show keys(obs_inonego)
   @show keys(obs_insteps)
   println("\n")
-end
 
 
-function main(mp::MeasParams)
-  prepare(mp)
-  measure(mp)
-end
 
-function measure(mp::MeasParams)
-  if length(obs_inonego) > 0
+  # --------------------- Measure -------------------------
+  if length(obs_inonego) > 0 && !debug
     reset_timer!(mp.to)
     measure_inonego(mp, obs_inonego, confs, greens, mc)
     export_results(mp, obs_inonego, nsweeps)
   end
 
-  if length(obs_insteps) > 0
+  if length(obs_insteps) > 0 && !debug
     reset_timer!(mp.to)
     measure_insteps(mp, obs_insteps, confs, greens, mc)
     export_results(mp, obs_insteps, nsweeps)
   end
-end
 
+  debug && (return obs_inonego, obs_insteps)
+
+  nothing
+end
 
 
 
@@ -535,7 +531,7 @@ function measure_inonego(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
     flush(stdout)
 
     @mytimeit mp.to "measure loop" begin
-      @inbounds @views @showprogress for i in mp.confs_iterator_start:length(confs)
+      @inbounds @views @showprogress for i in 1:length(confs)
           # println(i); flush(stdout);
           @mytimeit mp.to "load conf" conf = confs[i]
 
@@ -777,10 +773,11 @@ Create or load LightObservable
 function create_or_load_lightobs(abbrev::String, args...; kwargs...)
   print(abbrev, ": looking for old LightObservable ... ")
   if isfile(mp.outfile)
-    x = jldopen(mp.outfile, "r") do f
+    local x
+    jldopen(mp.outfile, "r") do f
       p = joinpath("obj/", abbrev)
       if HDF5.has(f.plain, p)
-        read(f[p])
+        x = read(f[p])
         println("found and loaded!")
       end
     end
@@ -799,11 +796,12 @@ Create or load Observable
 function create_or_load_obs(abbrev::String, args...; kwargs...)
   print(abbrev, ": looking for old Observable ... ")
   if isfile(mp.outfile)
-    x = jldopen(mp.outfile, "r") do f
+    local x
+    jldopen(mp.outfile, "r") do f
       p = joinpath("obj/", abbrev)
       if HDF5.has(f.plain, p)
+        x = read(f[p])
         println("found and loaded!")
-        read(f[p])
       end
     end
     !isnothing(x) && return x
