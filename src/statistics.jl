@@ -123,6 +123,8 @@ end
 Calculates the combined mean and standard error of the concatenated observable results.
 """
 function combined_mean_and_error(ors::Vector{<:ObservableResult})
+    @assert length(ors) > 0 "Provided vector of ObservableResults must not be empty."
+
     ns = [r.count for r in ors]
     μs = [r.mean for r in ors]
     vs = [r.error^2 for r in ors]
