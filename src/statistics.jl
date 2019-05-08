@@ -62,6 +62,7 @@ end
 
 
 
+
 ###############################################################
 #       Combined Mean and Variance ("Hand-written")
 ###############################################################
@@ -106,4 +107,26 @@ function combined_mean_and_var_three(x1, x2, x3)
     meanc12, varc12 = combined_mean_and_var(n1, μ1, v1, n2, μ2, v2)
     n12 = n1 + n2
     return combined_mean_and_var(n12, meanc12, varc12, n3, μ3, v3)
+end
+
+
+
+
+
+
+
+
+
+
+"""
+    combined_mean_and_var(ors::Vector{<:ObservableResult}) -> meanc, stderrc
+Calculates the combined mean and standard error of the concatenated observable results.
+"""
+function combined_mean_and_error(ors::Vector{<:ObservableResult})
+    ns = [r.count for r in ors]
+    μs = [r.mean for r in ors]
+    vs = [r.error^2 for r in ors]
+
+    meanc, varc = combined_mean_and_var(ns, μs, vs)
+    return meanc, sqrt.(varc)
 end
