@@ -44,8 +44,9 @@ end
 
 @testset "All Tests" begin
 
-    # Linear algebra
+    # General tests
     include("tests_linalg.jl")
+    include("tests_statistics.jl")
 
     # O3 model
     include("tests_O3.jl")

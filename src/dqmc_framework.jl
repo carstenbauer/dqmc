@@ -48,6 +48,7 @@ include("lattice.jl")
 include("stack.jl")
 include("slice_matrices.jl")
 include("linalg.jl")
+include("statistics.jl") # here for convenience
 include("hoppings.jl")
 include("hoppings_checkerboard.jl")
 include("hoppings_checkerboard_generic.jl")
