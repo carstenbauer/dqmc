@@ -55,7 +55,7 @@ end
     include("tests_freefermions.jl")
 
     # Resume
-    # include("tests_resume.jl")
+    include("tests_resume.jl")
 
 end
 
