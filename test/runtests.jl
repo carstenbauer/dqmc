@@ -1,5 +1,5 @@
 println("Running tests on ", gethostname(), ".")
-using Test, Random, KrylovKit, BlockArrays
+using Test, Random, KrylovKit, BlockArrays, MonteCarloObservable
 include("../src/dqmc_framework.jl") # to be replaced by using DQMC or similar
 
 function mc_from_inxml(inxml::AbstractString)
@@ -53,6 +53,9 @@ end
 
     # no interactions
     include("tests_freefermions.jl")
+
+    # Resume
+    # include("tests_resume.jl")
 
 end
 
