@@ -178,7 +178,7 @@ function set_parameters(p::Params, params::Dict)
     if haskey(params, obs_str)
       if parse(Bool, lowercase(params[obs_str]))
         push!(p.obs, obs)
-      elseif haskey(p.obs, obs)
+      elseif obs in p.obs
         pop!(p.obs, obs)
       end
     end
