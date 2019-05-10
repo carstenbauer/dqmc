@@ -222,7 +222,7 @@ function deduce_remaining_parameters(p::Params)
       elseif occursin("thinkable", hn)
         p.lattice_file = "C:/Users/carsten/Desktop/sciebo/lattices/"*lat
       elseif occursin("travis", hn)
-        p.lattice_file = joinpath("../test/lattices/", lat)
+        p.lattice_file = joinpath(dirname(dirname(@__FILE__)), "test/lattices/", lat)
       else
         error("Unrecognized host. Can't deduce lattice file path.")
       end
