@@ -203,7 +203,7 @@ function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
 
   println("\n\nMC Measure (resuming) - ", p.measurements*2, " (total $((p.measurements + prevmeasurements)*2))")
   flush(stdout)
-  measure!(mc, prevmeasurements)
+  measure!(mc; prevmeasurements = prevmeasurements)
 
   nothing
 end
@@ -317,9 +317,59 @@ end
 
 
 
+"""
+Create Observable objects and store them in a NamedTuple
+"""
+function _create_observables(mc::AbstractDQMC, cs)
+  observables = mc.p.obs
+  outfile = mc.p.output_file
+  obs = NamedTuple()
+
+  if :greens in observables
+    g = Observable(typeof(mc.s.greens), "greens"; alloc=cs,
+                                                  inmemory=false,
+                                                  outfile=outfile,
+                                                  group="obs/greens")
+    obs = add(obs, greens = g)
+  end
+
+  if :boson_action in observables
+    boson_action = Observable(Float64, "boson_action"; alloc=cs,
+                                                       inmemory=false,
+                                                       outfile=outfile,
+                                                       group="obs/boson_action")
+    obs = add(obs, boson_action = boson_action)
+  end
+
+  return obs
+end
 
 
-function measure!(mc::DQMC, prevmeasurements=0)
+"""
+Measure observables like the equal-time Green's function if requested
+"""
+function _measure_observables!(mc, obs)
+        # bosonic
+        if haskey(obs, :boson_action)
+          add!(obs[:boson_action], mc.p.boson_action)
+        end
+
+        # fermionic
+        if haskey(obs, :greens)
+          g = wrap_greens(mc,mc.s.greens,mc.s.current_slice,1)
+          effective_greens2greens!(mc, g)
+          add!(obs[:greens], g)
+        end
+        nothing
+end
+
+
+
+
+
+
+
+function measure!(mc::DQMC; prevmeasurements = 0)
   a = mc.a
   l = mc.l
   p = mc.p
@@ -334,10 +384,8 @@ function measure!(mc::DQMC, prevmeasurements=0)
   cs = choose_chunk_size(mc)
 
   configurations = Observable(typeof(p.hsfield), "configurations"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/configurations")
-  greens = Observable(typeof(mc.s.greens), "greens"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/greens")
-  occ = Observable(Float64, "occupation"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/occupation")
-  # boson_action = Observable(Float64, "boson_action"; alloc=cs, inmemory=false, outfile=p.output_file, group="obs/boson_action")
 
+  obs = _create_observables(mc, cs)
 
   i_start = 1
   i_end = p.measurements
@@ -368,12 +416,7 @@ function measure!(mc::DQMC, prevmeasurements=0)
 
         add!(configurations, p.hsfield)
         
-        # fermionic quantities
-        g = wrap_greens(mc,mc.s.greens,mc.s.current_slice,1)
-        effective_greens2greens!(mc, g)
-        # compare(g, measure_greens(mc))
-        add!(greens, g)
-        add!(occ, occupation(mc, g))
+        _measure_observables!(mc, obs)
 
         dumping && saverng(p.output_file; group="resume/rng")
         dumping && println("Dumping block of $cs datapoints was a success")
@@ -426,9 +469,9 @@ function measure!(mc::DQMC, prevmeasurements=0)
 
   println("Final flush.")
   flush(configurations)
-  # flush(boson_action)
-  flush(greens)
-  flush(occ)
+  for o in obs
+    flush(o)
+  end
 
   nothing
 end
@@ -590,3 +633,16 @@ function JLD.readas(tos::MyTimerOutputSerializer)
     to[tos.name].accumulated_data = tos.td
     to
 end
+
+
+
+
+
+"""
+Allows one to use keyword syntax to add new entries to a `NamedTuple` `obs`.
+"""
+add(obs::NamedTuple; kw...) = combine(obs, values(kw))
+"""
+Combine two `NamedTuple`s into a new one.
+"""
+combine(x::NamedTuple, y::NamedTuple) = NamedTuple{(keys(x)..., keys(y)...)}((x...,y...))

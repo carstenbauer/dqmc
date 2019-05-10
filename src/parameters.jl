@@ -50,6 +50,8 @@ mutable struct Params
   edrun::Bool # if true, only the mass term of the bosonic action is considered
   walltimelimit::Dates.DateTime
 
+  obs::Set{Symbol} # what observables to measure during DQMC (excl. configurations)
+
   function Params()
     p = new()
     p.global_updates = true
@@ -71,6 +73,8 @@ mutable struct Params
     p.NNhoppings = "none"
     p.edrun = false
     p.walltimelimit = Dates.DateTime("2099", "YYYY") # effective infinity
+    # p.obs = Set{Symbol}()
+    p.obs = Set{Symbol}((:greens,)) # measure greens per default to assure backwards compatibility
     return p
   end
 end
@@ -167,6 +171,18 @@ function set_parameters(p::Params, params::Dict)
   haskey(params,"WRITE_EVERY_NTH") && (p.write_every_nth = parse(Int64, params["WRITE_EVERY_NTH"]))
   haskey(params, "SPARSITY_LIMIT") && (p.sparsity_limit = parse(Float64, params["SPARSITY_LIMIT"]))
   haskey(params, "EDRUN") && (p.edrun = parse(Bool, lowercase(params["EDRUN"])))
+
+  # observables
+  for obs in (:greens, :boson_action)
+    obs_str = uppercase(string(obs))
+    if haskey(params, obs_str)
+      if parse(Bool, lowercase(params[obs_str]))
+        push!(p.obs, obs)
+      elseif haskey(p.obs, obs)
+        pop!(p.obs, obs)
+      end
+    end
+  end
 
   deduce_remaining_parameters(p)
 
