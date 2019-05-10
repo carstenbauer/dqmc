@@ -1,7 +1,7 @@
 using Distributed, MonteCarloObservable
 
-dqmc_file = joinpath(dirname(@__FILE__), "../app/dqmc.jl")
-params_dir = joinpath(dirname(@__FILE__), "parameters")
+dqmc_file = joinpath(ENV["JULIA_DQMC"], "app/dqmc.jl")
+params_dir = joinpath(ENV["JULIA_DQMC"], "test/parameters")
 
 
 function killworkers()

@@ -30,8 +30,9 @@ function mc_from_inxml(inxml::AbstractString, initconf)
 end
 
 
-
-
+if !haskey(ENV, "JULIA_DQMC")
+    ENV["JULIA_DQMC"] = dirname(dirname(@__FILE__)) # parent directory
+end
 
 
 
