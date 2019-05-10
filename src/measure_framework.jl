@@ -187,7 +187,7 @@ end
   symb = (:etpc_plus, :zfpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity)
   return any(in.(symb, Ref(mp.todo)))
 end
-@inline function need_to_load_etgf(mp::MeasParams)
+@inline function need_etgf(mp::MeasParams)
   symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity)
   return any(in.(symb, Ref(mp.todo)))
 end
@@ -204,7 +204,7 @@ end
 
 
 
-@inline function need_to_load_etgf(ol::NamedTuple{K,V}) where {K,V}
+@inline function need_etgf(ol::NamedTuple{K,V}) where {K,V}
   symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity)
   return any(Base.sym_in.(symb, Ref(K)))
 end
@@ -406,11 +406,12 @@ function measure(mp::MeasParams; debug=false)
 
   confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations")
 
-  if need_to_load_etgf(mp)
+  if need_etgf(mp)
     if "greens" in listobs(mp.dqmc_outfile)
       greens = loadobs_frommemory(mp.dqmc_outfile, "obs/greens")
     else
-      error("Couldn't find ETGF in $(mp.dqmc_outfile) although need_to_load_etgf == true.")
+      # error("Couldn't find ETGF in $(mp.dqmc_outfile) although need_etgf == true.")
+      println("Couldn't find ETGF in $(mp.dqmc_outfile). Will calculate it on-the-fly.")
       # TODO: Calculate ETGF if it isn't found in dqmc output.
     end
   end
@@ -538,16 +539,12 @@ function measure_inonego(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
 
           @mytimeit mp.to "bosonic" measure_bosonic(mp, obs, conf, i)
 
-          @mytimeit mp.to "load etgf" g = need_to_load_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
-          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, g, mc, i)
+          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, greens, mc, i)
       end
     end
 
     if TIMING
-      println()
-      display(mp.to)
-      println()
-      flush(stdout)
+      println(); display(mp.to); println(); flush(stdout);
     end
 
     if :binder in keys(obs)
@@ -573,8 +570,7 @@ function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
 
           @mytimeit mp.to "bosonic" measure_bosonic(mp, obs, conf, i)
 
-          @mytimeit mp.to "load etgf" g = need_to_load_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
-          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, g, mc, i)
+          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, greens, mc, i)
 
 
           @mytimeit mp.to "intermediate save" if mod1(i, mp.save_after) == mp.save_after
@@ -601,10 +597,7 @@ function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
     @mytimeit mp.to "final save" save_obs_objects(mp, obs)
 
     if TIMING
-      println()
-      display(mp.to)
-      println()
-      flush(stdout)
+      println(); display(mp.to); println(); flush(stdout);
     end
 end
 
@@ -660,16 +653,25 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
       mc.p.hsfield = conf
     end
 
+
+    if need_etgf(obs)
+      if !isnothing(greens)
+        @mytimeit mp.to "load etgf" etgf = greens[i] # MCO.jl: load from disk
+      else
+        @mytimeit mp.to "measure etgf" etgf = measure_greens(mc)
+      end
+    end
+
     # etpc
     @mytimeit mp.to "etpc" if :etpc_plus in K
-        measure_etpc!(mc, greens)
+        measure_etpc!(mc, etgf)
         push!(obs[:etpc_plus], mc.s.meas.etpc_plus)
         push!(obs[:etpc_minus], mc.s.meas.etpc_minus)
     end
 
     # etcdc
     @mytimeit mp.to "etcdc" if :etcdc_plus in K
-        measure_etcdc!(mc, greens)
+        measure_etcdc!(mc, etgf)
         push!(obs[:etcdc_plus], mc.s.meas.etcdc_plus)
         push!(obs[:etcdc_minus], mc.s.meas.etcdc_minus)
     end
@@ -682,7 +684,7 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
     end
 
     @mytimeit mp.to "zfccc" if need_to_meas_zfccc(obs)
-      measure_zfccc!(mc, greens, Gt0, G0t)
+      measure_zfccc!(mc, etgf, Gt0, G0t)
       zfccc = mc.s.meas.zfccc
     end
 
@@ -695,7 +697,7 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
 
     # zfcdc
     @mytimeit mp.to "zfcdc" if :zfcdc_plus in K
-        measure_zfcdc!(mc, greens, Gt0, G0t)
+        measure_zfcdc!(mc, etgf, Gt0, G0t)
         push!(obs[:zfcdc_plus], mc.s.meas.zfcdc_plus)
         push!(obs[:zfcdc_minus], mc.s.meas.zfcdc_minus)
     end
