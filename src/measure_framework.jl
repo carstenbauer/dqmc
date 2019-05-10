@@ -35,7 +35,8 @@ const OBSERVABLES = Set((:chi_dyn,
                          :zfpc,
                          :etcdc,
                          :zfcdc,
-                         :sfdensity
+                         :sfdensity,
+                         :greens
 ))
 
 const PLUSMINUS_OBSERVABLES = Set((:etpc,
@@ -184,11 +185,11 @@ end
 
 
 @inline function need_to_setup_mc(mp::MeasParams)
-  symb = (:etpc_plus, :zfpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity)
+  symb = (:etpc_plus, :zfpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity, :greens)
   return any(in.(symb, Ref(mp.todo)))
 end
-@inline function need_to_load_etgf(mp::MeasParams)
-  symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity)
+@inline function need_etgf(mp::MeasParams)
+  symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity, :greens)
   return any(in.(symb, Ref(mp.todo)))
 end
 @inline function need_to_meas_tdgfs(mp::MeasParams)
@@ -204,8 +205,8 @@ end
 
 
 
-@inline function need_to_load_etgf(ol::NamedTuple{K,V}) where {K,V}
-  symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity)
+@inline function need_etgf(ol::NamedTuple{K,V}) where {K,V}
+  symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity, :greens)
   return any(Base.sym_in.(symb, Ref(K)))
 end
 @inline function need_to_meas_tdgfs(ol::NamedTuple{K,V}) where {K,V}
@@ -378,22 +379,26 @@ function measure(mp::MeasParams; debug=false)
 
   # Overwrite mode?
   if isfile(mp.outfile) && mp.overwrite
-    println("\nOVERWRITE MODE")
-    jldopen(mp.outfile, "r+") do f
-      for o in mp.todo
-        p = joinpath("obj/", string(o))
-        if HDF5.has(f.plain, p)
-          println("Clearing $p")
-          o_delete(f, p)
-        end
-        p = joinpath("obs/", string(o))
-        if HDF5.has(f.plain, p)
-          println("Clearing $p")
-          o_delete(f, p)
+    if mp.overwrite && !isempty(mp.todo_insteps)
+      println("\nOVERWRITE MODE: Ignored to avoid bug #23.")
+    else
+      println("\nOVERWRITE MODE")
+      jldopen(mp.outfile, "r+") do f
+        for o in mp.todo
+          p = joinpath("obj/", string(o))
+          if HDF5.has(f.plain, p)
+            println("Clearing $p")
+            o_delete(f, p)
+          end
+          p = joinpath("obs/", string(o))
+          if HDF5.has(f.plain, p)
+            println("Clearing $p")
+            o_delete(f, p)
+          end
         end
       end
+      println()
     end
-    println()
   end
 
 
@@ -406,11 +411,12 @@ function measure(mp::MeasParams; debug=false)
 
   confs = loadobs_frommemory(mp.dqmc_outfile, "obs/configurations")
 
-  if need_to_load_etgf(mp)
+  if need_etgf(mp)
     if "greens" in listobs(mp.dqmc_outfile)
       greens = loadobs_frommemory(mp.dqmc_outfile, "obs/greens")
     else
-      error("Couldn't find ETGF in $(mp.dqmc_outfile) although need_to_load_etgf == true.")
+      # error("Couldn't find ETGF in $(mp.dqmc_outfile) although need_etgf == true.")
+      println("Couldn't find ETGF in $(mp.dqmc_outfile). Will calculate it on-the-fly.")
       # TODO: Calculate ETGF if it isn't found in dqmc output.
     end
   end
@@ -478,6 +484,12 @@ function measure(mp::MeasParams; debug=false)
     @addlightobs sfdensity Float64
   end
 
+
+  # greens
+  if :greens in mp.todo
+    @addobs greens Matrix{geltype(mc)}
+  end
+
   # # tdgfs
   # if mp.tdgfs
   #   # create zero element for LightObservable
@@ -538,16 +550,12 @@ function measure_inonego(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
 
           @mytimeit mp.to "bosonic" measure_bosonic(mp, obs, conf, i)
 
-          @mytimeit mp.to "load etgf" g = need_to_load_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
-          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, g, mc, i)
+          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, greens, mc, i)
       end
     end
 
     if TIMING
-      println()
-      display(mp.to)
-      println()
-      flush(stdout)
+      println(); display(mp.to); println(); flush(stdout);
     end
 
     if :binder in keys(obs)
@@ -573,8 +581,7 @@ function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
 
           @mytimeit mp.to "bosonic" measure_bosonic(mp, obs, conf, i)
 
-          @mytimeit mp.to "load etgf" g = need_to_load_etgf(obs) ? greens[i] : nothing # load single greens from disk per MCO.jl
-          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, g, mc, i)
+          @mytimeit mp.to "fermionic" measure_fermionic(mp, obs, conf, greens, mc, i)
 
 
           @mytimeit mp.to "intermediate save" if mod1(i, mp.save_after) == mp.save_after
@@ -601,10 +608,7 @@ function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
     @mytimeit mp.to "final save" save_obs_objects(mp, obs)
 
     if TIMING
-      println()
-      display(mp.to)
-      println()
-      flush(stdout)
+      println(); display(mp.to); println(); flush(stdout);
     end
 end
 
@@ -660,16 +664,31 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
       mc.p.hsfield = conf
     end
 
+
+    if need_etgf(obs)
+      if !isnothing(greens)
+        @mytimeit mp.to "load etgf" etgf = greens[i] # MCO.jl: load from disk
+      else
+        @mytimeit mp.to "calculate Greens" etgf = measure_greens(mc)
+      end
+    end
+
+
+    # greens
+    @mytimeit mp.to "greens" if :greens in K
+        push!(obs[:greens], etgf)
+    end
+
     # etpc
     @mytimeit mp.to "etpc" if :etpc_plus in K
-        measure_etpc!(mc, greens)
+        measure_etpc!(mc, etgf)
         push!(obs[:etpc_plus], mc.s.meas.etpc_plus)
         push!(obs[:etpc_minus], mc.s.meas.etpc_minus)
     end
 
     # etcdc
     @mytimeit mp.to "etcdc" if :etcdc_plus in K
-        measure_etcdc!(mc, greens)
+        measure_etcdc!(mc, etgf)
         push!(obs[:etcdc_plus], mc.s.meas.etcdc_plus)
         push!(obs[:etcdc_minus], mc.s.meas.etcdc_minus)
     end
@@ -682,7 +701,7 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
     end
 
     @mytimeit mp.to "zfccc" if need_to_meas_zfccc(obs)
-      measure_zfccc!(mc, greens, Gt0, G0t)
+      measure_zfccc!(mc, etgf, Gt0, G0t)
       zfccc = mc.s.meas.zfccc
     end
 
@@ -695,11 +714,12 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
 
     # zfcdc
     @mytimeit mp.to "zfcdc" if :zfcdc_plus in K
-        measure_zfcdc!(mc, greens, Gt0, G0t)
+        measure_zfcdc!(mc, etgf, Gt0, G0t)
         push!(obs[:zfcdc_plus], mc.s.meas.zfcdc_plus)
         push!(obs[:zfcdc_minus], mc.s.meas.zfcdc_minus)
     end
 
+    # sfdensity
     @mytimeit mp.to "sfdensity" if :sfdensity in K
         push!(obs[:sfdensity], measure_sfdensity(mc, zfccc))
     end
@@ -732,6 +752,7 @@ function export_results(mp, obs, nsweeps)
     :binder in keys(obs) && export_result(obs[:binder], mp.outfile, "obs/binder", error=false) # jackknife for error
 
     # fermionic
+    :greens in keys(obs) && export_result(obs[:greens], mp.outfile, "obs/greens"; timeseries=true)
     :etpc_plus in keys(obs) && export_result(obs[:etpc_plus], mp.outfile, "obs/etpc_plus")
     :etpc_minus in keys(obs) && export_result(obs[:etpc_minus], mp.outfile, "obs/etpc_minus")
     :zfpc_plus in keys(obs) && export_result(obs[:zfpc_plus], mp.outfile, "obs/zfpc_plus")
