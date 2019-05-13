@@ -74,7 +74,7 @@ mutable struct Params
     p.edrun = false
     p.walltimelimit = Dates.DateTime("2099", "YYYY") # effective infinity
     # p.obs = Set{Symbol}()
-    p.obs = Set{Symbol}((:greens,)) # measure greens per default to assure backwards compatibility
+    p.obs = Set{Symbol}()
     return p
   end
 end
