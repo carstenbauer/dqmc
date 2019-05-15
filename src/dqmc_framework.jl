@@ -195,7 +195,11 @@ function resume!(mc::DQMC, lastconf, prevmeasurements::Int)
     p.box_global = box_global
 
     if HDF5.has(f, "thermal_init/udsweep")
-      mc.a.to = read(fjld, "thermal_init/udsweep")
+      try
+        mc.a.to = read(fjld, "thermal_init/udsweep")
+      catch err
+        @warn "Resuming measurements but couldn't load \"thermal_init/udsweep\" timer."
+      end
     else
       @warn "Resuming measurements but couldn't find \"thermal_init/udsweep\" timer."
     end
