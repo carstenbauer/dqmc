@@ -13,7 +13,7 @@ end
 # i.e. χ_rotated(qy,qx,iw) = C(qy-pi, qx-pi, iw) * Δτ/(N*M)
 #
 # first element of C in w direction is 0 freq, last element of C in qx and qy direction is (-pi,-pi)
-# (DSP.fftfreq(#elements, sampling rate = 1/a = 1 in our case))
+# (fftfreq(#elements, sampling rate = 1/a = 1 in our case))
 # just reverse qx and qy dimensions to get q-Q dependence
 function measure_rotated_chi_dynamic(conf::AbstractArray{Float64, 3}; Δτ::Float64=0.1)
   mapslices(x->rotr90(rotr90(x)), measure_chi_dynamic(conf; Δτ=Δτ), [1,2])
@@ -54,12 +54,10 @@ end
 #         Postprocessing/Analysis
 # -------------------------------------------------------
 
-import DSP.rfftfreq
 """
 Returns qys, qxs and ωs corresponding to output of measure_phi_correlations etc.
 """
 function get_momenta_and_frequencies(L::Int, M::Int, Δτ::Float64=0.1)
-  # https://juliadsp.github.io/DSP.jl/latest/util.html#DSP.Util.rfftfreq
   qs = 2*pi*rfftfreq(L) # 2*pi because rfftfreq returns linear momenta
   ωs = 2*pi*rfftfreq(M, 1/Δτ)
   return qs, qs, ωs
