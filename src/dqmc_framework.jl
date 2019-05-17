@@ -439,8 +439,9 @@ function measure!(mc::DQMC; prevmeasurements = 0)
             println("Approaching wall-time limit. Won't make it to next measurement. Safely exiting. (i = $(i)). Current date: $(Dates.format(now(), "d.u yyyy HH:MM")).")
             println("Flushing configurations which haven't been dumped yet.")
             flush(configurations)
-            flush(greens)
-            flush(occ)
+            for o in obs
+              flush(o)
+            end
             # flush(boson_action)
             saverng(p.output_file; group="resume/rng")
             exit(42)
