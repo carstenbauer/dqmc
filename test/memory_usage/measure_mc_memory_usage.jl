@@ -3,7 +3,7 @@ Pkg.activate(ENV["JULIA_DQMC"])
 
 include(joinpath(ENV["JULIA_DQMC"], "src/dqmc_framework.jl"))
 
-input = "dqmc.in.xml" # choose DQMC input file
+input = "input.in.xml" # choose DQMC input file
 
 using Suppressor, DataFrames, CSV
 
