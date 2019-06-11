@@ -200,7 +200,7 @@ end
         # TDGF: tau = 0 difference btw Gt0 and G0t
         @test isapprox(Gt0[1] - G0t[1], I)
 
-        # TDGF: G(tau,0) == -G(0,beta-tau)
+        # TDGF: G(tau,0) == -G(0,beta-tau) (with tau=0 excluded)
         should_be_zeros = Vector{Float64}(undef, length(2:M))
         t = () -> begin
             for (i, tau) in enumerate(2:M)

@@ -604,7 +604,7 @@ end
 
 
 TDGF_element_k_space(ϵ, beta, tau) = exp(-tau * ϵ) / (1 + exp(-beta * ϵ))
-TDGF_element_k_space_G0t(ϵ, beta, tau) = -exp(+tau * ϵ) / (1 + exp(beta * ϵ)) # TODO: check this once more!
+TDGF_element_k_space_G0t(ϵ, beta, tau) = -exp(+tau * ϵ) / (1 + exp(beta * ϵ))
 
 function TDGF_k_space(params, L, beta, tau; G0t=false)
     kxs = kys = LinRange(-pi, pi, L+1)[1:end-1]

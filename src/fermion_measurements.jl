@@ -611,10 +611,10 @@ function measure_etcdc!(mc::AbstractDQMC, greens::AbstractMatrix)
         ri = siteidx(mc, sql, x0+x, y0+y)
         r0 = siteidx(mc, sql, x0, y0)
 
-        ev1 = _cdc_ev(mc, greens, greens, greens, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
-        ev2 = _cdc_ev(mc, greens, greens, greens, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
-        ev3 = _cdc_ev(mc, greens, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
-        ev4 = _cdc_ev(mc, greens, greens, greens, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
+        ev1 = _etcdc_ev(mc, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
+        ev2 = _etcdc_ev(mc, greens, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
+        ev3 = _etcdc_ev(mc, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
+        ev4 = _etcdc_ev(mc, greens, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
 
         Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
         Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
@@ -638,16 +638,16 @@ Charge density correlation expectation value
 
 (Wick's theorem.)
 """
-@inline function _cdc_ev(mc, Gtau, G0, Gt0, G0t, r1, r2, r3, r4, j1, j2, j3, j4)
+@inline function _etcdc_ev(mc, greens, r1, r2, r3, r4, j1, j2, j3, j4)
   N = mc.l.sites
   i1 = greensidx(N, j1, r1)
   i2 = greensidx(N, j2, r2)
   i3 = greensidx(N, j3, r3)
   i4 = greensidx(N, j4, r4)
 
-  uncorr = (kd(i1, i2) - G(mc, i2, i1, Gtau)) * (kd(i3, i4) - G(mc, i4, i3, G0)) # optimize wrt speed?
-  corr1 = (kd(i1, i4) - G(mc, i4, i1, G0t))
-  corr2 = G(mc, i2, i3, Gt0)
+  uncorr = (kd(i1, i2) - G(mc, i2, i1, greens)) * (kd(i3, i4) - G(mc, i4, i3, greens)) # optimize wrt speed?
+  corr1 = (kd(i1, i4) - G(mc, i4, i1, greens))
+  corr2 = G(mc, i2, i3, greens)
 
   return uncorr + corr1 * corr2
 end
@@ -723,10 +723,10 @@ function measure_zfcdc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
           ri = siteidx(mc, sql, x0+x, y0+y)
           r0 = siteidx(mc, sql, x0, y0)
 
-          ev1 = _cdc_ev(mc, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
-          ev2 = _cdc_ev(mc, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
-          ev3 = _cdc_ev(mc, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
-          ev4 = _cdc_ev(mc, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
+          ev1 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
+          ev2 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
+          ev3 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
+          ev4 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
 
           Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
           Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
@@ -743,8 +743,27 @@ function measure_zfcdc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
 end
 
 
+"""
+Zero-frequency charge density correlation expectation value
 
+  zfcdc_ev = << c_j1^†(r1, tau) c_j2(r2, tau) c_j3^†(r3, 0) c_j4(r4, 0) >>
 
+(Wick's theorem.)
+"""
+@inline function _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, r1, r2, r3, r4, j1, j2, j3, j4)
+  N = mc.l.sites
+  i1 = greensidx(N, j1, r1)
+  i2 = greensidx(N, j2, r2)
+  i3 = greensidx(N, j3, r3)
+  i4 = greensidx(N, j4, r4)
+
+  uncorr = (kd(i1, i2) - G(mc, i2, i1, Gtau)) * (kd(i3, i4) - G(mc, i4, i3, G0)) # optimize wrt speed?
+  # case τ=1: corr1 = I - G(0,0) = I - (G(0, τ=0) + I) = - G(0, τ=0)
+  corr1 = -G(mc, i4, i1, G0t)
+  corr2 = G(mc, i2, i3, Gt0)
+
+  return uncorr + corr1 * corr2
+end
 
 
 
