@@ -26,6 +26,7 @@ using Parameters
 using ProgressMeter
 using TimerOutputs
 using BinningAnalysis
+using RecursiveArrayTools
 
 
 const OBSERVABLES = Set((:chi_dyn,
@@ -36,7 +37,9 @@ const OBSERVABLES = Set((:chi_dyn,
                          :etcdc,
                          :zfcdc,
                          :sfdensity,
-                         :greens
+                         :greens,
+                         :tdgfs_gt0,
+                         :tdgfs_g0t
 ))
 
 const PLUSMINUS_OBSERVABLES = Set((:etpc,
@@ -185,7 +188,7 @@ end
 
 
 @inline function need_to_setup_mc(mp::MeasParams)
-  symb = (:etpc_plus, :zfpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity, :greens)
+  symb = (:etpc_plus, :zfpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity, :greens, :tdgfs_gt0, :tdgfs_g0t)
   return any(in.(symb, Ref(mp.todo)))
 end
 @inline function need_etgf(mp::MeasParams)
@@ -193,7 +196,7 @@ end
   return any(in.(symb, Ref(mp.todo)))
 end
 @inline function need_to_meas_tdgfs(mp::MeasParams)
-  symb = (:zfpc_plus, :zfcdc_plus, :sfdensity)
+  symb = (:zfpc_plus, :zfcdc_plus, :sfdensity, :tdgfs_gt0, :tdgfs_g0t)
   return any(in.(symb, Ref(mp.todo)))
 end
 @inline function need_to_meas_zfccc(mp::MeasParams)
@@ -210,7 +213,7 @@ end
   return any(Base.sym_in.(symb, Ref(K)))
 end
 @inline function need_to_meas_tdgfs(ol::NamedTuple{K,V}) where {K,V}
-  symb = (:zfpc_plus, :zfcdc_plus, :sfdensity)
+  symb = (:zfpc_plus, :zfcdc_plus, :sfdensity, :tdgfs_gt0, :tdgfs_g0t)
   return any(Base.sym_in.(symb, Ref(K)))
 end
 @inline function need_to_meas_zfccc(ol::NamedTuple{K,V}) where {K,V}
@@ -490,15 +493,14 @@ function measure(mp::MeasParams; debug=false)
     @addobs greens Matrix{geltype(mc)}
   end
 
-  # # tdgfs
-  # if mp.tdgfs
-  #   # create zero element for LightObservable
-  #   Nflv = mc.p.flv * mc.l.sites
-  #   tdgf_size = (Nflv, Nflv, mc.p.slices)
-  #   zero_tdgf = zeros(geltype(mc), tdgf_size)
-  #   (obs = add(obs, tdgfs_Gt0 = LightObservable(zero_tdgf, name="Time-displaced Green's function G(tau,0) (TDGF Gt0)", alloc=num_confs)))
-  #   (obs = add(obs, tdgfs_G0t = LightObservable(zero_tdgf, name="Time-displaced Green's function G(0, tau) (TDGF G0t)", alloc=num_confs)))
-  # end
+  # tdgfs
+  if :tdgfs_g0t in mp.todo
+    Nflv = mc.p.flv * mc.l.sites
+    tdgf_size = (Nflv, Nflv, mc.p.slices)
+    zero_tdgf = zeros(geltype(mc), tdgf_size)
+    @addlightobs tdgfs_gt0 zero_tdgf
+    @addlightobs tdgfs_g0t zero_tdgf
+  end
 
 
 
@@ -724,11 +726,11 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
         push!(obs[:sfdensity], measure_sfdensity(mc, zfccc))
     end
 
-    # # tdgfs
-    # if :tdgfs_Gt0 in keys(obs)        
-    #     push!(obs[:tdgfs_Gt0], VectorOfArray(Gt0))
-    #     push!(obs[:tdgfs_G0t], VectorOfArray(G0t))
-    # end
+    # tdgfs
+    if :tdgfs_gt0 in keys(obs)        
+        push!(obs[:tdgfs_gt0], VectorOfArray(Gt0))
+        push!(obs[:tdgfs_g0t], VectorOfArray(G0t))
+    end
 
     nothing
 end
@@ -762,8 +764,8 @@ function export_results(mp, obs, nsweeps)
     :zfcdc_plus in keys(obs) && export_result(obs[:zfcdc_plus], mp.outfile, "obs/zfcdc_plus")
     :zfcdc_minus in keys(obs) && export_result(obs[:zfcdc_minus], mp.outfile, "obs/zfcdc_minus")
     :sfdensity in keys(obs) && export_result(obs[:sfdensity], mp.outfile, "obs/sfdensity")
-    # :tdgfs_Gt0 in keys(obs) && export_result(obs[:tdgfs_Gt0], mp.outfile, "obs/tdgfs_Gt0")
-    # :tdgfs_G0t in keys(obs) && export_result(obs[:tdgfs_G0t], mp.outfile, "obs/tdgfs_G0t")
+    :tdgfs_gt0 in keys(obs) && export_result(obs[:tdgfs_gt0], mp.outfile, "obs/tdgfs_gt0")
+    :tdgfs_g0t in keys(obs) && export_result(obs[:tdgfs_g0t], mp.outfile, "obs/tdgfs_g0t")
 
     # meta data
     if !isnothing(nsweeps)
