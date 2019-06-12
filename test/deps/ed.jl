@@ -711,6 +711,55 @@ end
 
 
 
+
+"""
+    compute correlation function of operators
+    chi = < A(tau) B(tau) C(0) D(0) > = 1/Z sum_n_m exp(-beta En) exp(tau En) Anm exp(-tau Em) exp(tau Em) Bmn exp(tau En)
+"""
+function corr_fourpoint(A, B, C, D, tau, evecs, evals, beta)
+    @assert 0. <= tau <= beta
+    # tau <= 1e-5 && warn("for short times corr is way off")
+
+    chi = zero(eltype(A))
+    V = sparse(evecs)
+
+    A_trans = V' * A * V
+    B_trans = V' * B * V
+    C_trans = V' * C * V
+    D_trans = V' * D * V
+
+    E = evals .- evals[1]
+
+    Z = sum(exp.(- beta * E))
+
+    u1 = exp.(-(beta - tau) * E)
+    u2 = exp.(- tau * E)
+
+    # chi = np.einsum("n,nm,mk,k,kp,pn", u1, A_trans, B_trans, u2, C_trans, D_trans)/Z
+    chi = einsum_explicit(u1,A_trans,B_trans,u2,C_trans,D_trans)/Z
+    return chi
+end
+
+
+
+# explicit and faster version of
+# np.einsum("n,nm,mk,k,kp,pn", u1, A_trans, B_trans, u2, C_trans, D_trans)
+function einsum_explicit(u1,A_trans,B_trans,u2,C_trans,D_trans)
+    s = 0.
+    @inbounds for n in 1:length(u1)
+        for m in 1:size(A_trans, 2)
+            for k in 1:length(u2)
+                for p in 1:size(C_trans, 2)
+                    s += u1[n] * A_trans[n,m] * B_trans[m,k] * u2[k] * C_trans[k,p] * D_trans[p,n]
+                end
+            end
+        end
+    end
+    s
+end
+
+
+
 function siteidx(L,N,sql,x,y)
   xpbc = mod1(x, L)
   ypbc = mod1(y, L)

@@ -261,6 +261,11 @@ end
         @test isreal(Pp)
         @test is_reflection_symmetric(Pm, tol=1e-3)
         @test is_reflection_symmetric(Pp, tol=1e-3)
+
+        M = mc.p.slices
+        measure_zfpc!(mc, [g for _ in 1:M]) # ~ τ = 0
+        @test Pm/M ≈ mc.s.meas.etpc_minus
+        @test Pp/M ≈ mc.s.meas.etpc_plus
     end
 
     @testset "ZFCDC" begin

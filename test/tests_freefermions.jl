@@ -249,6 +249,7 @@ end
         @test isreal(Pp)
         @test is_reflection_symmetric(Pm)
         @test is_reflection_symmetric(Pp)
+        @test Pm ≈ Pp
     end
 
     @testset "ETCDC" begin
@@ -273,6 +274,7 @@ end
         @test isreal(Pp)
         @test is_reflection_symmetric(Pm)
         @test is_reflection_symmetric(Pp)
+        @test Pm ≈ Pp
     end
 
     @testset "ZFCDC" begin
