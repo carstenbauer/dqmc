@@ -16,7 +16,7 @@ function addvertex!(node, id, typ, coordinates)
     set_attributes(v, Dict("id"=>id, "type"=>typ))
 
     vc = new_child(v, "COORDINATE")
-    add_text(vc, "$(join(coordinates-1, " "))")
+    add_text(vc, "$(join(coordinates .- 1, " "))")
 end
 
 function addedge!(node, src, trg, id, typ, vector)
@@ -53,6 +53,7 @@ NNneighbors = vcat(uu[:]',rr[:]',dd[:]',ll[:]') # colidx = site, rowidx = uu rr 
 vi = 1 # vertex counter
 for x in 1:L
     for y in 1:L
+        global vi
         addvertex!(graph, vi, 0, [x, y])
         vi += 1
     end
@@ -61,6 +62,7 @@ end
 # edges
 ei = 1 # edge counter
 for site in 1:N
+    global ei
 
     # nn
     up = neighbors[1,site]

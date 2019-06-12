@@ -11,10 +11,11 @@ a1 = [cos(deg2rad(30)), sin(deg2rad(30)) + 1]
 a2 = a1.*[-1,1]
 
 # site positions
-positions = Vector{Vector{Float64}}(N)
+positions = Vector{Vector{Float64}}(undef, N)
 pi = 1
 for ix in 0:L-1
     for iy in 0:L-1
+        global positions, pi
         positions[pi] = basis[1]+(iy)*a1+ix*(a1-a2)
         positions[pi+1] = basis[2]+(iy)*a1+ix*(a1-a2)
         pi += 2
@@ -30,23 +31,24 @@ ucneighs = vcat(downright[:]', up[:]') # column = unitcell linidx
 getsite(uc::Int, site::Int) = 2 * (uc-1) + site
 
 # bonds
-bonds = Vector{Vector{Int}}(nbonds) # from, to, type
-bondvecs = Vector{Vector{Float64}}(nbonds) # to_pos - from_pos
+bonds = Vector{Vector{Int}}(undef, nbonds) # from, to, type
+bondvecs = Vector{Vector{Float64}}(undef, nbonds) # to_pos - from_pos
 ibond = 1
 for uc in 1:L^2
+    global bonds, bondvecs, ibond
     # inner bond
     s1 = getsite(uc, 1)
     s2 = getsite(uc, 2)
     bonds[ibond] = [s1, s2, 0]
     bondvecs[ibond] = [0.0, 1.0]
     ibond += 1
-    
+
     # down-right bond
     trg = getsite(ucneighs[1,uc],2)
     bonds[ibond] = [s1, trg, 1]
     bondvecs[ibond] = [0.8660254037844387, 0.5]
     ibond += 1
-    
+
     # up-"right" bond
     trg = getsite(ucneighs[2,uc],1)
     bonds[ibond] = [s2, trg, 2]
@@ -109,7 +111,7 @@ sitecolors=["white", "gray"]
 for (ibond, b) in enumerate(bonds)
     src = positions[b[1]]
     trg = positions[b[2]]
-    
+
     # don't show pbc bonds
     b[2] > b[1] || continue
     b[2] - b[1] < 2*L || continue
