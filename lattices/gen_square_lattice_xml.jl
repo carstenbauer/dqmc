@@ -18,29 +18,31 @@ left = circshift(sql,(0,1))
 neighbors = vcat(up[:]',right[:]',down[:]',left[:]') # colidx = site, rowidx = up right down left
 
 # site positions
-positions = Vector{Vector{Float64}}(N)
+positions = Vector{Vector{Float64}}(undef, N)
 pi = 1
 for x in 1:L
     for y in 1:L
-        positions[pi] = [x, y]-1.0
+        global positions, pi
+        positions[pi] = [x, y] .- 1.0
         pi += 1
     end
 end
 
 
 # bonds
-bonds = Vector{Vector{Int}}(nbonds) # from, to, type
-bondvecs = Vector{Vector{Float64}}(nbonds) # to_pos - from_pos
+bonds = Vector{Vector{Int}}(undef, nbonds) # from, to, type
+bondvecs = Vector{Vector{Float64}}(undef, nbonds) # to_pos - from_pos
 ibond = 1
 for site in 1:N
+    global bonds, bondvecs, ibond
     up = neighbors[1,site]
     right = neighbors[2,site]
-    
+
     # up bond
     bonds[ibond] = [site, up, 0]
     bondvecs[ibond] = [0, 1]
     ibond += 1
-    
+
     # right bond
     bonds[ibond] = [site, right, 0]
     bondvecs[ibond] = [1, 0]
@@ -77,7 +79,7 @@ end
 # add vertices to graph
 for (vi, pos) in enumerate(positions)
     addvertex!(graph, vi, 0, Int.(pos))
-    
+
 end
 
 # add edges to graph
@@ -88,8 +90,9 @@ end
 # s = string(xdoc);
 # print(xdoc)
 
-println("Not dumping.")
-# save_file(xdoc, "square_L_$(L)_W_$(L).xml")
+# println("Not dumping.")
+save_file(xdoc, "square_L_$(L)_W_$(L).xml")
+
 
 
 # Create plot
@@ -100,7 +103,7 @@ using PyPlot
 for (ibond, b) in enumerate(bonds)
     src = positions[b[1]]
     trg = positions[b[2]]
-    
+
     # don't show pbc bonds
     b[2] > b[1] || continue
     b[2] - b[1] < 2*L || continue
@@ -112,7 +115,7 @@ end
 # plot sites
 for (s, pos) in enumerate(positions)
     plot(pos..., marker="o", markersize=13, color="white", mec="black", mew=1.5)
-    
+
 end
 # scatter(getindex.(positions, 1), getindex.(positions, 2), c=1:length(positions), cmap="Blues")
 
