@@ -156,6 +156,85 @@ function generate_H_tb_spinless(t, mu, ns, c)
 end
 
 
+function generate_H_Hubbard(t, U, mu, ns, cup, cdn)
+    L = Int(sqrt(ns))
+    sqlattice = reshape(collect(1:ns), (L,L))
+    # up and right neighbors
+    unn = circshift(sqlattice, (1,0))[:]
+    rnn = circshift(sqlattice, (0,-1))[:]
+    dim = Int(4^ns)
+
+    # chemical potential
+    N = spzeros(Float64, dim, dim)
+    for i in 1:ns
+        N = N + cup[i]' * cup[i]
+        N = N + cdn[i]' * cdn[i]
+    end
+    
+    H = - mu * N
+
+    @assert ishermitian(H)
+    
+    # hoppings
+    for i in 1:ns
+        for c in (cup, cdn)
+            H += - t * (c[i]' * c[unn[i]]) - t * (c[unn[i]]' * c[i])
+            H += - t * (c[i]' * c[rnn[i]]) - t * (c[rnn[i]]' * c[i])
+        end
+    end
+
+    # on-site interaction
+    for i in 1:ns
+        nup = cup[i]' * cup[i]
+        ndn = cdn[i]' * cdn[i]
+        H = H + U * (nup - 0.5I) * (ndn - 0.5I)
+    end
+
+    @assert ishermitian(H)
+    return H
+end
+
+
+# normal = mu=0 doesn't imply half filling
+function generate_H_Hubbard_normal(t, U, mu, ns, cup, cdn)
+    L = Int(sqrt(ns))
+    sqlattice = reshape(collect(1:ns), (L,L))
+    # up and right neighbors
+    unn = circshift(sqlattice, (1,0))[:]
+    rnn = circshift(sqlattice, (0,-1))[:]
+    dim = Int(4^ns)
+
+    # chemical potential
+    N = spzeros(Float64, dim, dim)
+    for i in 1:ns
+        N = N + cup[i]' * cup[i]
+        N = N + cdn[i]' * cdn[i]
+    end
+    
+    H = - mu * N
+    
+    @assert ishermitian(H)
+    
+    # hoppings
+    for i in 1:ns
+        for c in (cup, cdn)
+            H += - t * (c[i]' * c[unn[i]]) - t * (c[unn[i]]' * c[i])
+            H += - t * (c[i]' * c[rnn[i]]) - t * (c[rnn[i]]' * c[i])
+        end
+    end
+
+    # on-site interaction
+    for i in 1:ns
+        nup = cup[i]' * cup[i]
+        ndn = cdn[i]' * cdn[i]
+        H = H + U * (nup * ndn)
+    end
+
+    @assert ishermitian(H)
+    return H
+end
+
+
 function generate_H_tb_spinless_spbasis(t, mu, ns, c)
     L = Int(sqrt(ns))
     sqlattice = reshape(collect(1:ns), (L,L))
