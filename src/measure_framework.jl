@@ -120,6 +120,7 @@ end
   to::TimerOutput = TimerOutput()
   ignore_first_n::Int = 0
   confs_iterator_start::Int = 1 # this is the S in "for i in S:length(confs)"
+  safe_mult::Union{Nothing, Int} = nothing # nothing = use what has been used for dqmc
 end
 
 
@@ -149,6 +150,8 @@ function measxml2MeasParams(fname)
     elseif k == :ignore_first_n
       mp.ignore_first_n = parse(Int64, v)
       mp.confs_iterator_start = mp.ignore_first_n + 1
+    elseif k == :safe_mult
+      mp.safe_mult = parse(Int64, v)
     end
   end
 
@@ -337,7 +340,7 @@ function create_todolist!(mp::MeasParams)
       push!(mp.todo, :binder)
     end
 
-    mp.confs_iterator_start = ignore_first_n + try unique(values(counts))[1] + 1 catch er 1 end
+    mp.confs_iterator_start = mp.ignore_first_n + try unique(values(counts))[1] + 1 catch er 1 end
 
   else # there is no meas outfile yet or we are in overwrite mode
     mp.todo = copy(mp.requested)
@@ -430,6 +433,10 @@ function measure(mp::MeasParams; debug=false)
 
   # prepare dqmc framework if necessary
   if need_to_setup_mc(mp)
+    if !isnothing(mp.safe_mult)
+      mp.p.safe_mult = mp.safe_mult
+      @show mp.p.safe_mult
+    end
     mc = DQMC(mp.p)
     initialize_stack_for_measurements(mc, mp)
   end
