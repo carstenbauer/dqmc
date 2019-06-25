@@ -118,6 +118,7 @@ end
   walltimelimit::Dates.DateTime = Dates.DateTime("2099", "YYYY")
   save_after::Int = 10
   to::TimerOutput = TimerOutput()
+  ignore_first_n::Int = 0
   confs_iterator_start::Int = 1 # this is the S in "for i in S:length(confs)"
 end
 
@@ -145,6 +146,9 @@ function measxml2MeasParams(fname)
       mp.num_threads = parse(Int64, v)
     elseif k == :save_after
       mp.save_after = parse(Int64, v)
+    elseif k == :ignore_first_n
+      mp.ignore_first_n = parse(Int64, v)
+      mp.confs_iterator_start = mp.ignore_first_n + 1
     end
   end
 
@@ -333,7 +337,7 @@ function create_todolist!(mp::MeasParams)
       push!(mp.todo, :binder)
     end
 
-    mp.confs_iterator_start = try unique(values(counts))[1] + 1 catch er 1 end
+    mp.confs_iterator_start = ignore_first_n + try unique(values(counts))[1] + 1 catch er 1 end
 
   else # there is no meas outfile yet or we are in overwrite mode
     mp.todo = copy(mp.requested)
