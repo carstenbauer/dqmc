@@ -355,14 +355,14 @@ Measure observables like the equal-time Green's function if requested
 function _measure_observables!(mc, obs)
         # bosonic
         if haskey(obs, :boson_action)
-          add!(obs[:boson_action], mc.p.boson_action)
+          push!(obs[:boson_action], mc.p.boson_action)
         end
 
         # fermionic
         if haskey(obs, :greens)
           g = wrap_greens(mc,mc.s.greens,mc.s.current_slice,1)
           effective_greens2greens!(mc, g)
-          add!(obs[:greens], g)
+          push!(obs[:greens], g)
         end
         nothing
 end
@@ -416,9 +416,9 @@ function measure!(mc::DQMC; prevmeasurements = 0)
       if s.current_slice == p.slices && s.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
         dumping = (length(configurations)+1)%cs == 0
         dumping && println("Dumping... (2*i=$(2*i))")
-        # add!(boson_action, p.boson_action)
+        # push!(boson_action, p.boson_action)
 
-        add!(configurations, p.hsfield)
+        push!(configurations, p.hsfield)
         
         _measure_observables!(mc, obs)
 
@@ -573,7 +573,7 @@ function csheuristics(wctl::DateTime, udsd::Real, writeeverynth::Int; maxcs::Int
     wcts = (wctl - now()).value / 1000. # seconds till we hit the wctl
     # wcts == 0.0 && (return maxcs) # no wallclocktime limit
 
-    num_uds = wcts/(udsd * writeeverynth) # Float64: number of add!s we will (in theory) perform in the given time
+    num_uds = wcts/(udsd * writeeverynth) # Float64: number of push!s we will (in theory) perform in the given time
     num_uds *= 0.80 # 20% buffer, i.e. things might take longer than expected.
     cs = max(floor(Int, min(num_uds, 100)), 1)
 end

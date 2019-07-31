@@ -88,9 +88,9 @@ function measure_chi_dynamics(confs::AbstractArray{Float64, 4})
     chi_dyn = Observable(Array{Float64, 3}, "chi_dyn"; alloc=num_confs)
     @inbounds @views for i in 1:num_confs
         chi = measure_chi_dynamic(confs[:,:,:,i])
-        add!(chi_dyn, chi)
+        push!(chi_dyn, chi)
         chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
-        add!(chi_dyn_symm, chi)
+        push!(chi_dyn_symm, chi)
     end
 
     return chi_dyn, chi_dyn_symm
@@ -113,7 +113,7 @@ function measure_binder(confs::AbstractArray{Float64, 4})
     m4ev = mean(m4s)
 
     binder = Observable(Float64, "binder")
-    add!(binder, m4ev/m2ev2)
+    push!(binder, m4ev/m2ev2)
 
     return binder
 end
