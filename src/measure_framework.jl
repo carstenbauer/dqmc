@@ -36,6 +36,7 @@ const OBSERVABLES = Set((:chi_dyn,
                          :zfpc,
                          :etcdc,
                          :zfcdc,
+                         :zfccc,
                          :sfdensity,
                          :greens,
                          :tdgfs_gt0,
@@ -195,19 +196,19 @@ end
 
 
 @inline function need_to_setup_mc(mp::MeasParams)
-  symb = (:etpc_plus, :zfpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity, :greens, :tdgfs_gt0, :tdgfs_g0t)
+  symb = (:etpc_plus, :zfpc_plus, :etcdc_plus, :zfcdc_plus, :zfccc, :sfdensity, :greens, :tdgfs_gt0, :tdgfs_g0t)
   return any(in.(symb, Ref(mp.todo)))
 end
 @inline function need_etgf(mp::MeasParams)
-  symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity, :greens)
+  symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :zfccc, :sfdensity, :greens)
   return any(in.(symb, Ref(mp.todo)))
 end
 @inline function need_to_meas_tdgfs(mp::MeasParams)
-  symb = (:zfpc_plus, :zfcdc_plus, :sfdensity, :tdgfs_gt0, :tdgfs_g0t)
+  symb = (:zfpc_plus, :zfcdc_plus, :zfccc, :sfdensity, :tdgfs_gt0, :tdgfs_g0t)
   return any(in.(symb, Ref(mp.todo)))
 end
 @inline function need_to_meas_zfccc(mp::MeasParams)
-  symb = (:sfdensity)
+  symb = (:zfccc, :sfdensity)
   return any(in.(symb, Ref(mp.todo)))
 end
 
@@ -216,15 +217,15 @@ end
 
 
 @inline function need_etgf(ol::NamedTuple{K,V}) where {K,V}
-  symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :sfdensity, :greens)
+  symb = (:etpc_plus, :etcdc_plus, :zfcdc_plus, :zfccc, :sfdensity, :greens)
   return any(Base.sym_in.(symb, Ref(K)))
 end
 @inline function need_to_meas_tdgfs(ol::NamedTuple{K,V}) where {K,V}
-  symb = (:zfpc_plus, :zfcdc_plus, :sfdensity, :tdgfs_gt0, :tdgfs_g0t)
+  symb = (:zfpc_plus, :zfcdc_plus, :zfccc, :sfdensity, :tdgfs_gt0, :tdgfs_g0t)
   return any(Base.sym_in.(symb, Ref(K)))
 end
 @inline function need_to_meas_zfccc(ol::NamedTuple{K,V}) where {K,V}
-  return Base.sym_in(:sfdensity, K)
+  return Base.sym_in(:sfdensity, K) || Base.sym_in(:zfccc, K)
 end
 
 
@@ -493,6 +494,12 @@ function measure(mp::MeasParams; debug=false)
     @addlightobs zfcdc_minus zero_zfcdc
   end
 
+  # zfccc
+  if :zfccc in mp.todo
+    zero_zfccc = zeros(ComplexF64, mp.p.L, mp.p.L)
+    @addlightobs zfccc zero_zfccc
+  end
+
   # sfdensity
   if :sfdensity in mp.todo
     @addlightobs sfdensity Float64
@@ -743,6 +750,11 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
         push!(obs[:tdgfs_g0t], VectorOfArray(G0t))
     end
 
+    # zfccc
+    if :zfccc in K
+        push!(obs[:zfccc], zfccc)
+    end
+
     nothing
 end
 
@@ -774,6 +786,7 @@ function export_results(mp, obs, nsweeps)
     :etcdc_minus in keys(obs) && export_result(obs[:etcdc_minus], mp.outfile, "obs/etcdc_minus")
     :zfcdc_plus in keys(obs) && export_result(obs[:zfcdc_plus], mp.outfile, "obs/zfcdc_plus")
     :zfcdc_minus in keys(obs) && export_result(obs[:zfcdc_minus], mp.outfile, "obs/zfcdc_minus")
+    :zfccc in keys(obs) && export_result(obs[:zfccc], mp.outfile, "obs/zfccc")
     :sfdensity in keys(obs) && export_result(obs[:sfdensity], mp.outfile, "obs/sfdensity")
     :tdgfs_gt0 in keys(obs) && export_result(obs[:tdgfs_gt0], mp.outfile, "obs/tdgfs_gt0")
     :tdgfs_g0t in keys(obs) && export_result(obs[:tdgfs_g0t], mp.outfile, "obs/tdgfs_g0t")
