@@ -702,41 +702,41 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
     # etpc
     @mytimeit mp.to "etpc" if :etpc_plus in K
         measure_etpc!(mc, etgf)
-        push!(obs[:etpc_plus], mc.s.meas.etpc_plus)
-        push!(obs[:etpc_minus], mc.s.meas.etpc_minus)
+        push!(obs[:etpc_plus], mc.m.etpc_plus)
+        push!(obs[:etpc_minus], mc.m.etpc_minus)
     end
 
     # etcdc
     @mytimeit mp.to "etcdc" if :etcdc_plus in K
         measure_etcdc!(mc, etgf)
-        push!(obs[:etcdc_plus], mc.s.meas.etcdc_plus)
-        push!(obs[:etcdc_minus], mc.s.meas.etcdc_minus)
+        push!(obs[:etcdc_plus], mc.m.etcdc_plus)
+        push!(obs[:etcdc_minus], mc.m.etcdc_minus)
     end
 
     @mytimeit mp.to "calculate TDGFs" if need_to_meas_tdgfs(obs)
       measure_tdgfs!(mc)
       GC.gc()
-      Gt0 = mc.s.meas.Gt0
-      G0t = mc.s.meas.G0t
+      Gt0 = mc.m.Gt0
+      G0t = mc.m.G0t
     end
 
     @mytimeit mp.to "zfccc" if need_to_meas_zfccc(obs)
       measure_zfccc!(mc, etgf, Gt0, G0t)
-      zfccc = mc.s.meas.zfccc
+      zfccc = mc.m.zfccc
     end
 
     # zfpc
     @mytimeit mp.to "zfpc" if :zfpc_plus in K
         measure_zfpc!(mc, Gt0)
-        push!(obs[:zfpc_plus], mc.s.meas.zfpc_plus)
-        push!(obs[:zfpc_minus], mc.s.meas.zfpc_minus)
+        push!(obs[:zfpc_plus], mc.m.zfpc_plus)
+        push!(obs[:zfpc_minus], mc.m.zfpc_minus)
     end
 
     # zfcdc
     @mytimeit mp.to "zfcdc" if :zfcdc_plus in K
         measure_zfcdc!(mc, etgf, Gt0, G0t)
-        push!(obs[:zfcdc_plus], mc.s.meas.zfcdc_plus)
-        push!(obs[:zfcdc_minus], mc.s.meas.zfcdc_minus)
+        push!(obs[:zfcdc_plus], mc.m.zfcdc_plus)
+        push!(obs[:zfcdc_minus], mc.m.zfcdc_minus)
     end
 
     # sfdensity

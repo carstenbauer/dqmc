@@ -165,8 +165,8 @@ end
     # Calculate TDGFs
     allocate_tdgfs!(mc)
     measure_tdgfs!(mc)
-    Gt0 = mc.s.meas.Gt0
-    G0t = mc.s.meas.G0t
+    Gt0 = mc.m.Gt0
+    G0t = mc.m.G0t
 
 
     @testset "ETGF(s)" begin
@@ -205,10 +205,10 @@ end
           return true
         end
 
-        @test check_unitarity(mc.s.meas.BT0Inv_u_stack)
-        @test check_unitarity(mc.s.meas.BBetaT_u_stack)
-        @test check_unitarity(mc.s.meas.BT0_u_stack)
-        @test check_unitarity(mc.s.meas.BBetaTInv_u_stack)
+        @test check_unitarity(mc.m.BT0Inv_u_stack)
+        @test check_unitarity(mc.m.BBetaT_u_stack)
+        @test check_unitarity(mc.m.BT0_u_stack)
+        @test check_unitarity(mc.m.BBetaTInv_u_stack)
 
         # TODO: Check stacks values?
 
@@ -220,12 +220,12 @@ end
 
     @testset "ETPC" begin
         allocate_etpc!(mc)
-        @test mc.s.meas.etpc_minus == zero(mc.s.meas.etpc_minus)
-        @test mc.s.meas.etpc_plus == zero(mc.s.meas.etpc_plus)
+        @test mc.m.etpc_minus == zero(mc.m.etpc_minus)
+        @test mc.m.etpc_plus == zero(mc.m.etpc_plus)
 
         measure_etpc!(mc, g)
-        Pm = mc.s.meas.etpc_minus
-        Pp = mc.s.meas.etpc_plus
+        Pm = mc.m.etpc_minus
+        Pp = mc.m.etpc_plus
 
         @test isreal(Pm)
         @test isreal(Pp)
@@ -235,12 +235,12 @@ end
 
     @testset "ETCDC" begin
         allocate_etcdc!(mc)
-        @test mc.s.meas.etcdc_minus == zero(mc.s.meas.etcdc_minus)
-        @test mc.s.meas.etcdc_plus == zero(mc.s.meas.etcdc_plus)
+        @test mc.m.etcdc_minus == zero(mc.m.etcdc_minus)
+        @test mc.m.etcdc_plus == zero(mc.m.etcdc_plus)
 
         measure_etcdc!(mc, g)
-        Cm = mc.s.meas.etcdc_minus
-        Cp = mc.s.meas.etcdc_plus
+        Cm = mc.m.etcdc_minus
+        Cp = mc.m.etcdc_plus
 
         @test maximum(imag(Cm)) < 1e-12
         @test maximum(imag(Cp)) < 1e-12
@@ -250,12 +250,12 @@ end
 
     @testset "ZFPC" begin
         allocate_zfpc!(mc)
-        @test mc.s.meas.zfpc_minus == zero(mc.s.meas.zfpc_minus)
-        @test mc.s.meas.zfpc_plus == zero(mc.s.meas.zfpc_plus)
+        @test mc.m.zfpc_minus == zero(mc.m.zfpc_minus)
+        @test mc.m.zfpc_plus == zero(mc.m.zfpc_plus)
 
         measure_zfpc!(mc, Gt0)
-        Pm = mc.s.meas.zfpc_minus
-        Pp = mc.s.meas.zfpc_plus
+        Pm = mc.m.zfpc_minus
+        Pp = mc.m.zfpc_plus
 
         @test isreal(Pm)
         @test isreal(Pp)
@@ -264,18 +264,18 @@ end
 
         M = mc.p.slices
         measure_zfpc!(mc, [g for _ in 1:M]) # ~ τ = 0
-        @test Pm/M ≈ mc.s.meas.etpc_minus
-        @test Pp/M ≈ mc.s.meas.etpc_plus
+        @test Pm/M ≈ mc.m.etpc_minus
+        @test Pp/M ≈ mc.m.etpc_plus
     end
 
     @testset "ZFCDC" begin
         allocate_zfcdc!(mc)
-        @test mc.s.meas.zfcdc_minus == zero(mc.s.meas.zfcdc_minus)
-        @test mc.s.meas.zfcdc_plus == zero(mc.s.meas.zfcdc_plus)
+        @test mc.m.zfcdc_minus == zero(mc.m.zfcdc_minus)
+        @test mc.m.zfcdc_plus == zero(mc.m.zfcdc_plus)
 
         measure_zfcdc!(mc, g, Gt0, G0t)
-        Cm = mc.s.meas.zfcdc_minus
-        Cp = mc.s.meas.zfcdc_plus
+        Cm = mc.m.zfcdc_minus
+        Cp = mc.m.zfcdc_plus
 
         @test maximum(imag(Cm)) < 1e-12
         @test maximum(imag(Cp)) < 1e-12
@@ -286,10 +286,10 @@ end
 
     @testset "ZFCCC + Superfluid density" begin
         allocate_zfccc!(mc)
-        @test mc.s.meas.zfccc == zero(mc.s.meas.zfccc)
+        @test mc.m.zfccc == zero(mc.m.zfccc)
 
         measure_zfccc!(mc, g, Gt0, G0t)
-        Λ = mc.s.meas.zfccc
+        Λ = mc.m.zfccc
 
         @test maximum(imag(Λ)) < 1e-12
         @test is_reflection_symmetric(Λ, tol=2e-3) # is 2e-3 a problem?
@@ -299,18 +299,18 @@ end
 
 
     @test isnothing(deallocate_tdgfs_stacks!(mc))
-    @test length(mc.s.meas.BT0Inv_u_stack) == 0
-    @test length(mc.s.meas.BT0Inv_d_stack) == 0
-    @test length(mc.s.meas.BT0Inv_t_stack) == 0
-    @test length(mc.s.meas.BBetaT_u_stack) == 0
-    @test length(mc.s.meas.BBetaT_d_stack) == 0
-    @test length(mc.s.meas.BBetaT_t_stack) == 0
-    @test length(mc.s.meas.BT0_u_stack) == 0
-    @test length(mc.s.meas.BT0_d_stack) == 0
-    @test length(mc.s.meas.BT0_t_stack) == 0
-    @test length(mc.s.meas.BBetaTInv_u_stack) == 0
-    @test length(mc.s.meas.BBetaTInv_d_stack) == 0
-    @test length(mc.s.meas.BBetaTInv_t_stack) == 0
+    @test length(mc.m.BT0Inv_u_stack) == 0
+    @test length(mc.m.BT0Inv_d_stack) == 0
+    @test length(mc.m.BT0Inv_t_stack) == 0
+    @test length(mc.m.BBetaT_u_stack) == 0
+    @test length(mc.m.BBetaT_d_stack) == 0
+    @test length(mc.m.BBetaT_t_stack) == 0
+    @test length(mc.m.BT0_u_stack) == 0
+    @test length(mc.m.BT0_d_stack) == 0
+    @test length(mc.m.BT0_t_stack) == 0
+    @test length(mc.m.BBetaTInv_u_stack) == 0
+    @test length(mc.m.BBetaTInv_d_stack) == 0
+    @test length(mc.m.BBetaTInv_t_stack) == 0
 
 end
 

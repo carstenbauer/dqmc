@@ -87,14 +87,14 @@ end
     # Compare ETPC
     allocate_etpc!(mc_ed)
     measure_etpc!(mc_ed, g)
-    @test isapprox(mc_ed.s.meas.etpc_minus, ed["etpc_minus"], atol=1e-5)
-    @test isapprox(mc_ed.s.meas.etpc_plus, ed["etpc_plus"], atol=1e-5)
+    @test isapprox(mc_ed.m.etpc_minus, ed["etpc_minus"], atol=1e-5)
+    @test isapprox(mc_ed.m.etpc_plus, ed["etpc_plus"], atol=1e-5)
     
     # Compare ETCDC
     allocate_etcdc!(mc_ed)
     measure_etcdc!(mc_ed, g)
-    @test isapprox(mc_ed.s.meas.etcdc_minus, ed["etcdc_minus"], atol=1e-5)
-    @test isapprox(mc_ed.s.meas.etcdc_plus, ed["etcdc_plus"], atol=1e-4)
+    @test isapprox(mc_ed.m.etcdc_minus, ed["etcdc_minus"], atol=1e-5)
+    @test isapprox(mc_ed.m.etcdc_plus, ed["etcdc_plus"], atol=1e-4)
 end
 
 
@@ -182,8 +182,8 @@ end
     # Calculate TDGFs: Gt0, G0t
     allocate_tdgfs!(mc_edk)
     measure_tdgfs!(mc_edk)
-    Gt0 = mc_edk.s.meas.Gt0
-    G0t = mc_edk.s.meas.G0t
+    Gt0 = mc_edk.m.Gt0
+    G0t = mc_edk.m.G0t
 
     
     @testset "ETGF" begin
@@ -242,8 +242,8 @@ end
     @testset "ETPC" begin
         allocate_etpc!(mc_edk)
         measure_etpc!(mc_edk, mc_edk.s.greens)
-        Pm = mc_edk.s.meas.etpc_minus
-        Pp = mc_edk.s.meas.etpc_plus
+        Pm = mc_edk.m.etpc_minus
+        Pp = mc_edk.m.etpc_plus
 
         @test isreal(Pm)
         @test isreal(Pp)
@@ -255,8 +255,8 @@ end
     @testset "ETCDC" begin
         allocate_etcdc!(mc_edk)
         measure_etcdc!(mc_edk, mc_edk.s.greens)
-        Cm = mc_edk.s.meas.etcdc_minus
-        Cp = mc_edk.s.meas.etcdc_plus
+        Cm = mc_edk.m.etcdc_minus
+        Cp = mc_edk.m.etcdc_plus
 
         @test isreal(Cm)
         @test isreal(Cp)
@@ -267,8 +267,8 @@ end
     @testset "ZFPC" begin
         allocate_zfpc!(mc_edk)
         measure_zfpc!(mc_edk, Gt0)
-        Pm = mc_edk.s.meas.zfpc_minus
-        Pp = mc_edk.s.meas.zfpc_plus
+        Pm = mc_edk.m.zfpc_minus
+        Pp = mc_edk.m.zfpc_plus
 
         @test isreal(Pm)
         @test isreal(Pp)
@@ -280,8 +280,8 @@ end
     @testset "ZFCDC" begin
         allocate_zfcdc!(mc_edk)
         measure_zfcdc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
-        Cm = mc_edk.s.meas.zfcdc_minus
-        Cp = mc_edk.s.meas.zfcdc_plus
+        Cm = mc_edk.m.zfcdc_minus
+        Cp = mc_edk.m.zfcdc_plus
 
         @test isreal(Cm)
         @test isreal(Cp)
@@ -294,7 +294,7 @@ end
     @testset "ZFCCC + Superfluid density" begin
         allocate_zfccc!(mc_edk)
         measure_zfccc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
-        Λ = mc_edk.s.meas.zfccc
+        Λ = mc_edk.m.zfccc
 
         @test isreal(Λ)
         @test is_reflection_symmetric(Λ)

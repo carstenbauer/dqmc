@@ -153,14 +153,14 @@ function calc_tdgfs_udv!(mc)
 
   # allocate matrices if not yet done TODO: EVENTUALLY THIS SHOULD BE REMOVED
   try
-    mc.s.meas.Gt0[1]
-    mc.s.meas.G0t[1]
+    mc.m.Gt0[1]
+    mc.m.G0t[1]
   catch
     allocate_tdgf!(mc)
   end
 
-  Gt0 = mc.s.meas.Gt0
-  G0t = mc.s.meas.G0t
+  Gt0 = mc.m.Gt0
+  G0t = mc.m.G0t
 
   # ---- first, calculate Gt0 and G0t only at safe_mult slices 
   # right mult (Gt0)

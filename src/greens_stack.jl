@@ -1,47 +1,4 @@
-mutable struct MeasStack{G<:Number} # G = GreensEltype
-
-  # ETPCs (equal-time pairing correlations)
-  etpc_minus::Array{Float64, 2} # "P_(y,x)", i.e. d-wave
-  etpc_plus::Array{Float64, 2} # "P+(y,x)", i.e. s-wave
-
-  # ZFPCs (zero-frequency pairing correlations)
-  zfpc_minus::Array{Float64, 2} # "P_(y,x)", i.e. d-wave
-  zfpc_plus::Array{Float64, 2} # "P+(y,x)", i.e. s-wave
-
-
-  # ETCDCs (equal-time charge density correlations)
-  etcdc_minus::Array{ComplexF64, 2} # "C_(y,x)", i.e. d-wave
-  etcdc_plus::Array{ComplexF64, 2} # "C+(y,x)", i.e. s-wave
-
-  # ZFCDCs (zero-frequency charge density correlations)
-  zfcdc_minus::Array{ComplexF64, 2} # "C_(y,x)", i.e. d-wave
-  zfcdc_plus::Array{ComplexF64, 2} # "C+(y,x)", i.e. s-wave
-
-
-  # ZFCCCs (zero-frequency current-current correlations)
-  zfccc::Array{ComplexF64, 2} # "Λxx(y,x)"
-
-
-  # TDGF
-  Gt0::Vector{Matrix{G}}
-  G0t::Vector{Matrix{G}}
-  BT0Inv_u_stack::Vector{Matrix{G}}
-  BT0Inv_d_stack::Vector{Vector{Float64}}
-  BT0Inv_t_stack::Vector{Matrix{G}}
-  BBetaT_u_stack::Vector{Matrix{G}}
-  BBetaT_d_stack::Vector{Vector{Float64}}
-  BBetaT_t_stack::Vector{Matrix{G}}
-  BT0_u_stack::Vector{Matrix{G}}
-  BT0_d_stack::Vector{Vector{Float64}}
-  BT0_t_stack::Vector{Matrix{G}}
-  BBetaTInv_u_stack::Vector{Matrix{G}}
-  BBetaTInv_d_stack::Vector{Vector{Float64}}
-  BBetaTInv_t_stack::Vector{Matrix{G}}
-
-  MeasStack{G}() where G = new{G}()
-end
-
-mutable struct Stack{G<:Number} # G = GreensEltype
+mutable struct GreensStack{G<:Number} # G = GreensEltype
   n_elements::Int
   ranges::Array{UnitRange, 1}
   current_slice::Int # running internally over 0:p.slices+1, where 0 and p.slices+1 are artifcial to prepare next sweep direction.
@@ -60,7 +17,6 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   R::Vector{G}
   eV::SparseMatrixCSC{G,Int64}
 
-  meas::MeasStack{G}
   Bl::Matrix{G}
 
   # unsure about those -> always allocate them
@@ -113,7 +69,7 @@ mutable struct Stack{G<:Number} # G = GreensEltype
   greens_temp::Matrix{G}
 
 
-  Stack{G}() where G = new{G}()
+  GreensStack{G}() where G = new{G}()
 end
 
 
@@ -203,9 +159,6 @@ function _initialize_stack(mc::AbstractDQMC)
   s.S = zeros(G, N)
   s.R = zeros(G, N)
   s.eV = spzeros(G, flv*N, flv*N)
-
-  # init empty meas stack
-  s.meas = MeasStack{G}()
 
   # slice matrix
   cbtype(mc) === CBFalse && (s.Bl = zeros(G, flv*N, flv*N))

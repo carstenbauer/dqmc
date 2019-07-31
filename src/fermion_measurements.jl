@@ -362,7 +362,7 @@ end
 # -------------------------------------------------------
 function allocate_etpc!(mc)
   L = mc.p.L
-  meas = mc.s.meas
+  meas = mc.m
 
   meas.etpc_minus = zeros(Float64,L,L)
   meas.etpc_plus = zeros(Float64,L,L)
@@ -388,8 +388,8 @@ Details:
 function measure_etpc!(mc::AbstractDQMC, greens::AbstractMatrix)
   L = mc.p.L
   N = mc.l.sites
-  Pm = mc.s.meas.etpc_minus # d-wave
-  Pp = mc.s.meas.etpc_plus # s-wave
+  Pm = mc.m.etpc_minus # d-wave
+  Pp = mc.m.etpc_plus # s-wave
 
   fill!(Pm, 0.0)
   fill!(Pp, 0.0)
@@ -452,12 +452,12 @@ end
 # """
 # FFT of ETPC, i.e. P(ky, kx)
 # """
-# measure_etpc_k!(args...) = begin measure_etpc!(args...); rfft(mc.s.meas.etpc, (1,2)); end
+# measure_etpc_k!(args...) = begin measure_etpc!(args...); rfft(mc.m.etpc, (1,2)); end
 
 # """
 # P = Σ_r P(r), with P(r) from `etpc`.
 # """
-# measure_etpc_uniform!(mc, η, greens) = begin measure_etpc!(mc, η, greens); sum(mc.s.meas.etpc); end
+# measure_etpc_uniform!(mc, η, greens) = begin measure_etpc!(mc, η, greens); sum(mc.m.etpc); end
 
 # """
 # P = P(q=0), with P(q)=fft(P(r)) from `etpc_k`. Slower than `etpc_uniform!`.
@@ -474,7 +474,7 @@ end
 # -------------------------------------------------------
 function allocate_zfpc!(mc)
   L = mc.p.L
-  meas = mc.s.meas
+  meas = mc.m
 
   meas.zfpc_minus = zeros(Float64,L,L)
   meas.zfpc_plus = zeros(Float64,L,L)
@@ -501,8 +501,8 @@ function measure_zfpc!(mc::AbstractDQMC, Gt0s::AbstractVector{T}) where T <: Abs
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
-  Pm = mc.s.meas.zfpc_minus # d-wave
-  Pp = mc.s.meas.zfpc_plus # s-wave
+  Pm = mc.m.zfpc_minus # d-wave
+  Pp = mc.m.zfpc_plus # s-wave
 
   fill!(Pm, 0.0)
   fill!(Pp, 0.0)
@@ -566,7 +566,7 @@ end
 # -------------------------------------------------------
 function allocate_etcdc!(mc)
   L = mc.p.L
-  meas = mc.s.meas
+  meas = mc.m
 
   meas.etcdc_minus = zeros(Float64,L,L)
   meas.etcdc_plus = zeros(Float64,L,L)
@@ -592,8 +592,8 @@ Details:
 function measure_etcdc!(mc::AbstractDQMC, greens::AbstractMatrix)
   L = mc.p.L
   N = mc.l.sites
-  Cm = mc.s.meas.etcdc_minus # d-wave
-  Cp = mc.s.meas.etcdc_plus # s-wave
+  Cm = mc.m.etcdc_minus # d-wave
+  Cp = mc.m.etcdc_plus # s-wave
 
   fill!(Cm, 0.0)
   fill!(Cp, 0.0)
@@ -661,7 +661,7 @@ end
 # -------------------------------------------------------
 function allocate_zfcdc!(mc)
   L = mc.p.L
-  meas = mc.s.meas
+  meas = mc.m
 
   meas.zfcdc_minus = zeros(Float64,L,L)
   meas.zfcdc_plus = zeros(Float64,L,L)
@@ -689,8 +689,8 @@ function measure_zfcdc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
-  Cm = mc.s.meas.zfcdc_minus # d-wave
-  Cp = mc.s.meas.zfcdc_plus # s-wave
+  Cm = mc.m.zfcdc_minus # d-wave
+  Cp = mc.m.zfcdc_plus # s-wave
 
   fill!(Cm, 0.0)
   fill!(Cp, 0.0)
@@ -783,7 +783,7 @@ end
 # -------------------------------------------------------
 function allocate_zfccc!(mc)
   L = mc.p.L
-  meas = mc.s.meas
+  meas = mc.m
 
   meas.zfccc = zeros(Float64,L,L)
 
@@ -814,7 +814,7 @@ function measure_zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
-  Lambda = mc.s.meas.zfccc
+  Lambda = mc.m.zfccc
   T = mc.l.hopping_matrix
 
   fill!(Lambda, 0.0)
@@ -907,12 +907,12 @@ end
 # -------------------------------------------------------
 
 """
-    measure_sfdensity(mc, zfccc=mc.s.meas.zfccc)
+    measure_sfdensity(mc, zfccc=mc.m.zfccc)
 
 Calculate the superfluid density from zero-frequency
 current-current correlations `zfccc`.
 """
-function measure_sfdensity(mc, zfccc=mc.s.meas.zfccc)
+function measure_sfdensity(mc, zfccc=mc.m.zfccc)
   Λq = rfft(real(zfccc))
 
   # K = similar(Λq)
@@ -1243,25 +1243,25 @@ function allocate_tdgfs!(mc)
   @stackshortcuts
   M = mc.p.slices
   Nflv = N*flv
-  meas = mc.s.meas
+  meas = mc.m
 
   nranges = length(mc.s.ranges)
 
   meas.Gt0 = Matrix{G}[zeros(G, Nflv, Nflv) for _ in 1:M]
   meas.G0t = Matrix{G}[zeros(G, Nflv, Nflv) for _ in 1:M]
 
-  mc.s.meas.BT0Inv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  mc.s.meas.BT0Inv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  mc.s.meas.BT0Inv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  mc.s.meas.BBetaT_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  mc.s.meas.BBetaT_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  mc.s.meas.BBetaT_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  mc.s.meas.BT0_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  mc.s.meas.BT0_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  mc.s.meas.BT0_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  mc.s.meas.BBetaTInv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
-  mc.s.meas.BBetaTInv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
-  mc.s.meas.BBetaTInv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.m.BT0Inv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.m.BT0Inv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  mc.m.BT0Inv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.m.BBetaT_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.m.BBetaT_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  mc.m.BBetaT_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.m.BT0_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.m.BT0_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  mc.m.BT0_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.m.BBetaTInv_u_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
+  mc.m.BBetaTInv_d_stack = Vector{Float64}[zeros(Float64, flv*N) for _ in 1:nranges]
+  mc.m.BBetaTInv_t_stack = Matrix{G}[zeros(G, flv*N, flv*N) for _ in 1:nranges]
 
   println("Allocated memory for TDGF measurement.")
   nothing
@@ -1269,18 +1269,18 @@ end
 
 function deallocate_tdgfs_stacks!(mc)
 
-  mc.s.meas.BT0Inv_u_stack = Matrix{G}[]
-  mc.s.meas.BT0Inv_d_stack = Vector{Float64}[]
-  mc.s.meas.BT0Inv_t_stack = Matrix{G}[]
-  mc.s.meas.BBetaT_u_stack = Matrix{G}[]
-  mc.s.meas.BBetaT_d_stack = Vector{Float64}[]
-  mc.s.meas.BBetaT_t_stack = Matrix{G}[]
-  mc.s.meas.BT0_u_stack = Matrix{G}[]
-  mc.s.meas.BT0_d_stack = Vector{Float64}[]
-  mc.s.meas.BT0_t_stack = Matrix{G}[]
-  mc.s.meas.BBetaTInv_u_stack = Matrix{G}[]
-  mc.s.meas.BBetaTInv_d_stack = Vector{Float64}[]
-  mc.s.meas.BBetaTInv_t_stack = Matrix{G}[]
+  mc.m.BT0Inv_u_stack = Matrix{G}[]
+  mc.m.BT0Inv_d_stack = Vector{Float64}[]
+  mc.m.BT0Inv_t_stack = Matrix{G}[]
+  mc.m.BBetaT_u_stack = Matrix{G}[]
+  mc.m.BBetaT_d_stack = Vector{Float64}[]
+  mc.m.BBetaT_t_stack = Matrix{G}[]
+  mc.m.BT0_u_stack = Matrix{G}[]
+  mc.m.BT0_d_stack = Vector{Float64}[]
+  mc.m.BT0_t_stack = Matrix{G}[]
+  mc.m.BBetaTInv_u_stack = Matrix{G}[]
+  mc.m.BBetaTInv_d_stack = Vector{Float64}[]
+  mc.m.BBetaTInv_t_stack = Matrix{G}[]
 
   println("Deallocated UDT stacks memory of TDGF measurement.")
   nothing
@@ -1291,7 +1291,7 @@ Returns the actual memory usage of fields related to `measure_tdgfs` (in MB).
 """
 function memory_usage_tdgfs(mc)
   s = x -> Base.summarysize(x) / 1024 / 1024 # size in MB
-  m = mc.s.meas
+  m = mc.m
 
   mem = 0.
 
@@ -1348,21 +1348,21 @@ function measure_tdgfs!(mc)
   M = mc.p.slices
   safe_mult = mc.p.safe_mult
   
-  Gt0 = mc.s.meas.Gt0
-  G0t = mc.s.meas.G0t
+  Gt0 = mc.m.Gt0
+  G0t = mc.m.G0t
 
-  BT0Inv_u_stack = mc.s.meas.BT0Inv_u_stack
-  BT0Inv_d_stack = mc.s.meas.BT0Inv_d_stack
-  BT0Inv_t_stack = mc.s.meas.BT0Inv_t_stack
-  BBetaT_u_stack = mc.s.meas.BBetaT_u_stack
-  BBetaT_d_stack = mc.s.meas.BBetaT_d_stack
-  BBetaT_t_stack = mc.s.meas.BBetaT_t_stack
-  BT0_u_stack = mc.s.meas.BT0_u_stack
-  BT0_d_stack = mc.s.meas.BT0_d_stack
-  BT0_t_stack = mc.s.meas.BT0_t_stack
-  BBetaTInv_u_stack = mc.s.meas.BBetaTInv_u_stack
-  BBetaTInv_d_stack = mc.s.meas.BBetaTInv_d_stack
-  BBetaTInv_t_stack = mc.s.meas.BBetaTInv_t_stack
+  BT0Inv_u_stack = mc.m.BT0Inv_u_stack
+  BT0Inv_d_stack = mc.m.BT0Inv_d_stack
+  BT0Inv_t_stack = mc.m.BT0Inv_t_stack
+  BBetaT_u_stack = mc.m.BBetaT_u_stack
+  BBetaT_d_stack = mc.m.BBetaT_d_stack
+  BBetaT_t_stack = mc.m.BBetaT_t_stack
+  BT0_u_stack = mc.m.BT0_u_stack
+  BT0_d_stack = mc.m.BT0_d_stack
+  BT0_t_stack = mc.m.BT0_t_stack
+  BBetaTInv_u_stack = mc.m.BBetaTInv_u_stack
+  BBetaTInv_d_stack = mc.m.BBetaTInv_d_stack
+  BBetaTInv_t_stack = mc.m.BBetaTInv_t_stack
   
 
   # ---- first, calculate Gt0 and G0t only at safe_mult slices 
