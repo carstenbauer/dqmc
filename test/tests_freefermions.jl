@@ -76,8 +76,8 @@ end
     flv = 2
 
     # ETGF must be real
-    @test isreal(mc_ed.s.greens)
-    g = real(mc_ed.s.greens)
+    @test isreal(mc_ed.g.greens)
+    g = real(mc_ed.g.greens)
     
     # Compare ETGF (not exactly because real-space ED isn't exact)
     @test maximum(g - ed["greens"][1:8, 1:8]) < 1e-5
@@ -188,14 +188,14 @@ end
     
     @testset "ETGF" begin
         # ETGF
-        @test isapprox(mc_edk.s.greens, edk["greens"])
+        @test isapprox(mc_edk.g.greens, edk["greens"])
     end
 
 
     @testset "TDGF" begin
         # --------------- DQMC self-consistency checks -----------
         # TDGF == ETGF consistency
-        @test isapprox(Gt0[1], mc_edk.s.greens)
+        @test isapprox(Gt0[1], mc_edk.g.greens)
 
         # TDGF: tau = 0 difference btw Gt0 and G0t
         @test isapprox(Gt0[1] - G0t[1], I)
@@ -241,7 +241,7 @@ end
 
     @testset "ETPC" begin
         allocate_etpc!(mc_edk)
-        measure_etpc!(mc_edk, mc_edk.s.greens)
+        measure_etpc!(mc_edk, mc_edk.g.greens)
         Pm = mc_edk.m.etpc_minus
         Pp = mc_edk.m.etpc_plus
 
@@ -254,7 +254,7 @@ end
 
     @testset "ETCDC" begin
         allocate_etcdc!(mc_edk)
-        measure_etcdc!(mc_edk, mc_edk.s.greens)
+        measure_etcdc!(mc_edk, mc_edk.g.greens)
         Cm = mc_edk.m.etcdc_minus
         Cp = mc_edk.m.etcdc_plus
 
@@ -279,7 +279,7 @@ end
 
     @testset "ZFCDC" begin
         allocate_zfcdc!(mc_edk)
-        measure_zfcdc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
+        measure_zfcdc!(mc_edk, mc_edk.g.greens, Gt0, G0t)
         Cm = mc_edk.m.zfcdc_minus
         Cp = mc_edk.m.zfcdc_plus
 
@@ -293,7 +293,7 @@ end
 
     @testset "ZFCCC + Superfluid density" begin
         allocate_zfccc!(mc_edk)
-        measure_zfccc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
+        measure_zfccc!(mc_edk, mc_edk.g.greens, Gt0, G0t)
         Λ = mc_edk.m.zfccc
 
         @test isreal(Λ)

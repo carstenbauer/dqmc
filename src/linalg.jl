@@ -253,9 +253,9 @@ Much faster (~50%) than `inv_one_plus_udt_scalettar!` but less accurate.
 function inv_one_plus_udt!(mc, res, U,D,T)
   @warn "Calling potentially inaccurate `inv_one_plus_udt!`"
 
-  d = mc.s.d
-  u = mc.s.tmp
-  t = mc.s.tmp2
+  d = mc.g.d
+  u = mc.g.tmp
+  t = mc.g.tmp2
 
   m = U' / T
   m[diagind(m)] .+= D
@@ -293,21 +293,21 @@ Stable calculation of [1 + UlDlTl(UrDrTr)^†]^(-1).
 Uses preallocated memory in `mc`. Writes the result into `U`, `D`, and `T`.
 """
 function inv_one_plus_two_udts!(mc, U,D,T, Ul,Dl,Tl, Ur,Dr,Tr)
-  s = mc.s
-  tmp = mc.s.tmp
-  tmp2 = mc.s.tmp2
-  tmp3 = mc.s.curr_U
+  g = mc.g
+  tmp = mc.g.tmp
+  tmp2 = mc.g.tmp2
+  tmp3 = mc.g.curr_U
 
   mul!(tmp, Tl, adjoint(Tr))
   rmul!(tmp, Diagonal(Dr))
   lmul!(Diagonal(Dl), tmp)
-  U1, T1 = decompose_udt!(tmp, s.D)
+  U1, T1 = decompose_udt!(tmp, g.D)
 
   mul!(tmp3, Ul, U1)
   mul!(tmp2, T1, adjoint(Ur))
   mul!(tmp, adjoint(tmp3), inv(tmp2))
 
-  tmp .+= Diagonal(s.D)
+  tmp .+= Diagonal(g.D)
 
   u, t = decompose_udt!(tmp, D)
 
@@ -334,9 +334,10 @@ Stable calculation of [1 + UlDlTl(UrDrTr)^†]^(-1).
 Uses preallocated memory in `mc`. Writes the result into `res`.
 """
 function inv_one_plus_two_udts!(mc, res, Ul,Dl,Tl, Ur,Dr,Tr)
-  inv_one_plus_two_udts!(mc, s.U, s.d, s.T, Ul, Dl, Tl, Ur, Dr, Tr)
-  rmul!(s.U, Diagonal(s.d))
-  mul!(res, s.U, s.T)
+  g = mc.g
+  inv_one_plus_two_udts!(mc, g.U, g.d, g.T, Ul, Dl, Tl, Ur, Dr, Tr)
+  rmul!(g.U, Diagonal(g.d))
+  mul!(res, g.U, g.T)
   nothing
 end
 
@@ -366,9 +367,9 @@ Stable calculation of [1 + UDT]^(-1):
 Uses preallocated memory in `mc`. Writes the result into `res`.
 """
 function inv_one_plus_udt_scalettar!(mc, res, U,D,T)
-  d = mc.s.d
-  r = mc.s.tmp
-  l = mc.s.tmp2
+  d = mc.g.d
+  r = mc.g.tmp
+  l = mc.g.tmp2
 
   Dp = max.(D,1.)
   Dm = min.(D,1.)
@@ -456,10 +457,10 @@ Much faster (~40%) than `inv_sum_udts_scalettar!` but less accurate.
 function inv_sum_udts!(mc, res, Ua,Da,Ta,Ub,Db,Tb)
   @warn "Calling potentially inaccurate `inv_sum_udts!`"
 
-  d = mc.s.d
-  m1 = mc.s.tmp
-  m2 = mc.s.tmp2
-  tmp = mc.s.U
+  d = mc.g.d
+  m1 = mc.g.tmp
+  m2 = mc.g.tmp2
+  tmp = mc.g.U
 
   m1 = Ta / Tb
   lmul!(Diagonal(Da), m1)
@@ -569,9 +570,9 @@ Uses preallocated memory in `mc`. Writes the result into `res`.
 """
 function inv_sum_udts_scalettar!(mc, res, Ua, Da, Ta, Ub, Db, Tb)
     # optimization rounds: 1
-    mat1 = mc.s.tmp
-    mat2 = mc.s.U
-    D = mc.s.d
+    mat1 = mc.g.tmp
+    mat2 = mc.g.U
+    D = mc.g.d
     to = mc.a.to
     
     d=length(Da)
@@ -799,7 +800,7 @@ end
 # TODO: Optimize!
 # I only made the function overwrite res. Otherwise it's unchanged compared to the one above.
 function inv_one_plus_udv_scalettar!(mc, res, U,D,Vd)
-  # all similars here could go into mc.s
+  # all similars here could go into mc.g
   Dp = similar(D)
   Dm = similar(D)
   l = similar(Vd)

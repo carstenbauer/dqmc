@@ -20,7 +20,7 @@ Get column/row idx of particular flv ∈ (xu, yd, xd, yu) and site ∈ 1:N in Gr
 """
 Access full (4*N, 4*N) Green's function for any OPDIM efficiently.
 """
-@inline function G(mc, i, j, greens=mc.s.greens)
+@inline function G(mc, i, j, greens=mc.g.greens)
   gt = eltype(greens)
   N = mc.l.sites
   opdim = mc.p.opdim
@@ -49,7 +49,7 @@ end
 """
 Access full (4*N, 4*N) `Gtilde = I - G` where G is the Green's function for any OPDIM efficiently.
 """
-@inline function Gtilde(mc, i, j, greens=mc.s.greens)
+@inline function Gtilde(mc, i, j, greens=mc.g.greens)
   if i == j # on diagonal
     return 1 - G(mc, i, j, greens)
   else
@@ -60,7 +60,7 @@ end
 """
 Construct full (4*N, 4*N) Green's function for any OPDIM efficiently.
 """
-function fullG(mc, greens=mc.s.greens)
+function fullG(mc, greens=mc.g.greens)
   gt = eltype(greens)
   N = mc.l.sites
   g = zeros(gt, 4*N, 4*N)
@@ -76,7 +76,7 @@ end
 """
 Construct full (4*N, 4*N) `Gtilde = I - G` where G is the Green's function for any OPDIM efficiently.
 """
-function fullGtilde(mc, greens=mc.s.greens)
+function fullGtilde(mc, greens=mc.g.greens)
   gt = eltype(greens)
   N = mc.l.sites
   g = zeros(gt, 4*N, 4*N)
@@ -265,8 +265,8 @@ function calc_all_greens(mc::AbstractDQMC)
 
   for tau in M:-1:1
     propagate(mc)
-    # @assert tau == mc.s.current_slice
-    @inbounds etgfs[tau] = copy(mc.s.greens)
+    # @assert tau == mc.g.current_slice
+    @inbounds etgfs[tau] = copy(mc.g.greens)
   end
 
   return etgfs
@@ -319,7 +319,7 @@ Overall occupation, averaged over sites and fermion flavors (both spin and band)
 
 Example: half-filling of spin 1/2 fermions on a lattice corresponds to `n=0.5`, not `n=1`.
 """
-function occupation(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
+function occupation(mc::AbstractDQMC, greens::AbstractMatrix=mc.g.greens)
   n = mean(1 .- diag(greens))
   # only per site:
   # N = mc.l.sites
@@ -331,7 +331,7 @@ end
 """
 Flavor resolved occupations (only averaged over sites).
 """
-function occupations_flv(mc::AbstractDQMC, greens::AbstractMatrix=mc.s.greens)
+function occupations_flv(mc::AbstractDQMC, greens::AbstractMatrix=mc.g.greens)
   N = mc.l.sites
   ns = mean.(Iterators.partition(1 .- diag(greens), N))
   # only per site:
@@ -985,8 +985,8 @@ function calc_Bchain(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int=mc.
       multiply_B_left!(mc,k,U)
       rmul!(U, Diagonal(D))
       U, Tnew = decompose_udt!(U, D)
-      mul!(mc.s.tmp, Tnew, T)
-      T .=  mc.s.tmp
+      mul!(mc.g.tmp, Tnew, T)
+      T .=  mc.g.tmp
       svs[:,svc] = log.(D)
       svc += 1
     else
@@ -1017,8 +1017,8 @@ function calc_Bchain_inv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int
       multiply_B_inv_left!(mc,k,U)
       rmul!(U, Diagonal(D))
       U, Tnew = decompose_udt!(U, D)
-      mul!(mc.s.tmp, Tnew, T)
-      T .=  mc.s.tmp
+      mul!(mc.g.tmp, Tnew, T)
+      T .=  mc.g.tmp
       svs[:,svc] = log.(D)
       svc += 1
     else
@@ -1049,8 +1049,8 @@ function calc_Bchain_dagger(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::
       multiply_daggered_B_left!(mc,k,U)
       rmul!(U, Diagonal(D))
       U, Tnew = decompose_udt!(U, D)
-      mul!(mc.s.tmp, Tnew, T)
-      T .=  mc.s.tmp
+      mul!(mc.g.tmp, Tnew, T)
+      T .=  mc.g.tmp
       svs[:,svc] = log.(D)
       svc += 1
     else
@@ -1061,29 +1061,29 @@ function calc_Bchain_dagger(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::
 end
 
 # Calculate G(slice) = [1+B(slice-1)...B(1)B(M) ... B(slice)]^(-1) and its singular values in a stable manner
-function calc_greens(mc::AbstractDQMC, slice::Int=mc.s.current_slice, safe_mult::Int=mc.p.safe_mult)
-  s = mc.s
+function calc_greens(mc::AbstractDQMC, slice::Int=mc.g.current_slice, safe_mult::Int=mc.p.safe_mult)
+  g = mc.g
   _calc_greens_helper(mc, slice, safe_mult)
 
-  rmul!(s.U, Diagonal(s.d))
-  return s.U * s.T
+  rmul!(g.U, Diagonal(g.d))
+  return g.U * g.T
 end
-function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int=mc.s.current_slice, safe_mult::Int=mc.p.safe_mult)
-  s = mc.s
+function calc_greens_and_logdet(mc::AbstractDQMC, slice::Int=mc.g.current_slice, safe_mult::Int=mc.p.safe_mult)
+  g = mc.g
   _calc_greens_helper(mc, slice, safe_mult)
 
-  ldet = real(log(complex(det(s.U))) + sum(log.(s.d)) + log(complex(det(s.T))))
+  ldet = real(log(complex(det(g.U))) + sum(log.(g.d)) + log(complex(det(g.T))))
 
-  rmul!(s.U, Diagonal(s.d))
-    return s.U * s.T, ldet
+  rmul!(g.U, Diagonal(g.d))
+    return g.U * g.T, ldet
 end
 
 
-# Result in s.U, s.d, and s.T
+# Result in g.U, g.d, and g.T
 function _calc_greens_helper(mc::AbstractDQMC, slice::Int, safe_mult::Int)
   flv = mc.p.flv
   N = mc.l.sites
-  s = mc.s
+  g = mc.g
   G = geltype(mc)
 
   # Calculate Ur,Dr,Tr=B(slice)' ... B(M)'
@@ -1098,7 +1098,7 @@ function _calc_greens_helper(mc::AbstractDQMC, slice::Int, safe_mult::Int)
     Tl = Matrix{G}(I, flv*N, flv*N)
   end
 
-  inv_one_plus_two_udts!(mc, s.U,s.d,s.T, Ul, Dl, Tl, Ur,Dr,Tr)
+  inv_one_plus_two_udts!(mc, g.U,g.d,g.T, Ul, Dl, Tl, Ur,Dr,Tr)
 
   nothing
 end
@@ -1129,7 +1129,7 @@ function effective_greens2greens!(mc::DQMC_CBTrue, greens::AbstractMatrix)
   chkr_hop_half_minus = mc.l.chkr_hop_half
   chkr_hop_half_plus = mc.l.chkr_hop_half_inv
   n_groups = mc.l.n_groups
-  tmp = mc.s.tmp
+  tmp = mc.g.tmp
 
   @inbounds @views begin
       for i in reverse(1:n_groups)
@@ -1147,7 +1147,7 @@ function effective_greens2greens!(mc::DQMC_CBTrue, U::AbstractMatrix, T::Abstrac
   chkr_hop_half_minus = mc.l.chkr_hop_half
   chkr_hop_half_plus = mc.l.chkr_hop_half_inv
   n_groups = mc.l.n_groups
-  tmp = mc.s.tmp
+  tmp = mc.g.tmp
 
   @inbounds @views begin
       for i in reverse(1:n_groups)
@@ -1181,7 +1181,7 @@ end
 function effective_greens2greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
   eTminus = mc.l.hopping_matrix_exp
   eTplus = mc.l.hopping_matrix_exp_inv
-  tmp = mc.s.tmp
+  tmp = mc.g.tmp
 
   mul!(tmp, greens, eTminus)
   mul!(greens, eTplus, tmp)
@@ -1198,7 +1198,7 @@ end
 function greens2effective_greens!(mc::DQMC_CBFalse, greens::AbstractMatrix)
   eTminus = mc.l.hopping_matrix_exp
   eTplus = mc.l.hopping_matrix_exp_inv
-  tmp = mc.s.tmp
+  tmp = mc.g.tmp
 
   mul!(tmp, greens, eTplus)
   mul!(greens, eTminus, tmp)
@@ -1245,7 +1245,7 @@ function allocate_tdgfs!(mc)
   Nflv = N*flv
   meas = mc.m
 
-  nranges = length(mc.s.ranges)
+  nranges = length(mc.g.ranges)
 
   meas.Gt0 = Matrix{G}[zeros(G, Nflv, Nflv) for _ in 1:M]
   meas.G0t = Matrix{G}[zeros(G, Nflv, Nflv) for _ in 1:M]
@@ -1381,12 +1381,12 @@ function measure_tdgfs!(mc)
     if i != 1
       # Gt0
       inv_sum_udts_scalettar!(mc, Gt0[tau], BT0Inv_u_stack[i-1], BT0Inv_d_stack[i-1], BT0Inv_t_stack[i-1],
-                   BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_t_stack[i]) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
+                   BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_t_stack[i]) # G(i,0) = G(mc.g.ranges[i][1], 0), i.e. G(21, 1) for i = 3
       effective_greens2greens!(mc, Gt0[tau])
 
       # G0t
       inv_sum_udts_scalettar!(mc, G0t[tau], BT0_u_stack[i-1], BT0_d_stack[i-1], BT0_t_stack[i-1],
-                   BBetaTInv_u_stack[i], BBetaTInv_d_stack[i], BBetaTInv_t_stack[i]) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
+                   BBetaTInv_u_stack[i], BBetaTInv_d_stack[i], BBetaTInv_t_stack[i]) # G(i,0) = G(mc.g.ranges[i][1], 0), i.e. G(21, 1) for i = 3
       effective_greens2greens!(mc, G0t[tau])
     else
       # Gt0
@@ -1416,21 +1416,21 @@ dir = LEFT:
 inv=false:  B(tau, 1) = B(tau) * B(tau-1) * ... * B(1)                    # mult left, 1:tau
 inv=true:   [B(tau, 1)]^-1 = B(1)^-1 * B(2)^-1 * ... B(tau)^-1            # mult inv right, 1:tau
 
-udv[i] = from 1 to mc.s.ranges[i][end]
+udv[i] = from 1 to mc.g.ranges[i][end]
 
 
 dir = RIGHT:
 inv=false:  B(beta, tau) = B(beta) * B(beta-1) * ... * B(tau)             # mult right, beta:tau
 inv=true:   [B(beta, tau)]^-1 = B(tau)^-1 * B(tau+1)^-1 * ... B(beta)^-1  # mult inv left, beta:tau
 
-udv[i] = from mc.s.ranges[i][1] to mc.p.slices (beta)
+udv[i] = from mc.g.ranges[i][1] to mc.p.slices (beta)
 """
 function calc_Bchain_udts!(mc::AbstractDQMC, u_stack, d_stack, t_stack; invert::Bool=false, dir::Direction=LEFT)
   G = geltype(mc)
   flv = mc.p.flv
   N = mc.l.sites
-  curr_U_or_T = mc.s.curr_U
-  ranges = mc.s.ranges
+  curr_U_or_T = mc.g.curr_U
+  ranges = mc.g.ranges
 
   rightmult = false
   ((dir == RIGHT && !invert) || (dir == LEFT && invert)) && (rightmult = true)
@@ -1511,7 +1511,7 @@ end
 
 
 
-# Given Gt0 and G0t at safe mult slices (mc.s.ranges[i][1])
+# Given Gt0 and G0t at safe mult slices (mc.g.ranges[i][1])
 # propagate to all other slices.
 function fill_tdgf!(mc, Gt0, G0t)
   safe_mult = mc.p.safe_mult
@@ -1545,13 +1545,13 @@ function calc_tdgf_direct(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe
   if slice != 1
     Ul, Dl, Tl = calc_Bchain_inv(mc, 1, slice-1, safe_mult)
   else
-    Ul, Dl, Tl = mc.s.eye_full, mc.s.ones_vec, mc.s.eye_full
+    Ul, Dl, Tl = mc.g.eye_full, mc.g.ones_vec, mc.g.eye_full
   end
 
   if slice != mc.p.slices
     Ur, Dr, Tr = calc_Bchain(mc, slice, mc.p.slices, safe_mult)
   else
-    Ur, Dr, Tr = mc.s.eye_full, mc.s.ones_vec, mc.s.eye_full
+    Ur, Dr, Tr = mc.g.eye_full, mc.g.ones_vec, mc.g.eye_full
   end
 
   # time displace
@@ -1568,7 +1568,7 @@ end
 
 
 # function test_stacks()
-#   nr = length(mc.s.ranges)
+#   nr = length(mc.g.ranges)
 
 #   check_unitarity(BT0_u_stack)
 #   check_unitarity(BBetaTInv_u_stack)
@@ -1579,21 +1579,21 @@ end
 
 #   # test left multiplications
 #   B2 = BT0_u_stack[3] * Diagonal(BT0_d_stack[3]) * BT0_t_stack[3];
-#   U, D, T = calc_Bchain(mc, 1, mc.s.ranges[3][end]); B1 = U*Diagonal(D)*T;
+#   U, D, T = calc_Bchain(mc, 1, mc.g.ranges[3][end]); B1 = U*Diagonal(D)*T;
 #   compare(B1, B2) # this is exactly the same
 
 #   B2 = BBetaTInv_u_stack[3] * Diagonal(BBetaTInv_d_stack[3]) * BBetaTInv_t_stack[3];
-#   U, D, T = calc_Bchain_inv(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
+#   U, D, T = calc_Bchain_inv(mc, mc.g.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
 #   compare(B1, B2) # why is there a difference here at all?
 
 
 #   # test right multiplications
 #   B2 = BT0Inv_u_stack[3] * Diagonal(BT0Inv_d_stack[3]) * BT0Inv_t_stack[3];
-#   U, D, T = calc_Bchain_inv(mc, 1, mc.s.ranges[3][end]); B1 = U*Diagonal(D)*T;
+#   U, D, T = calc_Bchain_inv(mc, 1, mc.g.ranges[3][end]); B1 = U*Diagonal(D)*T;
 #   compare(B1, B2)
 
 #   B2 = BBetaT_u_stack[3] * Diagonal(BBetaT_d_stack[3]) * BBetaT_t_stack[3];
-#   U, D, T = calc_Bchain(mc, mc.s.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
+#   U, D, T = calc_Bchain(mc, mc.g.ranges[3][1], mc.p.slices); B1 = U*Diagonal(D)*T;
 #   compare(B1, B2)
 
 
@@ -1604,7 +1604,7 @@ end
 #   # compare B(beta,1) from BT0 and BBetaT
 #   BT0_full = BT0_u_stack[end] * Diagonal(BT0_d_stack[end]) * BT0_t_stack[end];
 #   BBetaT_full = BBetaT_u_stack[1] * Diagonal(BBetaT_d_stack[1]) * BBetaT_t_stack[1];
-#   U, D, T = calc_Bchain(mc, 1, mc.s.ranges[end][end]); BBeta0 = U*Diagonal(D)*T;
+#   U, D, T = calc_Bchain(mc, 1, mc.g.ranges[end][end]); BBeta0 = U*Diagonal(D)*T;
 #   compare(BT0_full, BBeta0)
 #   compare(BBetaT_full, BBeta0) # we have (large) abs errors here. maybe it's still ok
 
@@ -1716,8 +1716,8 @@ function calc_Bchain_udv(mc::AbstractDQMC, start::Int, stop::Int, safe_mult::Int
       multiply_B_left!(mc,k,U)
       rmul!(U, Diagonal(D))
       U, D, Vtnew = decompose_udv(U)
-      mul!(mc.s.tmp, Vtnew, Vt)
-      Vt .=  mc.s.tmp
+      mul!(mc.g.tmp, Vtnew, Vt)
+      Vt .=  mc.g.tmp
       svs[:,svc] = log.(D)
       svc += 1
     else

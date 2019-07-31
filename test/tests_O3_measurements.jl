@@ -42,7 +42,7 @@ end
         @testset "Accessing Greens" begin
             sql = reshape(1:16, (4,4))
             N = mc.l.sites
-            greens = mc.s.greens[1:2*N,1:2*N] # fake O(2) greens
+            greens = mc.g.greens[1:2*N,1:2*N] # fake O(2) greens
 
             f = () -> begin
                 for x in 1:4
@@ -77,7 +77,7 @@ end
             # G for O(3) equal to indexing greens
             f = () -> begin
                 for i in 1:4*N, j in 1:4*N
-                    G(mc, i, j) == mc.s.greens[i, j] || return false
+                    G(mc, i, j) == mc.g.greens[i, j] || return false
                 end
                 return true
             end
@@ -86,14 +86,14 @@ end
             # Gtilde for O(3) equal to indexing I - greens
             f = () -> begin
                 for i in 1:4*N, j in 1:4*N
-                    Gtilde(mc, i, j) == kd(i,j) - mc.s.greens[i, j] || return false
+                    Gtilde(mc, i, j) == kd(i,j) - mc.g.greens[i, j] || return false
                 end
                 return true
             end
             @test f()
             
-            @test isapprox(fullG(mc, mc.s.greens), mc.s.greens)
-            @test isapprox(fullGtilde(mc, mc.s.greens), I - mc.s.greens)
+            @test isapprox(fullG(mc, mc.g.greens), mc.g.greens)
+            @test isapprox(fullGtilde(mc, mc.g.greens), I - mc.g.greens)
             
             
             mc.p.opdim = 2
@@ -121,10 +121,10 @@ end
 
             flvtrafo = Dict{Int64, Int64}(xu => xu, yd => yu, xd => xd, yu => yd)
             
-            @test isapprox(permute_greens(permute_greens(mc.s.greens)), mc.s.greens)
+            @test isapprox(permute_greens(permute_greens(mc.g.greens)), mc.g.greens)
             
-            gperm = PseudoBlockArray(permute_greens(mc.s.greens), [N,N,N,N], [N,N,N,N])
-            g = PseudoBlockArray(mc.s.greens, [N,N,N,N], [N,N,N,N])
+            gperm = PseudoBlockArray(permute_greens(mc.g.greens), [N,N,N,N], [N,N,N,N])
+            g = PseudoBlockArray(mc.g.greens, [N,N,N,N], [N,N,N,N])
                 
             f = () -> begin
                 for j in (xu, yd, xd, yu)
@@ -138,10 +138,10 @@ end
             
             
             # FFT
-            @test isapprox(ifft_greens(mc, fft_greens(mc, mc.s.greens; fftshift=false); ifftshift=false), mc.s.greens)
-            @test isapprox(ifft_greens(mc, fft_greens(mc, mc.s.greens; fftshift=true); ifftshift=true), mc.s.greens)
+            @test isapprox(ifft_greens(mc, fft_greens(mc, mc.g.greens; fftshift=false); ifftshift=false), mc.g.greens)
+            @test isapprox(ifft_greens(mc, fft_greens(mc, mc.g.greens; fftshift=true); ifftshift=true), mc.g.greens)
             
-            gk = fft_greens(mc, mc.s.greens)
+            gk = fft_greens(mc, mc.g.greens)
             @test isapprox(gk, load("data/O3.jld", "greens_fft"))
             
             qs = collect(range(-pi, pi, length=L+1))[1:end-1]
@@ -159,7 +159,7 @@ end
 
 
     # Calculate ETGF and logdet
-    g = effective_greens2greens(mc, mc.s.greens)
+    g = effective_greens2greens(mc, mc.g.greens)
     lgdet = calculate_logdet(mc)
 
     # Calculate TDGFs
@@ -170,8 +170,8 @@ end
 
 
     @testset "ETGF(s)" begin
-        gmeas = measure_greens(mc, mc.p.safe_mult, mc.s.current_slice);
-        gmeas2, lgdetmeas = measure_greens_and_logdet(mc, mc.p.safe_mult, mc.s.current_slice);
+        gmeas = measure_greens(mc, mc.p.safe_mult, mc.g.current_slice);
+        gmeas2, lgdetmeas = measure_greens_and_logdet(mc, mc.p.safe_mult, mc.g.current_slice);
 
         @test isapprox(g, gmeas)
         @test isapprox(gmeas, gmeas2)

@@ -7,13 +7,13 @@ function calc_tdgf_udv(mc::AbstractDQMC, slice::Int, safe_mult::Int=mc.p.safe_mu
   if slice != 1
     Ul, Dl, Vtl = calc_Bchain_inv_udv(mc, 1, slice-1, safe_mult)
   else
-    Ul, Dl, Vtl = mc.s.eye_full, mc.s.ones_vec, mc.s.eye_full
+    Ul, Dl, Vtl = mc.g.eye_full, mc.g.ones_vec, mc.g.eye_full
   end
 
   if slice != mc.p.slices
     Ur, Dr, Tr = calc_Bchain_udv(mc, slice, mc.p.slices, safe_mult)
   else
-    Ur, Dr, Tr = mc.s.eye_full, mc.s.ones_vec, mc.s.eye_full
+    Ur, Dr, Tr = mc.g.eye_full, mc.g.ones_vec, mc.g.eye_full
   end
 
   # time displace
@@ -39,24 +39,24 @@ dir = LEFT:
 inv=false:  B(tau, 1) = B(tau) * B(tau-1) * ... * B(1)                    # mult left, 1:tau
 inv=true:   [B(tau, 1)]^-1 = B(1)^-1 * B(2)^-1 * ... B(tau)^-1            # mult inv right, 1:tau
 
-udv[i] = from 1 to mc.s.ranges[i][end]
+udv[i] = from 1 to mc.g.ranges[i][end]
 
 
 dir = RIGHT:
 inv=false:  B(beta, tau) = B(beta) * B(beta-1) * ... * B(tau)             # mult right, beta:tau
 inv=true:   [B(beta, tau)]^-1 = B(tau)^-1 * B(tau+1)^-1 * ... B(beta)^-1  # mult inv left, beta:tau
 
-udv[i] = from mc.s.ranges[i][1] to mc.p.slices (beta)
+udv[i] = from mc.g.ranges[i][1] to mc.p.slices (beta)
 """
 function calc_tdgf_B_udvs(mc::AbstractDQMC; inv::Bool=false, dir::Bool=LEFT)
   G = geltype(mc)
   flv = mc.p.flv
   N = mc.l.sites
-  nranges= length(mc.s.ranges)
-  curr_U_or_V = mc.s.curr_U
-  eye_full = mc.s.eye_full
-  ones_vec = mc.s.ones_vec
-  ranges = mc.s.ranges
+  nranges= length(mc.g.ranges)
+  curr_U_or_V = mc.g.curr_U
+  eye_full = mc.g.eye_full
+  ones_vec = mc.g.ones_vec
+  ranges = mc.g.ranges
   
   u_stack = [zeros(G, flv*N, flv*N) for _ in 1:nranges]
   d_stack = [zeros(Float64, flv*N) for _ in 1:nranges]
@@ -148,8 +148,8 @@ function calc_tdgfs_udv!(mc)
   flv = mc.p.flv
   Nflv = N * flv
   safe_mult = mc.p.safe_mult
-  eye_full = mc.s.eye_full
-  ones_vec = mc.s.ones_vec
+  eye_full = mc.g.eye_full
+  ones_vec = mc.g.ones_vec
 
   # allocate matrices if not yet done TODO: EVENTUALLY THIS SHOULD BE REMOVED
   try
@@ -179,12 +179,12 @@ function calc_tdgfs_udv!(mc)
     if i != 1
       # Gt0
       inv_sum_udvs!(mc, Gt0[tau], BT0Inv_u_stack[i-1], BT0Inv_d_stack[i-1], BT0Inv_v_stack[i-1],
-                   BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_v_stack[i]) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
+                   BBetaT_u_stack[i], BBetaT_d_stack[i], BBetaT_v_stack[i]) # G(i,0) = G(mc.g.ranges[i][1], 0), i.e. G(21, 1) for i = 3
       effective_greens2greens!(mc, Gt0[tau])
 
       # G0t
       inv_sum_udvs!(mc, G0t[tau], BT0_u_stack[i-1], BT0_d_stack[i-1], BT0_v_stack[i-1],
-                   BBetaTInv_u_stack[i], BBetaTInv_d_stack[i], BBetaTInv_v_stack[i]) # G(i,0) = G(mc.s.ranges[i][1], 0), i.e. G(21, 1) for i = 3
+                   BBetaTInv_u_stack[i], BBetaTInv_d_stack[i], BBetaTInv_v_stack[i]) # G(i,0) = G(mc.g.ranges[i][1], 0), i.e. G(21, 1) for i = 3
       effective_greens2greens!(mc, G0t[tau])
     else
       # Gt0

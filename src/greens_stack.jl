@@ -78,7 +78,7 @@ end
 
 
 @def stackshortcuts begin
-  s = mc.s
+  g = mc.g
   N = mc.l.sites
   flv = mc.p.flv
   safe_mult = mc.p.safe_mult
@@ -89,88 +89,88 @@ end
 function allocate_global_update!(mc)
   @stackshortcuts
   # Global update backup
-  s.gb_u_stack = zero(s.u_stack)
-  s.gb_d_stack = zero(s.d_stack)
-  s.gb_t_stack = zero(s.t_stack)
-  s.gb_greens = zero(s.greens)
-  s.gb_log_det = 0.
-  s.gb_hsfield = zero(mc.p.hsfield)
+  g.gb_u_stack = zero(g.u_stack)
+  g.gb_d_stack = zero(g.d_stack)
+  g.gb_t_stack = zero(g.t_stack)
+  g.gb_greens = zero(g.greens)
+  g.gb_log_det = 0.
+  g.gb_hsfield = zero(mc.p.hsfield)
 end
 
 function allocate_etgreens_stack!(mc)
   @stackshortcuts
-  s.u_stack = zeros(G, flv*N, flv*N, s.n_elements)
-  s.d_stack = zeros(Float64, flv*N, s.n_elements)
-  s.t_stack = zeros(G, flv*N, flv*N, s.n_elements)
+  g.u_stack = zeros(G, flv*N, flv*N, g.n_elements)
+  g.d_stack = zeros(Float64, flv*N, g.n_elements)
+  g.t_stack = zeros(G, flv*N, flv*N, g.n_elements)
 end
 
 function allocate_calc_detratio!(mc)
   @stackshortcuts
   ## calc_detratio
-  s.M = zeros(G, flv, flv)
-  s.Mtmp = s.eye_flv - s.greens[1:N:end,1:N:end]
-  s.delta_i = zeros(G, size(s.eye_flv))
-  s.Mtmp2 = zeros(G, size(s.eye_flv))
-  s.eVop1eVop2 = zeros(G, size(s.eye_flv))
-  s.eVop1 = zeros(G, flv, flv)
-  s.eVop2 = zeros(G, flv, flv)
+  g.M = zeros(G, flv, flv)
+  g.Mtmp = g.eye_flv - g.greens[1:N:end,1:N:end]
+  g.delta_i = zeros(G, size(g.eye_flv))
+  g.Mtmp2 = zeros(G, size(g.eye_flv))
+  g.eVop1eVop2 = zeros(G, size(g.eye_flv))
+  g.eVop1 = zeros(G, flv, flv)
+  g.eVop2 = zeros(G, flv, flv)
 end
 
 function allocate_calc_greens!(mc)
   @stackshortcuts
-  s.Ul = Matrix{G}(I, flv*N, flv*N)
-  s.Ur = Matrix{G}(I, flv*N, flv*N)
-  s.Tl = Matrix{G}(I, flv*N, flv*N)
-  s.Tr = Matrix{G}(I, flv*N, flv*N)
-  s.Dl = ones(Float64, flv*N)
-  s.Dr = ones(Float64, flv*N)
+  g.Ul = Matrix{G}(I, flv*N, flv*N)
+  g.Ur = Matrix{G}(I, flv*N, flv*N)
+  g.Tl = Matrix{G}(I, flv*N, flv*N)
+  g.Tr = Matrix{G}(I, flv*N, flv*N)
+  g.Dl = ones(Float64, flv*N)
+  g.Dr = ones(Float64, flv*N)
 end
 
 function allocate_update_greens!(mc)
   @stackshortcuts
   ## update_greens
-  s.A = s.greens[:,1:N:end]
-  s.B = s.greens[1:N:end,:]
-  s.AB = s.A * s.B
+  g.A = g.greens[:,1:N:end]
+  g.B = g.greens[1:N:end,:]
+  g.AB = g.A * g.B
 end
 
 function allocate_propagate!(mc)
   @stackshortcuts
-  s.greens_temp = zeros(G, flv*N, flv*N)
+  g.greens_temp = zeros(G, flv*N, flv*N)
 end
 
 function _initialize_stack(mc::AbstractDQMC)
   @stackshortcuts
-  s.n_elements = convert(Int, mc.p.slices / safe_mult) + 1
+  g.n_elements = convert(Int, mc.p.slices / safe_mult) + 1
 
-  s.ranges = UnitRange[]
-  for i in 1:s.n_elements - 1
-    push!(s.ranges, 1 + (i - 1) * safe_mult:i * safe_mult)
+  g.ranges = UnitRange[]
+  for i in 1:g.n_elements - 1
+    push!(g.ranges, 1 + (i - 1) * safe_mult:i * safe_mult)
   end
 
-  s.eye_flv = Matrix{Float64}(I, flv, flv)
-  s.eye_full = Matrix{Float64}(I, flv*N,flv*N)
-  s.ones_vec = ones(flv*N)
+  g.eye_flv = Matrix{Float64}(I, flv, flv)
+  g.eye_full = Matrix{Float64}(I, flv*N,flv*N)
+  g.ones_vec = ones(flv*N)
 
-  s.greens = zeros(G, flv*N, flv*N)
+  g.greens = zeros(G, flv*N, flv*N)
 
   # interaction matrix
-  s.C = zeros(G, N)
-  s.S = zeros(G, N)
-  s.R = zeros(G, N)
-  s.eV = spzeros(G, flv*N, flv*N)
+  g.C = zeros(G, N)
+  g.S = zeros(G, N)
+  g.R = zeros(G, N)
+  g.eV = spzeros(G, flv*N, flv*N)
 
   # slice matrix
-  cbtype(mc) === CBFalse && (s.Bl = zeros(G, flv*N, flv*N))
+  cbtype(mc) === CBFalse && (g.Bl = zeros(G, flv*N, flv*N))
 
   # unsure about those
-  s.curr_U = zeros(G, flv*N, flv*N) # used in tdgf, add_slice_sequence_ and propagate
-  s.D = zeros(Float64, flv*N) # used in calc_greens in mc (below) and in calc greens in fermion meas.
-  s.d = zeros(Float64, flv*N) # same as above
-  s.tmp = zeros(G, flv*N, flv*N)
-  s.tmp2 = zeros(G, flv*N, flv*N)
-  s.U = zeros(G, flv*N, flv*N)
-  s.T = zeros(G, flv*N, flv*N)
+  g.curr_U = zeros(G, flv*N, flv*N) # used in tdgf, add_slice_sequence_ and propagate
+  g.D = zeros(Float64, flv*N) # used in calc_greens in mc (below) and in calc greens in fermion meas.
+  g.d = zeros(Float64, flv*N) # same as above
+  g.tmp = zeros(G, flv*N, flv*N)
+  g.tmp2 = zeros(G, flv*N, flv*N)
+  g.U = zeros(G, flv*N, flv*N)
+  g.T = zeros(G, flv*N, flv*N)
 end
 
 function initialize_stack(mc::AbstractDQMC)
@@ -202,21 +202,21 @@ end
 
 function build_stack(mc::AbstractDQMC)
   p = mc.p
-  s = mc.s
+  g = mc.g
   a = mc.a
 
   @mytimeit a.to "build_stack" begin
 
-  s.u_stack[:, :, 1] = s.eye_full
-  s.d_stack[:, 1] = s.ones_vec
-  s.t_stack[:, :, 1] = s.eye_full
+  g.u_stack[:, :, 1] = g.eye_full
+  g.d_stack[:, 1] = g.ones_vec
+  g.t_stack[:, :, 1] = g.eye_full
 
-  @inbounds for i in 1:length(s.ranges)
+  @inbounds for i in 1:length(g.ranges)
     add_slice_sequence_left(mc, i)
   end
 
-  s.current_slice = p.slices + 1
-  s.direction = -1
+  g.current_slice = p.slices + 1
+  g.direction = -1
 
   end #timeit
 
@@ -228,19 +228,19 @@ end
 Updates stack[idx+1] based on stack[idx]
 """
 function add_slice_sequence_left(mc::AbstractDQMC, idx::Int)
-  s = mc.s
+  g = mc.g
   a = mc.a
 
-  copyto!(s.curr_U, s.u_stack[:, :, idx])
+  copyto!(g.curr_U, g.u_stack[:, :, idx])
 
-  # println("Adding slice seq left $idx = ", s.ranges[idx])
-  for slice in s.ranges[idx]
-    multiply_B_left!(mc, slice, s.curr_U)
+  # println("Adding slice seq left $idx = ", g.ranges[idx])
+  for slice in g.ranges[idx]
+    multiply_B_left!(mc, slice, g.curr_U)
   end
 
-  @views rmul!(s.curr_U, Diagonal(s.d_stack[:, idx]))
-  @mytimeit a.to "decompose_udt!" s.u_stack[:, :, idx + 1], T = @views decompose_udt!(s.curr_U, s.d_stack[:, idx + 1])
-  @views mul!(s.t_stack[:, :, idx + 1],  T, s.t_stack[:, :, idx])
+  @views rmul!(g.curr_U, Diagonal(g.d_stack[:, idx]))
+  @mytimeit a.to "decompose_udt!" g.u_stack[:, :, idx + 1], T = @views decompose_udt!(g.curr_U, g.d_stack[:, idx + 1])
+  @views mul!(g.t_stack[:, :, idx + 1],  T, g.t_stack[:, :, idx])
   nothing
 end
 
@@ -249,23 +249,23 @@ end
 Updates stack[idx] based on stack[idx+1]
 """
 function add_slice_sequence_right(mc::AbstractDQMC, idx::Int)
-  s = mc.s
+  g = mc.g
   a = mc.a
 
-  copyto!(s.curr_U, s.u_stack[:, :, idx + 1])
+  copyto!(g.curr_U, g.u_stack[:, :, idx + 1])
 
-  for slice in reverse(s.ranges[idx])
-    multiply_daggered_B_left!(mc, slice, s.curr_U)
+  for slice in reverse(g.ranges[idx])
+    multiply_daggered_B_left!(mc, slice, g.curr_U)
   end
 
-  @views rmul!(s.curr_U, Diagonal(s.d_stack[:, idx + 1]))
-  @mytimeit a.to "decompose_udt!" s.u_stack[:, :, idx], T = @views decompose_udt!(s.curr_U, s.d_stack[:, idx])
-  @views mul!(s.t_stack[:, :, idx], T, s.t_stack[:, :, idx + 1])
+  @views rmul!(g.curr_U, Diagonal(g.d_stack[:, idx + 1]))
+  @mytimeit a.to "decompose_udt!" g.u_stack[:, :, idx], T = @views decompose_udt!(g.curr_U, g.d_stack[:, idx])
+  @views mul!(g.t_stack[:, :, idx], T, g.t_stack[:, :, idx + 1])
   nothing
 end
 
 
-function wrap_greens!(mc::AbstractDQMC, gf::Matrix, curr_slice::Int=mc.s.current_slice, direction::Int=mc.s.direction)
+function wrap_greens!(mc::AbstractDQMC, gf::Matrix, curr_slice::Int=mc.g.current_slice, direction::Int=mc.g.direction)
   if direction == -1
     multiply_B_inv_left!(mc, curr_slice - 1, gf)
     multiply_B_right!(mc, curr_slice - 1, gf)
@@ -277,7 +277,7 @@ function wrap_greens!(mc::AbstractDQMC, gf::Matrix, curr_slice::Int=mc.s.current
 end
 
 
-function wrap_greens(mc::AbstractDQMC, gf::Matrix,slice::Int=mc.s.current_slice,direction::Int=mc.s.direction)
+function wrap_greens(mc::AbstractDQMC, gf::Matrix,slice::Int=mc.g.current_slice,direction::Int=mc.g.direction)
   temp = copy(gf)
   wrap_greens!(mc, temp, slice, direction)
   return temp
@@ -285,37 +285,37 @@ end
 
 
 """
-Calculates G(slice) using s.Ur,s.Dr,s.Tr=B(slice)' ... B(M)' and s.Ul,s.Dl,s.Tl=B(slice-1) ... B(1)
+Calculates G(slice) using g.Ur,g.Dr,g.Tr=B(slice)' ... B(M)' and g.Ul,g.Dl,g.Tl=B(slice-1) ... B(1)
 """
 function calculate_greens(mc::AbstractDQMC)
   # TODO: Use inv_one_plus_two_udts from linalg.jl here
-  s = mc.s
-  tmp = mc.s.tmp
-  tmp2 = mc.s.tmp2
+  g = mc.g
+  tmp = mc.g.tmp
+  tmp2 = mc.g.tmp2
   a = mc.a
   @mytimeit a.to "calculate_greens" begin
 
-  mul!(tmp, s.Tl, adjoint(s.Tr))
-  rmul!(tmp, Diagonal(s.Dr))
-  lmul!(Diagonal(s.Dl), tmp)
-  @mytimeit a.to "decompose_udt!" s.U, s.T = decompose_udt!(tmp, s.D)
+  mul!(tmp, g.Tl, adjoint(g.Tr))
+  rmul!(tmp, Diagonal(g.Dr))
+  lmul!(Diagonal(g.Dl), tmp)
+  @mytimeit a.to "decompose_udt!" g.U, g.T = decompose_udt!(tmp, g.D)
 
-  mul!(tmp, s.Ul, s.U)
-  s.U .= tmp
-  mul!(tmp2, s.T, adjoint(s.Ur))
-  myrdiv!(tmp, s.U', tmp2) # or tmp = s.U' / tmp2 or mul!(tmp, adjoint(s.U), inv(tmp2))
-  tmp[diagind(tmp)] .+= s.D
-  @mytimeit a.to "decompose_udt!" u, t = decompose_udt!(tmp, s.d)
+  mul!(tmp, g.Ul, g.U)
+  g.U .= tmp
+  mul!(tmp2, g.T, adjoint(g.Ur))
+  myrdiv!(tmp, g.U', tmp2) # or tmp = g.U' / tmp2 or mul!(tmp, adjoint(g.U), inv(tmp2))
+  tmp[diagind(tmp)] .+= g.D
+  @mytimeit a.to "decompose_udt!" u, t = decompose_udt!(tmp, g.d)
 
   mul!(tmp, t, tmp2)
-  s.T = inv(tmp)
-  mul!(tmp, s.U, u)
-  s.U = adjoint(tmp)
-  s.d .= 1 ./ s.d
+  g.T = inv(tmp)
+  mul!(tmp, g.U, u)
+  g.U = adjoint(tmp)
+  g.d .= 1 ./ g.d
 
-  copyto!(tmp2, s.U)
-  lmul!(Diagonal(s.d), tmp2)
-  mul!(s.greens, s.T, tmp2)
+  copyto!(tmp2, g.U)
+  lmul!(Diagonal(g.d), tmp2)
+  mul!(g.greens, g.T, tmp2)
   end #timeit
   nothing
 end
@@ -324,15 +324,15 @@ end
 
 
 """
-Only reasonable immediately after calculate_greens() because it depends on s.U, s.d and s.T!
+Only reasonable immediately after calculate_greens() because it depends on g.U, g.d and g.T!
 """
 function calculate_logdet(mc::AbstractDQMC)
-  s = mc.s
+  g = mc.g
 
   if mc.p.opdim == 1
-    s.log_det = real(log(complex(det(s.U))) + sum(log.(s.d)) + log(complex(det(s.T))))
+    g.log_det = real(log(complex(det(g.U))) + sum(log.(g.d)) + log(complex(det(g.T))))
   else
-    s.log_det = real(logdet(s.U) + sum(log.(s.d)) + logdet(s.T))
+    g.log_det = real(logdet(g.U) + sum(log.(g.d)) + logdet(g.T))
   end
 end
 
@@ -341,113 +341,113 @@ end
 # Propagation
 ################################################################################
 function propagate(mc::AbstractDQMC)
-  s = mc.s
+  g = mc.g
   p = mc.p
 
-  if s.direction == 1
-    if mod(s.current_slice, p.safe_mult) == 0
-      s.current_slice +=1 # slice we are going to
-      # println("we are going to $(s.current_slice) with a fresh gf.")
-      if s.current_slice == 1
-        s.Ur[:, :], s.Dr[:], s.Tr[:, :] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
-        s.u_stack[:, :, 1] = s.eye_full
-        s.d_stack[:, 1] = s.ones_vec
-        s.t_stack[:, :, 1] = s.eye_full
-        s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, 1], s.d_stack[:, 1], s.t_stack[:, :, 1]
+  if g.direction == 1
+    if mod(g.current_slice, p.safe_mult) == 0
+      g.current_slice +=1 # slice we are going to
+      # println("we are going to $(g.current_slice) with a fresh gf.")
+      if g.current_slice == 1
+        g.Ur[:, :], g.Dr[:], g.Tr[:, :] = g.u_stack[:, :, 1], g.d_stack[:, 1], g.t_stack[:, :, 1]
+        g.u_stack[:, :, 1] = g.eye_full
+        g.d_stack[:, 1] = g.ones_vec
+        g.t_stack[:, :, 1] = g.eye_full
+        g.Ul[:,:], g.Dl[:], g.Tl[:,:] = g.u_stack[:, :, 1], g.d_stack[:, 1], g.t_stack[:, :, 1]
 
         calculate_greens(mc) # greens_1 ( === greens_{m+1} )
         calculate_logdet(mc)
 
-      elseif 1 < s.current_slice <= p.slices
-        idx = Int((s.current_slice - 1)/p.safe_mult)
+      elseif 1 < g.current_slice <= p.slices
+        idx = Int((g.current_slice - 1)/p.safe_mult)
 
-        s.Ur[:, :], s.Dr[:], s.Tr[:, :] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.t_stack[:, :, idx+1]
+        g.Ur[:, :], g.Dr[:], g.Tr[:, :] = g.u_stack[:, :, idx+1], g.d_stack[:, idx+1], g.t_stack[:, :, idx+1]
         add_slice_sequence_left(mc, idx)
-        s.Ul[:,:], s.Dl[:], s.Tl[:,:] = s.u_stack[:, :, idx+1], s.d_stack[:, idx+1], s.t_stack[:, :, idx+1]
+        g.Ul[:,:], g.Dl[:], g.Tl[:,:] = g.u_stack[:, :, idx+1], g.d_stack[:, idx+1], g.t_stack[:, :, idx+1]
 
         if p.all_checks
-          copyto!(s.greens_temp, s.greens)
+          copyto!(g.greens_temp, g.greens)
         end
 
-        wrap_greens!(mc, s.greens_temp, s.current_slice - 1, 1)
+        wrap_greens!(mc, g.greens_temp, g.current_slice - 1, 1)
 
         calculate_greens(mc) # greens_{slice we are propagating to}
 
         if p.all_checks
-          diff = maximum(absdiff(s.greens_temp, s.greens))
+          diff = maximum(absdiff(g.greens_temp, g.greens))
           if diff > 1e-7
-            @printf("->%d \t+1 Propagation instability\t %.4f\n", s.current_slice, diff)
+            @printf("->%d \t+1 Propagation instability\t %.4f\n", g.current_slice, diff)
           end
         end
 
       else # we are going to p.slices+1
-        idx = s.n_elements - 1
+        idx = g.n_elements - 1
         add_slice_sequence_left(mc, idx)
-        s.direction = -1
-        s.current_slice = p.slices+1 # redundant
+        g.direction = -1
+        g.current_slice = p.slices+1 # redundant
         propagate(mc)
       end
 
     else
       # Wrapping
-      wrap_greens!(mc, s.greens, s.current_slice, 1)
+      wrap_greens!(mc, g.greens, g.current_slice, 1)
 
-      s.current_slice += 1
+      g.current_slice += 1
     end
 
-  else # s.direction == -1
-    if mod(s.current_slice-1, p.safe_mult) == 0
-      s.current_slice -= 1 # slice we are going to
-      # println("we are going to $(s.current_slice) with a fresh+wrapped gf.")
-      if s.current_slice == p.slices
-        s.Ul[:, :], s.Dl[:], s.Tl[:, :] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
-        s.u_stack[:, :, end] = s.eye_full
-        s.d_stack[:, end] = s.ones_vec
-        s.t_stack[:, :, end] = s.eye_full
-        s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, end], s.d_stack[:, end], s.t_stack[:, :, end]
+  else # g.direction == -1
+    if mod(g.current_slice-1, p.safe_mult) == 0
+      g.current_slice -= 1 # slice we are going to
+      # println("we are going to $(g.current_slice) with a fresh+wrapped gf.")
+      if g.current_slice == p.slices
+        g.Ul[:, :], g.Dl[:], g.Tl[:, :] = g.u_stack[:, :, end], g.d_stack[:, end], g.t_stack[:, :, end]
+        g.u_stack[:, :, end] = g.eye_full
+        g.d_stack[:, end] = g.ones_vec
+        g.t_stack[:, :, end] = g.eye_full
+        g.Ur[:,:], g.Dr[:], g.Tr[:,:] = g.u_stack[:, :, end], g.d_stack[:, end], g.t_stack[:, :, end]
 
         calculate_greens(mc) # greens_{p.slices+1} === greens_1
         calculate_logdet(mc) # calculate logdet for potential global update
 
         # wrap to greens_{p.slices}
-        wrap_greens!(mc, s.greens, s.current_slice + 1, -1)
+        wrap_greens!(mc, g.greens, g.current_slice + 1, -1)
 
-      elseif 0 < s.current_slice < p.slices
-        idx = Int(s.current_slice / p.safe_mult) + 1
-        s.Ul[:, :], s.Dl[:], s.Tl[:, :] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.t_stack[:, :, idx]
+      elseif 0 < g.current_slice < p.slices
+        idx = Int(g.current_slice / p.safe_mult) + 1
+        g.Ul[:, :], g.Dl[:], g.Tl[:, :] = g.u_stack[:, :, idx], g.d_stack[:, idx], g.t_stack[:, :, idx]
         add_slice_sequence_right(mc, idx)
-        s.Ur[:,:], s.Dr[:], s.Tr[:,:] = s.u_stack[:, :, idx], s.d_stack[:, idx], s.t_stack[:, :, idx]
+        g.Ur[:,:], g.Dr[:], g.Tr[:,:] = g.u_stack[:, :, idx], g.d_stack[:, idx], g.t_stack[:, :, idx]
 
         if p.all_checks
-          copyto!(s.greens_temp, s.greens)
+          copyto!(g.greens_temp, g.greens)
         end
 
         calculate_greens(mc)
 
         if p.all_checks
-          diff = maximum(absdiff(s.greens_temp, s.greens))
+          diff = maximum(absdiff(g.greens_temp, g.greens))
           if diff > 1e-7
-            @printf("->%d \t-1 Propagation instability\t %.4f\n", s.current_slice, diff)
+            @printf("->%d \t-1 Propagation instability\t %.4f\n", g.current_slice, diff)
           end
         end
 
-        wrap_greens!(mc, s.greens, s.current_slice + 1, -1)
+        wrap_greens!(mc, g.greens, g.current_slice + 1, -1)
 
       else # we are going to 0
         idx = 1
         add_slice_sequence_right(mc, idx)
-        s.direction = 1
-        s.current_slice = 0 # redundant
+        g.direction = 1
+        g.current_slice = 0 # redundant
         propagate(mc)
       end
 
     else
       # Wrapping
-      wrap_greens!(mc, s.greens, s.current_slice, -1)
-      s.current_slice -= 1
+      wrap_greens!(mc, g.greens, g.current_slice, -1)
+      g.current_slice -= 1
     end
   end
-  # compare(s.greens,calculate_greens_udv(p,l,s.current_slice))
-  # compare(s.greens,calculate_greens_udv_chkr(p,l,s.current_slice))
+  # compare(g.greens,calculate_greens_udv(p,l,g.current_slice))
+  # compare(g.greens,calculate_greens_udv_chkr(p,l,g.current_slice))
   nothing
 end

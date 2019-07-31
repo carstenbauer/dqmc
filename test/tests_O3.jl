@@ -128,7 +128,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         end
 
         @testset "interaction matrix exponentials" begin
-            eV = similar(mc_nob.s.eV)
+            eV = similar(mc_nob.g.eV)
             interaction_matrix_exp!(mc_nob, 3, 1., eV)
             @test isapprox(eV, load("data/O3.jld", "nob_eVplus"))
             @test isapprox(eV, interaction_matrix_exp(mc_nob, 3, 1.))
@@ -139,7 +139,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         end
 
         @testset "interaction matrix exponentials (Bfield)" begin
-            eV = similar(mc.s.eV)
+            eV = similar(mc.g.eV)
             interaction_matrix_exp!(mc, 3, 1., eV)
             @test isapprox(eV, load("data/O3.jld", "eVplus"))
             @test isapprox(eV, interaction_matrix_exp(mc, 3, 1.))
@@ -154,16 +154,16 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
     @testset "local updates" begin
         init!(mc)
         @test isapprox(calc_detratio(mc, 7, [0.488033, 0.0196912, 0.438309]), 1.000380293015979 + 1.0842021724855044e-18im)
-        @test isapprox(mc.s.delta_i, load("data/O3.jld", "delta_i"))
-        @test isapprox(mc.s.M, load("data/O3.jld", "M"))
+        @test isapprox(mc.g.delta_i, load("data/O3.jld", "delta_i"))
+        @test isapprox(mc.g.M, load("data/O3.jld", "M"))
 
         update_greens!(mc, 7)
-        @test isapprox(mc.s.greens, load("data/O3.jld", "afterupdate_greens"))
+        @test isapprox(mc.g.greens, load("data/O3.jld", "afterupdate_greens"))
 
         # TODO: test full local update
         Random.seed!(123456789) # set seed
         @test local_updates(mc) == 0.6875 # acc. rate
-        @test isapprox(mc.s.greens, load("data/O3.jld", "afterlocal_greens"))
+        @test isapprox(mc.g.greens, load("data/O3.jld", "afterlocal_greens"))
         @test isapprox(mc.p.hsfield, load("data/O3.jld", "afterlocal_hsfield"))
         @test isapprox(mc.p.boson_action, 75.18407422927604)
     end
@@ -185,22 +185,22 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
 
     @testset "stack" begin
         init!(mc)
-        @test isapprox(mc.s.greens, calc_greens(mc, mc.s.current_slice)) # compare against "exact" greens
+        @test isapprox(mc.g.greens, calc_greens(mc, mc.g.current_slice)) # compare against "exact" greens
 
         @testset "greens (+ logdet) calculation" begin
             # load Ur, Dr, Tr, Ul, Dl, Tl of time slice 1, direction up
-            mc.s.Ur = load("data/O3.jld", "Ur")
-            mc.s.Dr = load("data/O3.jld", "Dr")
-            mc.s.Tr = load("data/O3.jld", "Tr")
-            mc.s.Ul = load("data/O3.jld", "Ul")
-            mc.s.Dl = load("data/O3.jld", "Dl")
-            mc.s.Tl = load("data/O3.jld", "Tl")
+            mc.g.Ur = load("data/O3.jld", "Ur")
+            mc.g.Dr = load("data/O3.jld", "Dr")
+            mc.g.Tr = load("data/O3.jld", "Tr")
+            mc.g.Ul = load("data/O3.jld", "Ul")
+            mc.g.Dl = load("data/O3.jld", "Dl")
+            mc.g.Tl = load("data/O3.jld", "Tl")
             greens = load("data/O3.jld", "greens")
             calculate_greens(mc)
             ld = calculate_logdet(mc)
             gfresh, ldfresh = calc_greens_and_logdet(mc, 1)
-            @test isapprox(mc.s.greens, greens) # compare against dumped greens
-            @test isapprox(mc.s.greens, gfresh) # compare against "exact" freshly calculated greens
+            @test isapprox(mc.g.greens, greens) # compare against dumped greens
+            @test isapprox(mc.g.greens, gfresh) # compare against "exact" freshly calculated greens
             @test isapprox(ld, ldfresh) # compare against "exact" logdet
         end
 
@@ -214,25 +214,25 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
 
         init!(mc)
         @testset "propagation" begin
-            @assert mc.s.current_slice == mc.p.slices
-            while mc.s.current_slice != 1
+            @assert mc.g.current_slice == mc.p.slices
+            while mc.g.current_slice != 1
                 propagate(mc)
             end
             propagate(mc) # we want to go in direction up
             greens = load("data/O3.jld", "greens")
-            @test isapprox(mc.s.greens, greens) # compare against dumped greens
+            @test isapprox(mc.g.greens, greens) # compare against dumped greens
         end
 
         init!(mc)
         @testset "propagation: greens always within bounds" begin
-            @assert mc.s.current_slice == mc.p.slices
-            @assert mc.s.direction == -1
+            @assert mc.g.current_slice == mc.p.slices
+            @assert mc.g.direction == -1
 
             propagate(mc)
-            while !(mc.s.current_slice == mc.p.slices && mc.s.direction == -1)
-                mc.s.greens
-                greens = calc_greens(mc, mc.s.current_slice)
-                @test maximum(absdiff(greens, mc.s.greens)) < 1e-12
+            while !(mc.g.current_slice == mc.p.slices && mc.g.direction == -1)
+                mc.g.greens
+                greens = calc_greens(mc, mc.g.current_slice)
+                @test maximum(absdiff(greens, mc.g.greens)) < 1e-12
                 propagate(mc)
             end
         end
@@ -279,13 +279,13 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
             @test isapprox(Binv, load("data/O3.jld", "Bminus"*suffix))
 
             # multiply_daggered_B_left!
-            A = rand!(similar(mc.s.greens))
+            A = rand!(similar(mc.g.greens))
             Ares = adjoint(B) * A
             multiply_daggered_B_left!(mc, 3, A)
             @test isapprox(A, Ares)
 
             # Binv * B * A == A and A * B * Binv == A
-            A = rand!(similar(mc.s.greens))
+            A = rand!(similar(mc.g.greens))
             Aorig = copy(A)
             multiply_B_left!(mc, 3, A)
             multiply_B_inv_left!(mc, 3, A)
@@ -295,7 +295,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
             @test isapprox(A, Aorig)
 
             # B * A * Binv == A and Binv * A * B == A
-            A = Matrix{geltype(mc)}(I, size(mc.s.greens)...)
+            A = Matrix{geltype(mc)}(I, size(mc.g.greens)...)
             Aorig = copy(A)
             multiply_B_left!(mc, 3, A)
             multiply_B_inv_right!(mc, 3, A)

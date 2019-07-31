@@ -83,7 +83,7 @@ end
 mutable struct DQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number} <: AbstractDQMC{C, GreensEltype, HoppingEltype}
   p::Params
   l::Lattice{HoppingEltype}
-  s::GreensStack{GreensEltype}
+  g::GreensStack{GreensEltype}
   m::MeasStack{GreensEltype}
   a::Analysis
 end
@@ -154,7 +154,7 @@ function init!(mc::DQMC, start_conf, init_seed=true)
   initialize_stack(mc)
   println("Building stack")
   build_stack(mc)
-  println("Initial propagate: ", mc.s.current_slice, " ", mc.s.direction)
+  println("Initial propagate: ", mc.g.current_slice, " ", mc.g.direction)
   propagate(mc)
   end
 
@@ -332,7 +332,7 @@ function _create_observables(mc::AbstractDQMC, cs)
   obs = NamedTuple()
 
   if :greens in observables
-    g = Observable(typeof(mc.s.greens), "greens"; alloc=cs,
+    g = Observable(typeof(mc.g.greens), "greens"; alloc=cs,
                                                   inmemory=false,
                                                   outfile=outfile,
                                                   group="obs/greens")
@@ -362,7 +362,7 @@ function _measure_observables!(mc, obs)
 
         # fermionic
         if haskey(obs, :greens)
-          g = wrap_greens(mc,mc.s.greens,mc.s.current_slice,1)
+          g = wrap_greens(mc,mc.g.greens,mc.g.current_slice,1)
           effective_greens2greens!(mc, g)
           push!(obs[:greens], g)
         end
@@ -379,12 +379,12 @@ function measure!(mc::DQMC; prevmeasurements = 0)
   a = mc.a
   l = mc.l
   p = mc.p
-  s = mc.s
+  g = mc.g
 
   initialize_stack(mc)
   println("Renewing stack")
   build_stack(mc)
-  println("Initial propagate: ", s.current_slice, " ", s.direction)
+  println("Initial propagate: ", g.current_slice, " ", g.direction)
   propagate(mc)
 
   cs = choose_chunk_size(mc)
@@ -414,8 +414,8 @@ function measure!(mc::DQMC; prevmeasurements = 0)
     @timeit a.to "udsweep" for u in 1:2 * p.slices
       update(mc, i)
 
-      # if s.current_slice == 1 && s.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
-      if s.current_slice == p.slices && s.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
+      # if g.current_slice == 1 && g.direction == 1 && (i-1)%p.write_every_nth == 0 # measure criterium
+      if g.current_slice == p.slices && g.direction == -1 && (i-1)%p.write_every_nth == 0 # measure criterium
         dumping = (length(configurations)+1)%cs == 0
         dumping && println("Dumping... (2*i=$(2*i))")
         # push!(boson_action, p.boson_action)
@@ -485,13 +485,13 @@ end
 
 function update(mc::DQMC, i::Int)
   p = mc.p
-  s = mc.s
+  s = mc.g
   l = mc.l
   a = mc.a
 
   propagate(mc)
 
-  if p.global_updates && (s.current_slice == p.slices && s.direction == -1 && mod(i, p.global_rate) == 0)
+  if p.global_updates && (g.current_slice == p.slices && g.direction == -1 && mod(i, p.global_rate) == 0)
     a.prop_global += 1
     @mytimeit a.to "global updates" b = global_update(mc)
     a.acc_rate_global += b

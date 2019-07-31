@@ -121,8 +121,8 @@ B_QR_T = load("data/linalg.jld", "B_QR_T")
             Random.seed!(1234)
             # X = rand(10,10);
             # Y = rand(10,10);
-            X = similar(mc.s.greens)
-            Y = similar(mc.s.greens)
+            X = similar(mc.g.greens)
+            Y = similar(mc.g.greens)
             rand!(X)
             rand!(Y)
             inv_I_plus_X = inv(I + X)
