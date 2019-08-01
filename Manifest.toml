@@ -139,14 +139,6 @@ git-tree-sha1 = "635ae44613c8c8dcf5d5b0084bfa00abea498e1f"
 uuid = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 version = "0.12.0"
 
-[[Helpers]]
-deps = ["HDF5", "JLD", "LinearAlgebra", "Printf", "Random", "SparseArrays", "Statistics", "Test"]
-git-tree-sha1 = "5074cb17c13a6a8b60668aa6a0c07fc971723ce3"
-repo-rev = "master"
-repo-url = "https://github.com/crstnbr/Helpers.jl"
-uuid = "4de40672-05fc-5661-aad9-eb3e0bf5aa76"
-version = "0.0.0"
-
 [[Homebrew]]
 deps = ["BinDeps", "InteractiveUtils", "JSON", "Libdl", "Test", "Unicode"]
 git-tree-sha1 = "f01fb2f34675f9839d55ba7238bab63ebd2e531e"

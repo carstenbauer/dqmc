@@ -494,7 +494,5 @@ function propagate(mc::AbstractDQMC)
       s.current_slice -= 1
     end
   end
-  # compare(s.greens,calculate_greens_udv(p,l,s.current_slice))
-  # compare(s.greens,calculate_greens_udv_chkr(p,l,s.current_slice))
   nothing
 end

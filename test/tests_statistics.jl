@@ -25,7 +25,7 @@
             @test abs(mean(xc) - meanc) < 1e-12
             @test abs(var(xc) - varc) < 1e-12
 
-            meanc_three, varc_three = Helpers.combined_mean_and_var_three(x1,x2,x3)
+            meanc_three, varc_three = combined_mean_and_var_three(x1,x2,x3)
             @test isapprox(meanc, meanc_three)
             @test isapprox(varc, varc_three)
         end

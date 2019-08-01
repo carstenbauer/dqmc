@@ -17,7 +17,6 @@ abstract type AbstractDQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<
 # -------------------------------------------------------
 #                    Includes
 # -------------------------------------------------------
-using Helpers
 using MonteCarloObservable
 using TimerOutputs
 using FFTW
@@ -43,6 +42,23 @@ macro mytimeit(exprs...)
     end
 end
 
+
+"""
+Macro to define substitute macros.
+Concretely, `@def mymacro body` will define a macro
+such that `@mymacro` will be replaced by `body`.
+"""
+macro def(name, definition)
+    return quote
+        macro $(esc(name))()
+            esc($(Expr(:quote, definition)))
+        end
+    end
+end
+export @def
+
+
+include("helpers.jl")
 include("parameters.jl")
 include("lattice.jl")
 include("stack.jl")
