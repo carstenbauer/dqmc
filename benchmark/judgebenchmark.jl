@@ -16,7 +16,7 @@ function judge_results(target_file, baseline_file)
     j
 end
 
-resultfiles = sortdesc!(getresultfiles(branch="benchmark"))
+resultfiles = sortdesc!(getresultfiles(branch="master"))
 if length(resultfiles) > 0
     @info "Downloading latest baseline"
     latest = resultfiles[1]
