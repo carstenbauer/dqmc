@@ -40,14 +40,6 @@ end
 
 
 #### Other
-"""
-Calculate the determinant via LU decomposition
-"""
-function lu_det(M)
-    L, U, p = lu(M)
-    return prod(diag(L)) * prod(diag(U))
-end
-
 # See https://discourse.julialang.org/t/asymmetric-speed-of-in-place-sparse-dense-matrix-product/10256/3
 import LinearAlgebra.mul!
 function mul!(C::StridedMatrix, X::StridedMatrix, A::SparseMatrixCSC)
@@ -284,9 +276,9 @@ Stable calculation of [1 + UlDlTl(UrDrTr)^†]^(-1).
 Uses preallocated memory in `mc`. Writes the result into `res`.
 """
 function inv_one_plus_two_udts!(mc, res, Ul,Dl,Tl, Ur,Dr,Tr)
-  inv_one_plus_two_udts!(mc, s.U, s.d, s.T, Ul, Dl, Tl, Ur, Dr, Tr)
-  rmul!(s.U, Diagonal(s.d))
-  mul!(res, s.U, s.T)
+  inv_one_plus_two_udts!(mc, mc.s.U, mc.s.d, mc.s.T, Ul, Dl, Tl, Ur, Dr, Tr)
+  rmul!(mc.s.U, Diagonal(mc.s.d))
+  mul!(res, mc.s.U, mc.s.T)
   nothing
 end
 

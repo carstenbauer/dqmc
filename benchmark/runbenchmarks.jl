@@ -1,6 +1,9 @@
-using PkgBenchmark
+using PkgBenchmark, Random
+
 
 include("cleanup.jl")
+
+# download(tune.json)
 
 @info "Running benchmarks"
 benchmarkpkg(

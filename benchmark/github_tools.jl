@@ -24,7 +24,7 @@ function rm(filename::AbstractString;
             )
     d = Dict(
         "message" => string(message, " (api)"),
-        "sha" => file(REPO, filename; auth=AUTH).sha
+        "sha" => GitHub.file(REPO, filename; auth=AUTH).sha
     )
     delete_file(REPO, filename; auth=AUTH, params=d)
     nothing
@@ -39,7 +39,7 @@ function rm(filenames::AbstractVector{T}) where T<:AbstractString
 end
 
 function download(filename)
-    f = file(REPO, filename; auth=AUTH)
+    f = GitHub.file(REPO, filename; auth=AUTH)
     c = replace(f.content, "\n"=>"")
     s = String(base64decode(c))
     write(filename, s)
