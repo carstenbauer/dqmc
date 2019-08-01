@@ -42,49 +42,51 @@ end
 @inline function calc_detratio(mc::AbstractDQMC, i::Int, new_op::Vector{Float64})
   p = mc.p
   g = mc.g
+  s = mc.s
   l = mc.l
 
   @mytimeit mc.a.to "calc_detratio" begin
 
-  interaction_matrix_exp_op!(mc,p.hsfield[:,i,g.current_slice],-1.,g.eVop1) #V1i
-  interaction_matrix_exp_op!(mc,new_op,1.,g.eVop2) #V2i
-  mul!(g.eVop1eVop2, g.eVop1, g.eVop2)
-  g.delta_i .= g.eVop1eVop2 .- g.eye_flv
-  g.Mtmp .= g.eye_flv .- g.greens[i:l.sites:end,i:l.sites:end]
-  mul!(g.Mtmp2, g.delta_i, g.Mtmp)
-  g.M .= g.eye_flv .+ g.Mtmp2
+  interaction_matrix_exp_op!(mc,p.hsfield[:,i,g.current_slice],-1.,s.eVop1) #V1i
+  interaction_matrix_exp_op!(mc,new_op,1.,s.eVop2) #V2i
+  mul!(s.eVop1eVop2, s.eVop1, s.eVop2)
+  s.delta_i .= s.eVop1eVop2 .- s.eye_flv
+  s.Mtmp .= s.eye_flv .- g.greens[i:l.sites:end,i:l.sites:end]
+  mul!(s.Mtmp2, s.delta_i, s.Mtmp)
+  s.M .= s.eye_flv .+ s.Mtmp2
 
   end #timeit
-  return det(g.M)
+  return det(s.M)
 end
 
 @inline function update_greens!(mc::AbstractDQMC, i::Int)
   p = mc.p
   g = mc.g
+  s = mc.s
   l = mc.l
-  ab = mc.g.AB
+  ab = mc.s.AB
 
   @mytimeit mc.a.to "update_greens!" begin
 
-  g.A = g.greens[:,i:l.sites:end]
+  s.A = g.greens[:,i:l.sites:end]
   
   if p.opdim == 3
     @simd for k in 0:3
-        g.A[i+k*l.sites,k+1] -= 1.
+        s.A[i+k*l.sites,k+1] -= 1.
     end
   else
     @simd for k in 0:1
-        g.A[i+k*l.sites,k+1] -= 1.
+        s.A[i+k*l.sites,k+1] -= 1.
     end
   end
 
-  g.A *= inv(g.M)
-  mul!(g.B, g.delta_i, g.greens[i:l.sites:end,:])
+  s.A *= inv(s.M)
+  mul!(s.B, s.delta_i, g.greens[i:l.sites:end,:])
 
   # benchmark: most of time (>90% is spend below)
-  mul!(g.AB, g.A, g.B)
+  mul!(s.AB, s.A, s.B)
   
-  # more explicit way of doing g.greens .+= g.AB
+  # more explicit way of doing g.greens .+= s.AB
   @inbounds @simd for i in eachindex(g.greens)
     g.greens[i] += ab[i]
   end

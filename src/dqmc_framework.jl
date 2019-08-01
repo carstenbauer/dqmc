@@ -47,6 +47,7 @@ include("parameters.jl")
 include("lattice.jl")
 include("greens_stack.jl")
 include("meas_stack.jl")
+include("stack.jl")
 include("slice_matrices.jl")
 include("linalg.jl")
 include("statistics.jl") # here for convenience
@@ -85,6 +86,7 @@ mutable struct DQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number
   l::Lattice{HoppingEltype}
   g::GreensStack{GreensEltype}
   m::MeasStack{GreensEltype}
+  s::Stack{GreensEltype}
   a::Analysis
 end
 
@@ -115,7 +117,13 @@ DQMC(p::Params) = begin
     G = p.opdim > 1 ? ComplexF64 : Float64; # O(1) -> real GF
   end
 
-  mc = DQMC{CB,G,H}(p, Lattice{H}(), GreensStack{G}(), MeasStack{G}(), Analysis())
+  l = Lattice{H}()
+  g = GreensStack{G}()
+  m = MeasStack{G}()
+  s = Stack{G,CB}(p,l,g)
+  a = Analysis()
+
+  mc = DQMC{CB,G,H}(p,l,g,m,s,a)
   load_lattice(mc)
   mc
 end

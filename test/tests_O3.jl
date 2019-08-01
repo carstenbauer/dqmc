@@ -128,7 +128,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         end
 
         @testset "interaction matrix exponentials" begin
-            eV = similar(mc_nob.g.eV)
+            eV = similar(mc_nob.s.eV)
             interaction_matrix_exp!(mc_nob, 3, 1., eV)
             @test isapprox(eV, load("data/O3.jld", "nob_eVplus"))
             @test isapprox(eV, interaction_matrix_exp(mc_nob, 3, 1.))
@@ -139,7 +139,7 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         end
 
         @testset "interaction matrix exponentials (Bfield)" begin
-            eV = similar(mc.g.eV)
+            eV = similar(mc.s.eV)
             interaction_matrix_exp!(mc, 3, 1., eV)
             @test isapprox(eV, load("data/O3.jld", "eVplus"))
             @test isapprox(eV, interaction_matrix_exp(mc, 3, 1.))

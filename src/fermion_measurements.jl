@@ -1240,7 +1240,7 @@ end
 end
 
 function allocate_tdgfs!(mc)
-  @stackshortcuts
+  @stack_shortcuts
   M = mc.p.slices
   Nflv = N*flv
   meas = mc.m

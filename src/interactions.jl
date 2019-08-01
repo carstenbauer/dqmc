@@ -32,7 +32,7 @@ function interaction_matrix_exp(mc::AbstractDQMC, slice::Int, power::Float64=1.)
 end
 
 # interaction_matrix_exp = exp(- power delta_tau V(slice)), with power = +- 1.
-function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1., eV::AbstractSparseMatrix=mc.g.eV)
+function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1., eV::AbstractSparseMatrix=mc.s.eV)
   @mytimeit mc.a.to "interactions (combined)" begin
   @mytimeit mc.a.to "interaction_matrix_exp!" begin
   p = mc.p
@@ -40,9 +40,9 @@ function interaction_matrix_exp!(mc::AbstractDQMC, slice::Int, power::Float64=1.
   N = l.sites
   G = geltype(mc)
 
-  C = mc.g.C
-  S = mc.g.S
-  R = mc.g.R
+  C = mc.s.C
+  S = mc.s.S
+  R = mc.s.R
 
   # C = zeros(G, N) #1, 1)
   # S = zeros(G, N) #1, 2)
@@ -99,7 +99,7 @@ function interaction_matrix_exp_op(mc::AbstractDQMC, op::Vector{Float64}, power:
 end
 
 # calculate p.flv x p.flv (4x4 for O(3) model) interaction matrix exponential for given op
-function interaction_matrix_exp_op!(mc::AbstractDQMC{C,G}, op::Vector{Float64}, power::Float64=1., eVop::Matrix{G}=mc.g.eVop1) where {C,G}
+function interaction_matrix_exp_op!(mc::AbstractDQMC{C,G}, op::Vector{Float64}, power::Float64=1., eVop::Matrix{G}=mc.s.eVop1) where {C,G}
   @mytimeit mc.a.to "interactions (combined)" begin
   @mytimeit mc.a.to "interaction_matrix_exp_op!" begin
   n = norm(op)

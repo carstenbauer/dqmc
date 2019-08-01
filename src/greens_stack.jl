@@ -4,20 +4,9 @@ mutable struct GreensStack{G<:Number} # G = GreensEltype
   current_slice::Int # running internally over 0:p.slices+1, where 0 and p.slices+1 are artifcial to prepare next sweep direction.
   direction::Int
 
-  eye_flv::Matrix{Float64} # UPGRADE: Replace by dynamically sized I everywhere
-  eye_full::Matrix{Float64} # UPGRADE: Replace by dynamically sized I everywhere
-  ones_vec::Vector{Float64}
-
   greens::Matrix{G}
   log_det::Float64 # contains logdet of greens_{p.slices+1} === greens_1
                             # after we calculated a fresh greens in propagate()
-
-  C::Vector{G}
-  S::Vector{G}
-  R::Vector{G}
-  eV::SparseMatrixCSC{G,Int64}
-
-  Bl::Matrix{G}
 
   # unsure about those -> always allocate them
   curr_U::Matrix{G}
@@ -28,29 +17,10 @@ mutable struct GreensStack{G<:Number} # G = GreensEltype
   tmp::Matrix{G}
   tmp2::Matrix{G}
 
-  # global update
-  gb_u_stack::Array{G, 3}
-  gb_d_stack::Matrix{Float64}
-  gb_t_stack::Array{G, 3}
-
-  gb_greens::Matrix{G}
-  gb_log_det::Float64
-
-  gb_hsfield::Array{Float64, 3}
-
   # etgreens stack
   u_stack::Array{G, 3}
   d_stack::Matrix{Float64}
   t_stack::Array{G, 3}
-
-  # calc detratio
-  delta_i::Matrix{G}
-  M::Matrix{G}
-  eVop1::Matrix{G}
-  eVop2::Matrix{G}
-  eVop1eVop2::Matrix{G}
-  Mtmp::Matrix{G}
-  Mtmp2::Matrix{G}
 
   # calc greens
   Ul::Matrix{G}
@@ -59,11 +29,6 @@ mutable struct GreensStack{G<:Number} # G = GreensEltype
   Dr::Vector{Float64}
   Tl::Matrix{G}
   Tr::Matrix{G}
-
-  # update greens
-  A::Matrix{G}
-  B::Matrix{G}
-  AB::Matrix{G}
 
   # propagate
   greens_temp::Matrix{G}
@@ -77,7 +42,7 @@ end
 
 
 
-@def stackshortcuts begin
+@def greens_stack_shortcuts begin
   g = mc.g
   N = mc.l.sites
   flv = mc.p.flv
@@ -86,38 +51,15 @@ end
 end
 
 
-function allocate_global_update!(mc)
-  @stackshortcuts
-  # Global update backup
-  g.gb_u_stack = zero(g.u_stack)
-  g.gb_d_stack = zero(g.d_stack)
-  g.gb_t_stack = zero(g.t_stack)
-  g.gb_greens = zero(g.greens)
-  g.gb_log_det = 0.
-  g.gb_hsfield = zero(mc.p.hsfield)
-end
-
 function allocate_etgreens_stack!(mc)
-  @stackshortcuts
+  @greens_stack_shortcuts
   g.u_stack = zeros(G, flv*N, flv*N, g.n_elements)
   g.d_stack = zeros(Float64, flv*N, g.n_elements)
   g.t_stack = zeros(G, flv*N, flv*N, g.n_elements)
 end
 
-function allocate_calc_detratio!(mc)
-  @stackshortcuts
-  ## calc_detratio
-  g.M = zeros(G, flv, flv)
-  g.Mtmp = g.eye_flv - g.greens[1:N:end,1:N:end]
-  g.delta_i = zeros(G, size(g.eye_flv))
-  g.Mtmp2 = zeros(G, size(g.eye_flv))
-  g.eVop1eVop2 = zeros(G, size(g.eye_flv))
-  g.eVop1 = zeros(G, flv, flv)
-  g.eVop2 = zeros(G, flv, flv)
-end
-
 function allocate_calc_greens!(mc)
-  @stackshortcuts
+  @greens_stack_shortcuts
   g.Ul = Matrix{G}(I, flv*N, flv*N)
   g.Ur = Matrix{G}(I, flv*N, flv*N)
   g.Tl = Matrix{G}(I, flv*N, flv*N)
@@ -126,21 +68,13 @@ function allocate_calc_greens!(mc)
   g.Dr = ones(Float64, flv*N)
 end
 
-function allocate_update_greens!(mc)
-  @stackshortcuts
-  ## update_greens
-  g.A = g.greens[:,1:N:end]
-  g.B = g.greens[1:N:end,:]
-  g.AB = g.A * g.B
-end
-
 function allocate_propagate!(mc)
-  @stackshortcuts
+  @greens_stack_shortcuts
   g.greens_temp = zeros(G, flv*N, flv*N)
 end
 
 function _initialize_stack(mc::AbstractDQMC)
-  @stackshortcuts
+  @greens_stack_shortcuts
   g.n_elements = convert(Int, mc.p.slices / safe_mult) + 1
 
   g.ranges = UnitRange[]
@@ -148,22 +82,9 @@ function _initialize_stack(mc::AbstractDQMC)
     push!(g.ranges, 1 + (i - 1) * safe_mult:i * safe_mult)
   end
 
-  g.eye_flv = Matrix{Float64}(I, flv, flv)
-  g.eye_full = Matrix{Float64}(I, flv*N,flv*N)
-  g.ones_vec = ones(flv*N)
-
   g.greens = zeros(G, flv*N, flv*N)
 
-  # interaction matrix
-  g.C = zeros(G, N)
-  g.S = zeros(G, N)
-  g.R = zeros(G, N)
-  g.eV = spzeros(G, flv*N, flv*N)
-
-  # slice matrix
-  cbtype(mc) === CBFalse && (g.Bl = zeros(G, flv*N, flv*N))
-
-  # unsure about those
+  # TODO: unsure about those --> always allocate them, but perhaps in Stack?
   g.curr_U = zeros(G, flv*N, flv*N) # used in tdgf, add_slice_sequence_ and propagate
   g.D = zeros(Float64, flv*N) # used in calc_greens in mc (below) and in calc greens in fermion meas.
   g.d = zeros(Float64, flv*N) # same as above
@@ -179,15 +100,8 @@ function initialize_stack(mc::AbstractDQMC)
 
     # allocate for dqmc
     allocate_etgreens_stack!(mc)
-    allocate_global_update!(mc)
-    allocate_calc_detratio!(mc)
     allocate_calc_greens!(mc)
-    allocate_update_greens!(mc)
     allocate_propagate!(mc)
-
-    # allocate for measurements during dqmc
-    # allocate_etpc!(mc)
-
   end #timeit
 
   nothing
