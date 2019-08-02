@@ -3,7 +3,7 @@ using PkgBenchmark, Random
 
 include("cleanup.jl")
 
-# download(tune.json)
+download("tune.json")
 
 @info "Running benchmarks"
 benchmarkpkg(
