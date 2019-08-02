@@ -71,6 +71,26 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
     include("tests_O3_peirls.jl")
 
 
+    # check chkr_error ~ O(Δτ^2)
+    function check_chkr_quadratic(mc)
+        dt_before = mc.p.delta_tau
+        for dt in (0.1, 0.01, 0.001, 0.0001, 0.00001)
+            mc.p.delta_tau = dt
+            init_hopping_matrices(mc)
+            hop = mc.l.hopping_matrix_exp
+            hop_chkr = foldl(*,mc.l.chkr_hop_half) * sqrt.(mc.l.chkr_mu)
+            if maximum(absdiff(hop, hop_chkr)) > mc.p.delta_tau^2
+                mc.p.delta_tau = dt_before
+                init_hopping_matrices(mc)
+                return false
+            end
+        end
+        mc.p.delta_tau = dt_before
+        init_hopping_matrices(mc)
+        return true
+    end
+
+
     @testset "checkerboard hopping matrices" begin
         # init_checkerboard_matrices(mc_nob)
         @test find_four_site_hopping_corners(mc_nob.l) == ([1, 3, 9, 11], [6, 8, 14, 16])
@@ -89,6 +109,8 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         @test isapprox(mc_nob.l.chkr_mu_half, load("data/O3.jld", "nob_chkr_mu_half"))
         @test isapprox(mc_nob.l.chkr_mu_inv, load("data/O3.jld", "nob_chkr_mu_inv"))
         @test isapprox(mc_nob.l.chkr_mu_half_inv, load("data/O3.jld", "nob_chkr_mu_half_inv"))
+
+        @test check_chkr_quadratic(mc_nob)
     end
 
 
@@ -109,11 +131,14 @@ mc_nob_nochkr = mc_from_inxml("parameters/O3_no_bfield_no_chkr_small_system.in.x
         @test isapprox(mc.l.chkr_mu_half, load("data/O3.jld", "chkr_mu_half"))
         @test isapprox(mc.l.chkr_mu_inv, load("data/O3.jld", "chkr_mu_inv"))
         @test isapprox(mc.l.chkr_mu_half_inv, load("data/O3.jld", "chkr_mu_half_inv"))
+
+        @test check_chkr_quadratic(mc)
     end
 
 
     @testset "generic checkerboard hopping matrices" begin
-        # TODO: generic checkerboard
+        @assert cbtype(mc_odd_L) == CBGeneric
+        @test check_chkr_quadratic(mc_odd_L)
     end
 
 
