@@ -785,7 +785,8 @@ function allocate_zfccc!(mc)
   L = mc.p.L
   meas = mc.s.meas
 
-  meas.zfccc = zeros(Float64,L,L)
+  meas.zfccc_xx = zeros(Float64,L,L)
+  meas.zfccc_yy = zeros(Float64,L,L)
 
   println("Allocated memory for ZFCCC measurements.")
   nothing
@@ -814,10 +815,7 @@ function measure_zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
   L = mc.p.L
   N = mc.l.sites
   M = mc.p.slices
-  Lambda = mc.s.meas.zfccc
   T = mc.l.hopping_matrix
-
-  fill!(Lambda, 0.0)
 
   # xu, yd, xd, yu = 1,2,3,4
   X, Y = 1, 2
@@ -834,59 +832,57 @@ function measure_zfccc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
     get_G0 = (tau) -> greens[1]
   end
 
-  # We used to use this "hack" to get the hopping matrix
-  # T = log(mc.l.hopping_matrix_exp)
-  # T .*= -2 / mc.p.delta_tau
-  # Check: We set tij but in the action/hamiltonian we have -tij.
-  # If we really want tij add another * (-1)
-  # (this doesn't seem to matter, which makes sense as tijs come in "pairs")
+  for dir in (:x, :y)
+    Lambda = dir == :x ? mc.s.meas.zfccc_xx : mc.s.meas.zfccc_yy
+    fill!(Lambda, 0.0)
 
-  @inbounds for tau in 1:M
-    Gtau = get_Gtau(tau)
-    G0 = get_G0(tau)
-    Gt0 = Gt0s[tau]
-    G0t = G0ts[tau]
+    @inbounds for tau in 1:M
+      Gtau = get_Gtau(tau)
+      G0 = get_G0(tau)
+      Gt0 = Gt0s[tau]
+      G0t = G0ts[tau]
 
-    # TODO: Maybe we can use symmetries to reduce a1,a2,s1,s2 sum?
+      # TODO: use symmetries to reduce a1,a2,s1,s2 sum?
 
-    for x0 in 1:L, y0 in 1:L # r0 (we average over r0)
-      for a1 in (X, Y), a2 in (X, Y)
-        for s1 in (UP, DOWN), s2 in (UP, DOWN)
-          for x in 0:(L-1), y in 0:(L-1) # r (displacement)
-            ri = siteidx(mc, sql, x0+x, y0+y)
-            rj = siteidx(mc, sql, x0+x+1, y0+y) # ri + x̂
-            r0 = siteidx(mc, sql, x0, y0)
-            r0p = siteidx(mc, sql, x0+1, y0) # r0 + x̂
+      for x0 in 1:L, y0 in 1:L # r0 (we average over r0)
+        for a1 in (X, Y), a2 in (X, Y)
+          for s1 in (UP, DOWN), s2 in (UP, DOWN)
+            for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+              ri = siteidx(mc, sql, x0+x, y0+y)
+              rj = dir == :x ? siteidx(mc, sql, x0+x+1, y0+y) : siteidx(mc, sql, x0+x, y0+y+1) # ri + x̂ / ri + ŷ
+              r0 = siteidx(mc, sql, x0, y0)
+              r0p = dir == :x ? siteidx(mc, sql, x0+1, y0) : siteidx(mc, sql, x0, y0+1) # r0 + x̂ / r0 + ŷ
 
-            ais = greensidx(N, flv(a1, s1), ri)
-            ajs = greensidx(N, flv(a1, s1), rj)
-            ap0sp = greensidx(N, flv(a2, s2), r0)
-            ap0psp = greensidx(N, flv(a2, s2), r0p)
+              ais = greensidx(N, flv(a1, s1), ri)
+              ajs = greensidx(N, flv(a1, s1), rj)
+              ap0sp = greensidx(N, flv(a2, s2), r0)
+              ap0psp = greensidx(N, flv(a2, s2), r0p)
 
-            # hoppings
-            tij = G(mc, ais, ajs, T)
-            tji = G(mc, ajs, ais, T)
-            t00p = G(mc, ap0sp, ap0psp, T)
-            t0p0 = G(mc, ap0psp, ap0sp, T)
+              # hoppings
+              tij = G(mc, ais, ajs, T)
+              tji = G(mc, ajs, ais, T)
+              t00p = G(mc, ap0sp, ap0psp, T)
+              t0p0 = G(mc, ap0psp, ap0sp, T)
 
 
-            # Uncorrelated part
-            Lambda[y+1, x+1] += (tij * G(mc, ajs, ais, Gtau) - tji * G(mc, ais, ajs, Gtau)) *
-                                (t00p * G(mc, ap0psp, ap0sp, G0) - t0p0 * G(mc, ap0sp, ap0psp, G0))
+              # Uncorrelated part
+              Lambda[y+1, x+1] += (tij * G(mc, ajs, ais, Gtau) - tji * G(mc, ais, ajs, Gtau)) *
+                                  (t00p * G(mc, ap0psp, ap0sp, G0) - t0p0 * G(mc, ap0sp, ap0psp, G0))
 
-            # Correlated part
-            Lambda[y+1, x+1] += - tij * t00p * G(mc, ap0psp, ais, G0t) * G(mc, ajs, ap0sp, Gt0) +
-                                + tij * t0p0 * G(mc, ap0sp, ais, G0t) * G(mc, ajs, ap0psp, Gt0) +
-                                + tji * t00p * G(mc, ap0psp, ajs, G0t) * G(mc, ais, ap0sp, Gt0) +
-                                - tji * t0p0 * G(mc, ap0sp, ajs, G0t) * G(mc, ais, ap0psp, Gt0)
+              # Correlated part
+              Lambda[y+1, x+1] += - tij * t00p * G(mc, ap0psp, ais, G0t) * G(mc, ajs, ap0sp, Gt0) +
+                                  + tij * t0p0 * G(mc, ap0sp, ais, G0t) * G(mc, ajs, ap0psp, Gt0) +
+                                  + tji * t00p * G(mc, ap0psp, ajs, G0t) * G(mc, ais, ap0sp, Gt0) +
+                                  - tji * t0p0 * G(mc, ap0sp, ajs, G0t) * G(mc, ais, ap0psp, Gt0)
+            end
           end
         end
       end
     end
-  end
 
-  # r0 mean + overall minus sign due to i^2
-  Lambda ./= -N
+    # r0 mean + overall minus sign due to i^2
+    Lambda ./= -N
+  end
 
   nothing
 end
@@ -907,19 +903,20 @@ end
 # -------------------------------------------------------
 
 """
-    measure_sfdensity(mc, zfccc=mc.s.meas.zfccc)
+    measure_sfdensity(mc, zfccc_xx=mc.s.meas.zfccc_xx, zfccc_yy=mc.s.meas.zfccc_yy)
 
 Calculate the superfluid density from zero-frequency
-current-current correlations `zfccc`.
+current-current correlations `zfccc_xx`, `zfccc_yy`.
 """
-function measure_sfdensity(mc, zfccc=mc.s.meas.zfccc)
-  Λq = rfft(real(zfccc))
+function measure_sfdensity(mc, zfccc_xx=mc.s.meas.zfccc_xx, zfccc_yy=mc.s.meas.zfccc_yy)
+  Λxxq = rfft(real(zfccc_xx))
+  Λyyq = rfft(real(zfccc_yy))
 
-  # K = similar(Λq)
-  # @. K = 1/4 * (Λq[1,2] - Λq) # qy = 0, qx = 2π/L
-  # ρs = K[2,1] # qx = 0, qy = 2π/L
-  
-  ρs = 1/4 * (real(Λq[1,2]) - real(Λq[2,1]))
+  # Our model is symmetric under the combination of a pi/2 rotation, a PH trafo and the exchange of the bands
+  # Hence, Λxx ≈ Λyy' (transpose == rotate coordiantes by pi/2)
+  ρs = 1/4 * (real(Λxxq[1,2]) - real(Λxxq[2,1]))
+  # Otherwise
+  # ρs = 1/8 * (real(Λxxq[1,2]) - real(Λxxq[2,1]) + real(Λyyq[1,2]) - real(Λyyq[2,1]))
 end
 
 

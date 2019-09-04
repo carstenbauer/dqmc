@@ -286,15 +286,20 @@ end
 
     @testset "ZFCCC + Superfluid density" begin
         allocate_zfccc!(mc)
-        @test mc.s.meas.zfccc == zero(mc.s.meas.zfccc)
+        @test mc.s.meas.zfccc_xx == zero(mc.s.meas.zfccc_xx)
+        @test mc.s.meas.zfccc_yy == zero(mc.s.meas.zfccc_yy)
 
         measure_zfccc!(mc, g, Gt0, G0t)
-        Λ = mc.s.meas.zfccc
+        Λxx = mc.s.meas.zfccc_xx
+        Λyy = mc.s.meas.zfccc_yy
 
-        @test maximum(imag(Λ)) < 1e-12
-        @test is_reflection_symmetric(Λ, tol=2e-3) # is 2e-3 a problem?
+        @test maximum(imag(Λxx)) < 1e-12
+        @test is_reflection_symmetric(Λxx, tol=2e-3) # is 2e-3 a problem?
+        @test maximum(imag(Λyy)) < 1e-12
+        # TODO: For our model Λxx ≈ Λyy'. perhaps we should test that?
+        @test is_reflection_symmetric(Λyy, tol=1e-2) # is 1e-2 a problem?
 
-        @test isapprox(measure_sfdensity(mc, Λ), -0.07187888915764207) # This value is only self-consistent.
+        @test isapprox(measure_sfdensity(mc, Λxx, Λyy), -0.07187888915764207) # This value is only self-consistent.
     end
 
 

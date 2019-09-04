@@ -294,12 +294,15 @@ end
     @testset "ZFCCC + Superfluid density" begin
         allocate_zfccc!(mc_edk)
         measure_zfccc!(mc_edk, mc_edk.s.greens, Gt0, G0t)
-        Λ = mc_edk.s.meas.zfccc
+        Λxx = mc_edk.s.meas.zfccc_xx
+        Λyy = mc_edk.s.meas.zfccc_yy
 
-        @test isreal(Λ)
-        @test is_reflection_symmetric(Λ)
+        @test isreal(Λxx)
+        @test is_reflection_symmetric(Λxx)
+        @test isreal(Λyy)
+        @test is_reflection_symmetric(Λyy)
 
-        @test isapprox(measure_sfdensity(mc_edk, Λ), -0.5356976525573391) # This value is only self-consistent.
+        @test isapprox(measure_sfdensity(mc_edk, Λxx, Λyy), -0.5356976525573391) # This value is only self-consistent.
     end
     
 end
