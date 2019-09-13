@@ -728,11 +728,34 @@ function measure_zfcdc!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVec
           ev3 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
           ev4 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
 
-          Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
-          Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+          # note that signs are switched here compared to old version
+          Cm[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+          Cp[y+1,x+1] += ev1 - ev2 - ev3 + ev4
+
+          # substract <Δη^†(r,τ)><Δη(0,0)> i.e. the uncorrelated part
+          ev1_uncorr = _density_ev(mc, Gtau, ri, flv(X, s1)) * _density_ev(mc, G0, r0, flv(X, s2))
+          ev2_uncorr = _density_ev(mc, Gtau, ri, flv(X, s1)) * _density_ev(mc, G0, r0, flv(Y, s2))
+          ev3_uncorr = _density_ev(mc, Gtau, ri, flv(Y, s1)) * _density_ev(mc, G0, r0, flv(X, s2))
+          ev4_uncorr = _density_ev(mc, Gtau, ri, flv(Y, s1)) * _density_ev(mc, G0, r0, flv(Y, s2))
+
+          Cm[y+1,x+1] -= ev1_uncorr + ev2_uncorr + ev3_uncorr + ev4_uncorr
+          Cp[y+1,x+1] -= ev1_uncorr - ev2_uncorr - ev3_uncorr + ev4_uncorr
+
+          # # new part is due to extra ±2 in definition of the order parameter
+          # nev1 = _density_ev(mc, Gtau, ri, flv(X, s1))
+          # nev2 = _density_ev(mc, Gtau, ri, flv(Y, s1))
+          # nev3 = _density_ev(mc, G0, r0, flv(X, s2))
+          # nev4 = _density_ev(mc, G0, r0, flv(Y, s2))
+
+          # Cm[y+1,x+1] += 2*(- nev1 - nev2 - nev3 - nev4)
+          # Cp[y+1,x+1] += 2*(nev1 - nev2 + nev3 - nev4)
         end
       end
     end
+
+    # # (2η)^2 term
+    # Cm .+= 4
+    # Cp .+= 4
   end
 
   # r0 mean
@@ -765,11 +788,75 @@ Zero-frequency charge density correlation expectation value
   return uncorr + corr1 * corr2
 end
 
+"""
+Density expectation value
+
+  nev = << n_rj >> = << c_j^†(r) c_j(r) >>
+"""
+@inline function _density_ev(mc, greens, r, j)
+  N = mc.l.sites
+  i = greensidx(N, j, r)
+  return 1 - G(mc, i, i, greens)
+end
 
 
 
+function measure_zfcdc_old!(mc::AbstractDQMC, greens::Union{V, W}, Gt0s::AbstractVector{T}, G0ts::AbstractVector{T}) where {T <: AbstractMatrix, V <: AbstractVector, W <: AbstractMatrix}
+  L = mc.p.L
+  N = mc.l.sites
+  M = mc.p.slices
+  Cm = mc.s.meas.zfcdc_minus # d-wave
+  Cp = mc.s.meas.zfcdc_plus # s-wave
+
+  fill!(Cm, 0.0)
+  fill!(Cp, 0.0)
+
+  # xu, yd, xd, yu = 1,2,3,4
+  X, Y = 1, 2
+  UP, DOWN = 0, 2
+  flv = (band, spin) -> band + spin
+
+  sql = reshape(1:N,L,L)
+
+  if typeof(greens) <: AbstractMatrix
+    get_Gtau = (tau) -> greens
+    get_G0 = (tau) -> greens
+  else
+    get_Gtau = (tau) -> greens[tau]
+    get_G0 = (tau) -> greens[1]
+  end
 
 
+  @inbounds for tau in 1:M
+    Gtau = get_Gtau(tau)
+    G0 = get_G0(tau)
+    Gt0 = Gt0s[tau]
+    G0t = G0ts[tau]
+
+    for x0 in 1:L, y0 in 1:L # r0 (we average over r0)
+      for s1 in (UP, DOWN), s2 in (UP, DOWN)
+        for x in 0:(L-1), y in 0:(L-1) # r (displacement)
+          ri = siteidx(mc, sql, x0+x, y0+y)
+          r0 = siteidx(mc, sql, x0, y0)
+
+          ev1 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(X, s2), flv(X, s2))
+          ev2 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(X, s1), flv(X, s1), flv(Y, s2), flv(Y, s2))
+          ev3 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(X, s2), flv(X, s2))
+          ev4 = _zfcdc_ev(mc, tau, Gtau, G0, Gt0, G0t, ri, ri, r0, r0, flv(Y, s1), flv(Y, s1), flv(Y, s2), flv(Y, s2))
+
+          Cm[y+1,x+1] += ev1 - ev2 - ev3 + ev4
+          Cp[y+1,x+1] += ev1 + ev2 + ev3 + ev4
+        end
+      end
+    end
+  end
+
+  # r0 mean
+  Cm ./= N
+  Cp ./= N
+
+  nothing
+end
 
 
 
