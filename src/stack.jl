@@ -22,6 +22,9 @@ mutable struct MeasStack{G<:Number} # G = GreensEltype
   zfccc_xx::Array{ComplexF64, 2} # "Λxx(y,x)"
   zfccc_yy::Array{ComplexF64, 2} # "Λyy(y,x)"
 
+  # Density
+  density::Array{ComplexF64, 4} # n = c^\dagger c, dimensions: y,x,spin,band
+
 
   # TDGF
   Gt0::Vector{Matrix{G}}

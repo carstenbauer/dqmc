@@ -312,7 +312,7 @@ end
 
 
 # -------------------------------------------------------
-#         Occupation
+#         Occupation / Density
 # -------------------------------------------------------
 """
 Overall occupation, averaged over sites and fermion flavors (both spin and band).
@@ -344,8 +344,56 @@ end
 
 
 
+function allocate_density!(mc)
+  L = mc.l.L
+  flv = mc.p.flv
+  meas = mc.s.meas
 
+  meas.density = zeros(Float64,L,L,2,flv-2)
 
+  println("Allocated memory for density measurements.")
+  nothing
+end
+
+"""
+Density expectation value
+
+  << n_rj >> = << c_j^†(r) c_j(r) >>
+
+4-dimensional output ordered as (y,x,spin,band)
+"""
+@inline function measure_density!(mc, greens)
+  L = mc.p.L
+  N = mc.l.sites
+  density = mc.s.meas.density
+  
+  fill!(density, zero(eltype(density)))
+
+  X, Y = 1, 2
+  UP, DOWN = 0, 2
+  flv = (band, spin) -> band + spin
+  spinidx = spin -> Int(spin/2 + 1)
+
+  sql = reshape(1:N,L,L)
+
+  for band in (X, Y)
+    for spin in (UP, DOWN)
+      for x in 1:L
+        for y in 1:L
+          r = siteidx(mc,sql,x,y)
+          j = flv(band, spin)
+          i = greensidx(N, j, r)
+          density[y,x,spinidx(spin),band] = 1 - G(mc, i, i, greens)
+        end
+      end
+    end
+  end
+
+  nothing
+end
+
+#TODO: add unit test checking: reshape(mc.s.meas.density, (:,)) .== (1 .- diag(g))
+#TODO: flv lambda function seems to be wrong?!? produces (xu, yu, xd, yd) not (xu, yd, xd, yu), i.e.  yd,yu seems to be switched!
 
 
 
