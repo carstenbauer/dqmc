@@ -84,7 +84,89 @@ function compare_full(A::AbstractArray{T}, B::AbstractArray{S}) where T<:Number 
 end
 
 
+"""
+    setrng(rng)
+Replaces current `Random.GLOBAL_RNG` with `rng`.
+"""
+function setrng(rng::MersenneTwister)
+  Random.GLOBAL_RNG.idxI = rng.idxI
+  Random.GLOBAL_RNG.idxF = rng.idxF
+  Random.GLOBAL_RNG.state = rng.state
+  Random.GLOBAL_RNG.vals = rng.vals
+  Random.GLOBAL_RNG.seed = rng.seed
+  Random.GLOBAL_RNG.ints = rng.ints
+  nothing
+end
 
+"""
+  saverng(filename [, rng::MersenneTwister; group="GLOBAL_RNG"])
+  saverng(HDF5.HDF5File [, rng::MersenneTwister; group="GLOBAL_RNG"])
+Saves the current state of Julia's random generator (`Random.GLOBAL_RNG`) to HDF5.
+"""
+function saverng(f::HDF5.HDF5File, rng::MersenneTwister=Random.GLOBAL_RNG; group::String="GLOBAL_RNG")
+  g = endswith(group, "/") ? group : group * "/"
+  try
+    if HDF5.exists(f, g)
+      HDF5.o_delete(f, g)
+    end
+
+    f[g*"idxF"] = rng.idxF
+    f[g*"idxI"] = rng.idxI
+    f[g*"state_val"] = rng.state.val
+    f[g*"vals"] = rng.vals
+    f[g*"seed"] = rng.seed
+    f[g*"ints"] = Int.(rng.ints)
+  catch e
+    error("Error while saving RNG state: ", e)
+  end
+  nothing
+end
+function saverng(filename::String, rng::MersenneTwister=Random.GLOBAL_RNG; group::String="GLOBAL_RNG")
+  mode = isfile(filename) ? "r+" : "w"
+  HDF5.h5open(filename, mode) do f
+    saverng(f, rng; group=group)
+  end
+end
+
+"""
+  loadrng(filename [; group="GLOBAL_RNG"]) -> MersenneTwister
+  loadrng(f::HDF5.HDF5File [; group="GLOBAL_RNG"]) -> MersenneTwister
+Loads a random generator from HDF5.
+"""
+function loadrng(f::HDF5.HDF5File; group::String="GLOBAL_RNG")::MersenneTwister
+  rng = MersenneTwister(0)
+  g = endswith(group, "/") ? group : group * "/"
+  try
+    rng.idxI = read(f[g*"idxI"])
+    rng.idxF = read(f[g*"idxF"])
+    rng.state = Random.DSFMT.DSFMT_state(read(f[g*"state_val"]))
+    rng.vals = read(f[g*"vals"])
+    rng.seed = read(f[g*"seed"])
+    rng.ints = UInt128.(read(f[g*"ints"]))
+  catch e
+    error("Error while restoring RNG state: ", e)
+  end
+  return rng
+end
+function loadrng(filename::String; group::String="GLOBAL_RNG")
+  HDF5.h5open(filename, "r") do f
+    loadrng(f; group=group)
+  end
+end
+
+
+"""
+  restorerng(filename [; group="GLOBAL_RNG"]) -> Void
+  restorerng(f::HDF5.HDF5File [; group="GLOBAL_RNG"]) -> Void
+Restores a state of Julia's random generator (`Random.GLOBAL_RNG`) from HDF5.
+"""
+function restorerng(filename::String; group::String="GLOBAL_RNG")
+  HDF5.h5open(filename, "r") do f
+    restorerng(f; group=group)
+  end
+  nothing
+end
+restorerng(f::HDF5.HDF5File; group::String="GLOBAL_RNG") = setrng(loadrng(f; group=group))
 
 
 ##############################################################

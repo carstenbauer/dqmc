@@ -23,7 +23,6 @@ using FFTW
 using HDF5
 using JLD
 using LightXML
-using Helpers
 
 # using Iterators
 using Dates
