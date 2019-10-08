@@ -23,6 +23,7 @@ using FFTW
 using HDF5
 using JLD
 using LightXML
+using Helpers
 
 # using Iterators
 using Dates
@@ -308,7 +309,7 @@ function thermalize!(mc::DQMC)
 
   end
 
-  if TIMING 
+  if TIMING
     # display(a.to);
     show(TimerOutputs.flatten(a.to); allocations = true)
     # save(p.output_file[1:end-10]*"timings.jld", "to", a.to); # TODO
@@ -435,7 +436,7 @@ function measure!(mc::DQMC; prevmeasurements = 0)
         # push!(boson_action, p.boson_action)
 
         push!(configurations, p.hsfield)
-        
+
         _measure_observables!(mc, obs)
 
         dumping && saverng(p.output_file; group="resume/rng")

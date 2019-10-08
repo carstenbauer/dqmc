@@ -31,6 +31,7 @@ using RecursiveArrayTools
 
 const OBSERVABLES = Set((:chi_dyn,
                          :chi_dyn_symm,
+                         :chi_dyn_components,
                          :binder,
                          :etpc,
                          :zfpc,
@@ -53,6 +54,7 @@ const PLUSMINUS_OBSERVABLES = Set((:etpc,
 
 const CALC_IN_ONE_GO = Set((:chi_dyn,       # always in one go
                             :chi_dyn_symm,  # always in one go
+                            :chi_dyn_components, # always in one go
                             :binder         # always in one go
 ))
 
@@ -86,7 +88,7 @@ macro addobs(name, T)
   mp = esc(:(mp))
   n = "$name"
   t = esc(:($T))
-  return quote 
+  return quote
     if Symbol($n) in $(mp).todo_insteps
       $(o_insteps) = add($(o_insteps), $name = create_or_load_obs($n, $t, name = $n, alloc = $nc))
     else
@@ -417,7 +419,7 @@ function measure(mp::MeasParams; debug=false)
   # -------------- Load DQMC params/results -----------------
   println("\nLoading DQMC results...")
 
-  greens = nothing; 
+  greens = nothing;
   mc = nothing;
   local confs
 
@@ -459,7 +461,11 @@ function measure(mp::MeasParams; debug=false)
   if :chi_dyn in mp.todo
     @addobs chi_dyn Array{Float64, 3}
   end
-  
+
+  if :chi_dyn_components in mp.todo
+    @addobs chi_dyn_components Array{Float64, 4}
+  end
+
   # binder
   if :binder in mp.todo
     @addobs m2s Float64
@@ -666,6 +672,11 @@ function measure_bosonic(mp, obs, conf, i)
           chi = (permutedims(chi, [2,1,3]) + chi)/2 # C4 is basically flipping qx and qy (which only go from 0 to pi since we perform a real fft.)
           push!(obs[:chi_dyn_symm], chi)
         end
+
+        if :chi_dyn_components in keys(obs)
+          chi_components = measure_chi_dynamic_components(conf)
+          push!(obs[:chi_dyn_components], chi_components)
+        end
       end
 
       # binder
@@ -748,7 +759,7 @@ function measure_fermionic(mp, obs::NamedTuple{K,V}, conf, greens, mc, i) where 
     end
 
     # tdgfs
-    if :tdgfs_gt0 in keys(obs)        
+    if :tdgfs_gt0 in keys(obs)
         push!(obs[:tdgfs_gt0], VectorOfArray(Gt0))
         push!(obs[:tdgfs_g0t], VectorOfArray(G0t))
     end
@@ -778,6 +789,7 @@ function export_results(mp, obs, nsweeps)
     # bosonic
     :chi_dyn in keys(obs) && export_result(obs[:chi_dyn], mp.outfile, "obs/chi_dyn"; timeseries=true)
     :chi_dyn_symm in keys(obs) && export_result(obs[:chi_dyn_symm], mp.outfile, "obs/chi_dyn_symm"; timeseries=true)
+    :chi_dyn_components in keys(obs) && export_result(obs[:chi_dyn_components], mp.outfile, "obs/chi_dyn_components"; timeseries=true)
     :binder in keys(obs) && export_result(obs[:binder], mp.outfile, "obs/binder", error=false) # jackknife for error
 
     # fermionic

@@ -9,6 +9,13 @@ function measure_chi_dynamic(conf::AbstractArray{Float64, 3}; Δτ::Float64=0.1)
   Δτ/(N*M) * measure_phi_correlations(conf)
 end
 
+# don't sum over op components
+function measure_chi_dynamic_components(conf::AbstractArray{Float64, 3}; Δτ::Float64=0.1)
+  N = size(conf, 2)
+  M = size(conf, 3)
+  Δτ/(N*M) * measure_phi_correlations_components(conf)
+end
+
 # This is the rotated bosonic susceptibility with momenta relative to Q,
 # i.e. χ_rotated(qy,qx,iw) = C(qy-pi, qx-pi, iw) * Δτ/(N*M)
 #
@@ -46,6 +53,17 @@ function measure_phi_correlations(conf::AbstractArray{Float64, 3})
   n = floor(Int, L/2+1)
   nt = floor(Int, slices/2+1)
   return real(sum(phiFT,dims=1))[1,:,1:n,1:nt] # sum over op components
+end
+
+# measure correlations for every op component (don't sum over them)
+function measure_phi_correlations_components(conf::AbstractArray{Float64, 3})
+  opdim, sites, slices = size(conf)
+  L = Int(sqrt(sites))
+  phiFT = rfft(reshape(conf,opdim,L,L,slices),[2,3,4])
+  phiFT .*= conj(phiFT)
+  n = floor(Int, L/2+1)
+  nt = floor(Int, slices/2+1)
+  return real(phiFT)[:,:,1:n,1:nt] # do not yet sum over op components
 end
 
 
