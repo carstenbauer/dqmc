@@ -1,7 +1,7 @@
 println("Running tests on ", gethostname(), ".")
 using Test, Random, KrylovKit, BlockArrays, MonteCarloObservable
 
-include("setup_dqmc.jl")
+include("setup_dqmc.jl") # TODO: should now be replaceable by `using QMC`
 
 
 @testset "All Tests" begin

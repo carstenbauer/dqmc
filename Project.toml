@@ -1,5 +1,5 @@
-name = "DQMC"
-uuid = "b29854ae-375b-11e9-29ea-b3054bce59ef"
+name = "QMC"
+uuid = "17c74801-e4c8-539b-b11f-4e1f264eb28b"
 authors = ["Carsten Bauer <mail@carstenbauer.eu>"]
 version = "0.1.0"
 
