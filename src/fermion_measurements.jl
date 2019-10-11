@@ -1344,7 +1344,7 @@ function measure_tdgfs!(mc)
   G = geltype(mc)
   M = mc.p.slices
   safe_mult = mc.p.safe_mult
-  
+
   Gt0 = mc.s.meas.Gt0
   G0t = mc.s.meas.G0t
 
@@ -1360,13 +1360,13 @@ function measure_tdgfs!(mc)
   BBetaTInv_u_stack = mc.s.meas.BBetaTInv_u_stack
   BBetaTInv_d_stack = mc.s.meas.BBetaTInv_d_stack
   BBetaTInv_t_stack = mc.s.meas.BBetaTInv_t_stack
-  
 
-  # ---- first, calculate Gt0 and G0t only at safe_mult slices 
+
+  # ---- first, calculate Gt0 and G0t only at safe_mult slices
   # right mult (Gt0)
   calc_Bchain_udts!(mc, BT0Inv_u_stack, BT0Inv_d_stack, BT0Inv_t_stack, invert=true, dir=LEFT);
   calc_Bchain_udts!(mc, BBetaT_u_stack, BBetaT_d_stack, BBetaT_t_stack, invert=false, dir=RIGHT);
-  
+
   # left mult (G0t)
   calc_Bchain_udts!(mc, BT0_u_stack, BT0_d_stack, BT0_t_stack, invert=false, dir=LEFT);
   calc_Bchain_udts!(mc, BBetaTInv_u_stack, BBetaTInv_d_stack, BBetaTInv_t_stack, invert=true, dir=RIGHT);
@@ -1409,7 +1409,7 @@ end
 
 """
 Calculate UDTs at safe_mult time slices of
-dir = LEFT: 
+dir = LEFT:
 inv=false:  B(tau, 1) = B(tau) * B(tau-1) * ... * B(1)                    # mult left, 1:tau
 inv=true:   [B(tau, 1)]^-1 = B(1)^-1 * B(2)^-1 * ... B(tau)^-1            # mult inv right, 1:tau
 
@@ -1515,7 +1515,8 @@ function fill_tdgf!(mc, Gt0, G0t)
   M = mc.p.slices
 
   safe_mult_taus = 1:safe_mult:M
-  @inbounds for tau in 1:M
+  Mhalf = Int(M/2)+1
+  @inbounds for tau in Mhalf:M
     (tau in safe_mult_taus) && continue # skip safe mult taus
 
     Gt0[tau] .= Gt0[tau-1] # copy
@@ -1523,6 +1524,17 @@ function fill_tdgf!(mc, Gt0, G0t)
 
     G0t[tau] .= G0t[tau-1] # copy
     multiply_B_inv_right!(mc, tau, G0t[tau])
+  end
+
+  @inbounds for tau in (Mhalf-1):-1:1
+    (tau in safe_mult_taus) && continue # skip safe mult taus
+
+    Gt0[tau] .= Gt0[tau+1] # copy
+    multiply_B_inv_left!(mc, tau+1, Gt0[tau])
+    # sec. arg: tau seems to sometimes give better results?!?!
+
+    G0t[tau] .= G0t[tau+1] # copy
+    multiply_B_right!(mc, tau+1, G0t[tau])
   end
 
   nothing

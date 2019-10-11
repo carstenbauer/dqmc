@@ -53,14 +53,14 @@ end
                 return true
             end
             @test f()
-            
+
             # PBC
             @test siteidx(mc, sql, 5, 1) == 1
             @test siteidx(mc, sql, 1, 5) == 1
             @test siteidx(mc, sql, 5, 5) == 1
             @test siteidx(mc, sql, 3, 7) == 11
             @test siteidx(mc, sql, 128, 32) == 16
-            
+
             # greensidx
             f = () -> begin
                 for i in 1:N
@@ -72,8 +72,8 @@ end
                 return true
             end
             @test f()
-            
-            
+
+
             # G for O(3) equal to indexing greens
             f = () -> begin
                 for i in 1:4*N, j in 1:4*N
@@ -82,7 +82,7 @@ end
                 return true
             end
             @test f()
-            
+
             # Gtilde for O(3) equal to indexing I - greens
             f = () -> begin
                 for i in 1:4*N, j in 1:4*N
@@ -91,13 +91,13 @@ end
                 return true
             end
             @test f()
-            
+
             @test isapprox(fullG(mc, mc.s.greens), mc.s.greens)
             @test isapprox(fullGtilde(mc, mc.s.greens), I - mc.s.greens)
-            
-            
+
+
             mc.p.opdim = 2
-            
+
             # G for O(2)/O(1)
             f = () -> begin
                 for i in 1:2*N, j in 1:2*N
@@ -107,9 +107,9 @@ end
                 return true
             end
             @test f()
-            
+
             @test isapprox(fullG(mc, greens), I - fullGtilde(mc, greens))
-            
+
             mc.p.opdim = 3
         end
 
@@ -120,12 +120,12 @@ end
             xu, yd, xd, yu = 1, 2, 3, 4 # definition = old order
 
             flvtrafo = Dict{Int64, Int64}(xu => xu, yd => yu, xd => xd, yu => yd)
-            
+
             @test isapprox(permute_greens(permute_greens(mc.s.greens)), mc.s.greens)
-            
+
             gperm = PseudoBlockArray(permute_greens(mc.s.greens), [N,N,N,N], [N,N,N,N])
             g = PseudoBlockArray(mc.s.greens, [N,N,N,N], [N,N,N,N])
-                
+
             f = () -> begin
                 for j in (xu, yd, xd, yu)
                     for i in (xu, yd, xd, yu)
@@ -135,15 +135,15 @@ end
                 return true
             end
             @test f()
-            
-            
+
+
             # FFT
             @test isapprox(ifft_greens(mc, fft_greens(mc, mc.s.greens; fftshift=false); ifftshift=false), mc.s.greens)
             @test isapprox(ifft_greens(mc, fft_greens(mc, mc.s.greens; fftshift=true); ifftshift=true), mc.s.greens)
-            
+
             gk = fft_greens(mc, mc.s.greens)
             @test isapprox(gk, load("data/O3.jld", "greens_fft"))
-            
+
             qs = collect(range(-pi, pi, length=L+1))[1:end-1]
             qs7 = [-2.6927937030769655, -1.7951958020513104, -0.8975979010256552, 0.0, 0.8975979010256552, 1.7951958020513104, 2.6927937030769655]
             @test all(isapprox.(fftmomenta(7; fftshift=true), qs7))
@@ -299,7 +299,7 @@ end
         # TODO: For our model Λxx ≈ Λyy'. perhaps we should test that?
         @test is_reflection_symmetric(Λyy, tol=1e-2) # is 1e-2 a problem?
 
-        @test isapprox(measure_sfdensity(mc, Λxx, Λyy), -0.07187888915764207) # This value is only self-consistent.
+        @test isapprox(measure_sfdensity(mc, Λxx, Λyy), 0.05157097614282691) # This value is only self-consistent.
     end
 
 
