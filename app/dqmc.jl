@@ -10,7 +10,7 @@ __FILE__ = joinpath(dirname(@__FILE__), splitpath(dirname(@__FILE__))[end] == "a
 function is_dqmc_env_activated()
     project_file = Base.active_project()
     project = Pkg.Types.read_project(project_file)
-    return !isnothing(project.name) && lowercase(project.name) == "dqmc"
+    return !isnothing(project.name) && lowercase(project.name) == "qmc"
 end
 
 if !is_dqmc_env_activated()
@@ -50,7 +50,7 @@ elseif length(ARGS) == 2
   # ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]
   prefix = convert(String, ARGS[1])
   idx = 1
-  try global idx = parse(Int, ARGS[2]); catch end # SLURM_ARRAY_TASK_ID 
+  try global idx = parse(Int, ARGS[2]); catch end # SLURM_ARRAY_TASK_ID
   output_file = prefix * ".task" * string(idx) * ".out.h5.running"
 
   println("Prefix is ", prefix, " and idx is ", idx)

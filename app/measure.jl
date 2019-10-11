@@ -19,7 +19,7 @@ println("Hostname: ", gethostname())
 function is_dqmc_env_activated()
     project_file = Base.active_project()
     project = Pkg.Types.read_project(project_file)
-    return !isnothing(project.name) && lowercase(project.name) == "dqmc"
+    return !isnothing(project.name) && lowercase(project.name) == "qmc"
 end
 
 if !is_dqmc_env_activated()
