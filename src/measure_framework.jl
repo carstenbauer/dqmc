@@ -639,14 +639,7 @@ function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
       println(); display(mp.to); println(); flush(stdout);
     end
 
-    println("Try deleting obj files (obj/ and _res/)"); flush(stdout);
-    jldopen(mp.outfile, "r+") do f
-        println("delete!")
-        delete!(f, "obj")
-        println("o_delete")
-        o_delete(f, "_refs")
-    end
-    println("repacking")
+    println("Repacking")
     h5repack(mp.outfile)
     println("done.\n")
     flush(stdout);
@@ -655,9 +648,13 @@ end
 function save_obs_objects(mp, obs)
   println("Intermediate save..."); flush(stdout)
   jldopen(mp.outfile, isfile(mp.outfile) ? "r+" : "w") do f
+    HDF5.has(f.plain, "_refs") && o_delete(f.plain,"_refs")
+    HDF5.has(f.plain, "_types") && o_delete(f.plain,"_types")
     for (o, obj) in pairs(obs)
       p = joinpath("obj/", string(o))
-      HDF5.has(f.plain, p) && JLD.delete!(f, p)
+      if HDF5.has(f.plain, p)
+        JLD.o_delete(f, p)
+      end
       f[p] = obj
     end
   end
