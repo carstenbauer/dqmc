@@ -169,6 +169,26 @@ end
 restorerng(f::HDF5.HDF5File; group::String="GLOBAL_RNG") = setrng(loadrng(f; group=group))
 
 
+"""
+    h5repack(src, trg)
+Repacks a HDF5 file e.g. to free unused space. If `src == trg`Wrapper to external h5repack
+application.
+"""
+function h5repack(src::String, trg::String)
+    if src == trg   h5repack(src)  end
+    @static if Sys.iswindows()
+        read(`h5repack.exe $src $trg`, String)
+    end
+    @static if Sys.islinux()
+        read(`h5repack $src $trg`, String)
+    end
+end
+function h5repack(filename::String)
+    h5repack(filename, "tmp.h5")
+    mv("tmp.h5",filename,force=true)
+end
+
+
 ##############################################################
 # delete this block when https://github.com/JuliaMath/AbstractFFTs.jl/pull/26 is merged
 struct Frequencies <: AbstractVector{Float64}
