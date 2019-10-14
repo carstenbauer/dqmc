@@ -16,3 +16,5 @@ tmp.cpp
 **/*.nb
 images/
 settings.json
+
+package-lock.json
