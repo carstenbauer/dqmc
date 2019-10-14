@@ -113,6 +113,7 @@ end
   # input & output files
   meas_infile::String = ""
   outfile::String = ""
+  objfile::String = "" # for temporarily storing full observable objetcs
   p::Params = Params() # DQMC Params
   dqmc_outfile::String = ""
 
@@ -167,6 +168,7 @@ function measxml2MeasParams(fname)
       isfile(mp.dqmc_outfile) || error("Couldn't find .out.h5[.running] file.")
   end
   mp.outfile = replace(mp.dqmc_outfile, ".out.h5" => ".meas.h5")
+  mp.objfile = replace(mp.dqmc_outfile, ".out.h5" => ".meas.obj.h5")
 
   dqmc_infile = fname[1:end-9]*".in.xml"
   if isfile(dqmc_infile)
@@ -633,29 +635,22 @@ function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
         end # time one iteration
     end
 
-    @mytimeit mp.to "final save" save_obs_objects(mp, obs)
+    # @mytimeit mp.to "final save" save_obs_objects(mp, obs)
+    if isfile(mp.objfile)
+      println("Deleting obj file: ", mp.objfile)
+      rm(mp.objfile)
+    end
 
     if TIMING
       println(); display(mp.to); println(); flush(stdout);
     end
-
-    println("Repacking")
-    h5repack(mp.outfile)
-    println("done.\n")
-    flush(stdout);
 end
 
 function save_obs_objects(mp, obs)
   println("Intermediate save..."); flush(stdout)
-  jldopen(mp.outfile, isfile(mp.outfile) ? "r+" : "w") do f
-    HDF5.has(f.plain, "_refs") && o_delete(f.plain,"_refs")
-    HDF5.has(f.plain, "_types") && o_delete(f.plain,"_types")
+  jldopen(mp.objfile, "w") do f # always overwrite => "w"
     for (o, obj) in pairs(obs)
-      p = joinpath("obj/", string(o))
-      if HDF5.has(f.plain, p)
-        JLD.o_delete(f, p)
-      end
-      f[p] = obj
+      f[string(o)] = obj
     end
   end
   # OPT: Be smarter for Observable objects (bosonic observables)
@@ -860,12 +855,11 @@ Create or load LightObservable
 """
 function create_or_load_lightobs(abbrev::String, args...; kwargs...)
   print(abbrev, ": looking for old LightObservable ... ")
-  if isfile(mp.outfile)
+  if isfile(mp.objfile)
     x = nothing
-    jldopen(mp.outfile, "r") do f
-      p = joinpath("obj/", abbrev)
-      if HDF5.has(f.plain, p)
-        x = read(f[p])
+    jldopen(mp.objfile, "r") do f
+      if HDF5.has(f.plain, abbrev)
+        x = read(f[abbrev])
         println("found and loaded!")
       end
     end
@@ -883,12 +877,11 @@ Create or load Observable
 """
 function create_or_load_obs(abbrev::String, args...; kwargs...)
   print(abbrev, ": looking for old Observable ... ")
-  if isfile(mp.outfile)
+  if isfile(mp.objfile)
     x = nothing
-    jldopen(mp.outfile, "r") do f
-      p = joinpath("obj/", abbrev)
-      if HDF5.has(f.plain, p)
-        x = read(f[p])
+    jldopen(mp.objfile, "r") do f
+      if HDF5.has(f.plain, abbrev)
+        x = read(f[abbrev])
         println("found and loaded!")
       end
     end
