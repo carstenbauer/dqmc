@@ -4,7 +4,8 @@ using BenchmarkTools
 using SparseArrays, LinearAlgebra
 
 # include("../src/linalg.jl")
-include(joinpath(@__DIR__, "../test/setup_dqmc.jl"))
+# include(joinpath(@__DIR__, "../test/setup_dqmc.jl"))
+using QMC
 
 suite = BenchmarkGroup()
 
