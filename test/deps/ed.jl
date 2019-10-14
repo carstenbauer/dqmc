@@ -15,11 +15,11 @@ function fermiops(ns::Int)
     cdns = sparse([0 0 0 0; 0 0 0 0; 1 0 0 0; 0 -1 0 0]')
     N = sparsevec([0, 1, 1, 2])
     signN = sparse(Diagonal([1, -1, -1, 1]))
-    
+
     cup = SparseMatrixCSC{Float64,Int64}[]
     cdn = SparseMatrixCSC{Float64,Int64}[]
     id = sparse(1I, 4, 4)
-    
+
     for k in 1:ns
         matup = spzeros(1,1)
         matup .= 1.
@@ -55,10 +55,10 @@ function fermiops_spinless(ns::Int)
     cs = sparse([0 0; 1 0]')
     N = sparsevec([0, 1])
     signN = sparse(Diagonal([1, -1])) # even / uneven # of fermion operators
-    
+
     c = SparseMatrixCSC{Int64,Int64}[]
     id = sparse(1I, 2, 2)
-    
+
     for k in 1:ns
         mat = 1
         for j in 1:ns
@@ -81,12 +81,12 @@ end
 function fermiops_spinless_spbasis(ns::Int)
     n = ns + 1 # the one is the all zeros state
     c = Array{SparseMatrixCSC{Int64,Int64}, 1}(undef, ns)
-    
+
     for k in 1:ns
         c[k] = spzeros(Int, n,n)
         c[k][1,k+1] = 1
     end
-    
+
     return c
 end
 
@@ -103,7 +103,7 @@ function check_fermiops(c::AbstractVector{T}) where T<:AbstractArray
              # cc anticommutator should vanish
             cc = c1 * c2 + c2 * c1
             @assert sum(abs.(cc)) == 0
-            
+
             # c^dagger c  anticommutator
             # should be identity if j==k and zero if j!=k
             cdc = c1' * c2 + c2 * c1'
@@ -139,11 +139,11 @@ function generate_H_tb_spinless(t, mu, ns, c)
     for i in 1:ns
         N = N + c[i]' * c[i]
     end
-    
+
     H = - mu * N
-    
+
     @assert ishermitian(H)
-    
+
     # hoppings
 
     for i in 1:ns
@@ -170,11 +170,11 @@ function generate_H_Hubbard(t, U, mu, ns, cup, cdn)
         N = N + cup[i]' * cup[i]
         N = N + cdn[i]' * cdn[i]
     end
-    
+
     H = - mu * N
 
     @assert ishermitian(H)
-    
+
     # hoppings
     for i in 1:ns
         for c in (cup, cdn)
@@ -210,11 +210,11 @@ function generate_H_Hubbard_normal(t, U, mu, ns, cup, cdn)
         N = N + cup[i]' * cup[i]
         N = N + cdn[i]' * cdn[i]
     end
-    
+
     H = - mu * N
-    
+
     @assert ishermitian(H)
-    
+
     # hoppings
     for i in 1:ns
         for c in (cup, cdn)
@@ -251,11 +251,11 @@ function generate_H_tb_spinless_spbasis(t, mu, ns, c)
     for i in 1:ns
         N = N + c[i]' * c[i]
     end
-    
+
     H = - mu * N
-    
+
     @assert ishermitian(H)
-    
+
     # hoppings
 
     for i in 1:ns
@@ -271,23 +271,23 @@ end
 function peirls_phase(i,j,L,B)
     @assert i in 1:L^2
     @assert j in 1:L^2
-    
+
     sqlattice = reshape(collect(1:L^2), (L,L))
     i2, i1 = ind2sub(sqlattice, i)
     j2, j1 = ind2sub(sqlattice, j)
-    
+
     if (i1 in 1:L-1 && j1 == i1+1) || (i1 == L && j1 == 1)
         return - 2*pi * B * (i2 - 1)
-        
+
     elseif (i1 in 2:L && j1 == i1-1) || (i1 == 1 && j1 == L)
         return 2*pi * B * (i2 - 1)
-        
+
     elseif i2 == L && j2 == 1
         return 2*pi * B * L * (i1 - 1)
-        
+
     elseif i2 == 1 && j2 == L
         return - 2*pi * B * L * (i1 - 1)
-        
+
     else
         return 0.
     end
@@ -309,11 +309,11 @@ function generate_H_tb_spinless_bfield_spbasis(t, mu, B, ns, c)
     for i in 1:ns
         N = N + c[i]' * c[i]
     end
-    
+
     H = - mu * N
-    
+
     @assert ishermitian(H)
-    
+
     # hoppings
 
     for i in 1:ns
@@ -321,7 +321,7 @@ function generate_H_tb_spinless_bfield_spbasis(t, mu, B, ns, c)
         Aut = exp(im * peirls_phase(unn[i], i, L, B))
         Ar = exp(im * peirls_phase(i, rnn[i], L, B))
         Art = exp(im * peirls_phase(rnn[i], i, L, B))
-        
+
         H += - t * Au * (c[i]' * c[unn[i]]) - t * Aut * (c[unn[i]]' * c[i])
         H += - t * Ar * (c[i]' * c[rnn[i]]) - t * Art * (c[rnn[i]]' * c[i])
     end
@@ -397,7 +397,7 @@ function generate_H_SDW(params, ns, cup, cdn)
         N2 = N2 + cup[i]' * cup[i]
         N2 = N2 + cdn[i]' * cdn[i]
     end
-    
+
     H = - mu * N1 - mu * N2
 
     # Hopping part:
@@ -470,11 +470,11 @@ function generate_H_SDW_spbasis_single_flavor(params, ns, c)
     for i in 1:ns
         N = N + c[i]' * c[i]
     end
-    
+
     H = - mu * N
-    
+
     @assert ishermitian(H)
-    
+
     # hoppings
 
     for i in 1:ns
@@ -491,8 +491,8 @@ function ϵ(params, ky, kx)
     th = params["th"]
     tv = params["tv"]
     mu = params["mu"]
-    
-    gamma = -2*th*cos(kx) - 2*tv*cos(ky)    
+
+    gamma = -2*th*cos(kx) - 2*tv*cos(ky)
     ϵ = gamma - mu
 end
 
@@ -514,26 +514,26 @@ function peirls_SDW(i::Int , j::Int, B::Float64, sql::Matrix{Int}, pbc::Bool)::C
     if pbc
         if (i1 == L && j1 == 1)
             return exp(im*(- 2*pi * B * (i2 - 1)))
-            
+
         elseif (i1 == 1 && j1 == L)
             return exp(im*(2*pi * B * (i2 - 1)))
-            
+
         elseif i2 == L && j2 == 1
             return exp(im*(2*pi * B * L * (i1 - 1)))
-            
+
         elseif i2 == 1 && j2 == L
             return exp(im*(- 2*pi * B * L * (i1 - 1)))
-            
+
         else
             return exp(im*0.)
         end
     else
         if (i1 in 1:L-1 && j1 == i1+1)
             return exp(im*(- 2*pi * B * (i2 - 1)))
-            
+
         elseif (i1 in 2:L && j1 == i1-1)
             return exp(im*(2*pi * B * (i2 - 1)))
-            
+
         else
             return exp(im*0.)
         end
@@ -578,10 +578,10 @@ function generate_H_SDW_Bfield(params, ns, cup, cdn)
         N2 = N2 + cup[i]' * cup[i]
         N2 = N2 + cdn[i]' * cdn[i]
     end
-    
+
     H = - mu * N1 - mu * N2
 
-    # for linidx to cartesianidx   
+    # for linidx to cartesianidx
     sql = reshape(collect(1:Int(ns/2)), (2,2))
 
 
@@ -591,7 +591,7 @@ function generate_H_SDW_Bfield(params, ns, cup, cdn)
     for f in 1:2 # flavor
         for s in 1:2 # spin
             c = cs[(s-1)*8+(f-1)*4+1:(s-1)*8+(f-1)*4+4]
-            A = 
+            A =
             # hopping within the lattice
             H = H - peirls_SDW(1, 2, B[s,f], sql, false) * t[2,f] * (c[1]' * c[2]) - peirls_SDW(2, 1, B[s,f], sql, false) * t[2,f] * (c[2]' * c[1])
             H = H - peirls_SDW(3, 4, B[s,f], sql, false) * t[2,f] * (c[3]' * c[4]) - peirls_SDW(4, 3, B[s,f], sql, false) * t[2,f] * (c[4]' * c[3])
@@ -657,7 +657,7 @@ function GF_free_spbasis(evals, evecs, beta)
     U = evecs
     D = exp.(-beta .* evals)
     Vd = copy(U')
-    
+
     inv_one_plus_udv_scalettar(U,D,Vd)
 end
 
@@ -675,7 +675,7 @@ function GF_k_space(params, L, beta)
         for i in 1:nk
             E = ϵ(params, kys[i], kxs[j])
             gk[i,j] = GF_element_k_space(E, beta)
-        end 
+        end
     end
     gk
 end
@@ -699,7 +699,7 @@ function TDGF_k_space(params, L, beta, tau; G0t=false)
             else
                 gk[i,j] = TDGF_element_k_space_G0t(E, beta, tau)
             end
-        end 
+        end
     end
     gk
 end
@@ -740,11 +740,11 @@ function TDGF_free_spbasis(evals, evecs, beta, tau)
     Ua = evecs
     Da = exp.(tau .* evals)
     Vda = copy(Ua')
-    
+
     Ub = evecs
     Db = exp.((tau-beta) .* evals)
     Vdb = copy(Ub')
-    
+
     U, D, Vd = inv_sum_udvs(Ua,Da,Vda, Ub,Db,Vdb)
     U * Diagonal(D) * Vd
 end
@@ -839,7 +839,7 @@ end
 
 
 
-function siteidx(L,N,sql,x,y)
+function QMC.siteidx(L,N,sql,x,y)
   xpbc = mod1(x, L)
   ypbc = mod1(y, L)
   sql[ypbc, xpbc] # to linear idx
@@ -875,7 +875,7 @@ function etpc(cs, evecs, evals, beta)
             pc_minus[y+1, x+1] -= EV(op2, evecs, evals, beta)
             pc_minus[y+1, x+1] -= EV(op3, evecs, evals, beta)
             pc_minus[y+1, x+1] += EV(op4, evecs, evals, beta)
-            
+
             pc_plus[y+1, x+1] += EV(op1, evecs, evals, beta)
             pc_plus[y+1, x+1] += EV(op2, evecs, evals, beta)
             pc_plus[y+1, x+1] += EV(op3, evecs, evals, beta)
@@ -911,12 +911,12 @@ function etcdc(cs, evecs, evals, beta)
                 op2 = getop(cs, ri, X, s1)' * getop(cs, ri, X, s1) * getop(cs, r0, Y, s2)' * getop(cs, r0, Y, s2)
                 op3 = getop(cs, ri, Y, s1)' * getop(cs, ri, Y, s1) * getop(cs, r0, X, s2)' * getop(cs, r0, X, s2)
                 op4 = getop(cs, ri, Y, s1)' * getop(cs, ri, Y, s1) * getop(cs, r0, Y, s2)' * getop(cs, r0, Y, s2)
-                
+
                 cdc_minus[y+1, x+1] += EV(op1, evecs, evals, beta)
                 cdc_minus[y+1, x+1] -= EV(op2, evecs, evals, beta)
                 cdc_minus[y+1, x+1] -= EV(op3, evecs, evals, beta)
                 cdc_minus[y+1, x+1] += EV(op4, evecs, evals, beta)
-                
+
                 cdc_plus[y+1, x+1] += EV(op1, evecs, evals, beta)
                 cdc_plus[y+1, x+1] += EV(op2, evecs, evals, beta)
                 cdc_plus[y+1, x+1] += EV(op3, evecs, evals, beta)
