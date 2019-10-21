@@ -296,49 +296,43 @@ function create_todolist!(mp::MeasParams)
     end
     allobs = listobs(mp.outfile)
     N = length(confs)
-    counts = Dict{Symbol, Int64}()
+    counts = Dict{Symbol, Int64}() # # measurement results in .meas.h5
+    objcounts = Dict{Symbol, Int64}() # length of binner obj in .meas.obj.h5
 
     jldopen(mp.outfile, "r") do f
       for o in mp.requested
-
         o == :binder && continue # special case binder cumulant
+        p = joinpath("obs/", string(o))
 
-        # IN-ONE-GO
-        if strip_plusminus(o) in CALC_IN_ONE_GO
-          p = joinpath("obs/", string(o))
-
-          if !HDF5.has(f.plain, p)
-            push!(mp.todo, o)
-          else
-            count = read(f[joinpath(p, "count")])
-            if count != N
-              push!(mp.todo, o)
-              # counts[o] = count
-            end
-          end
+        if !HDF5.has(f.plain, p)
+          push!(mp.todo, o)
         else
-          # IN-STEPS
-          p = joinpath("obj/", string(o))
-
-          if !HDF5.has(f.plain, p)
-            push!(mp.todo, o)
-          else
-            count = length(read(f[p]))
-            if count != N
+          count = read(f[joinpath(p, "count")])
+          if count != N
+            if strip_plusminus(o) in CALC_IN_ONE_GO
+              push!(mp.todo, o)
+            else # CALC_IN_STEPS
               push!(mp.todo, o)
               counts[o] = count
             end
           end
         end
-
       end # observable loop
     end # open file
 
-    if length(unique(values(counts))) > 1
-      display(counts)
-      flush(stdout)
-      @error "Found unfinished measurements of different length (not yet supported). Aborting."
-      # TODO: instead of abort, start from scratch, i.e. overwrite finite length unfinished measurements.
+    if isfile(mp.objfile)
+      jldopen(mp.objfile, "r") do fobj
+        for o in mp.requested
+          o == :binder && continue # special case binder cumulant
+          if !(strip_plusminus(o) in CALC_IN_ONE_GO)
+            # CALC_IN_STEPS
+            p = string(o)
+            if HDF5.has(fobj.plain, p)
+              objcounts[o] = length(read(fobj[p]))
+            end
+          end
+        end
+      end # open file
     end
 
     # Special case: binder
@@ -346,10 +340,35 @@ function create_todolist!(mp::MeasParams)
       push!(mp.todo, :binder)
     end
 
-    mp.confs_iterator_start = mp.ignore_first_n + try unique(values(counts))[1] + 1 catch er 1 end
+
+    if length(mp.todo) > 0
+      c = isempty(counts) ? 0 : first(values(counts))
+      objc = isempty(objcounts) ? 0 : first(values(objcounts))
+
+      if length(unique(values(objcounts))) > 1 || length(unique(values(counts))) > 1
+        @show counts
+        @show objcounts
+        @error "Found unfinished measurements of different length (not yet supported). Aborting."
+      end
+
+      println("Found ", c, " in-steps-measurement results in outfile.")
+      println("Found ", objc, " in-steps-measurements in binners in objfile.")
+
+      if c>0 && c!=objc
+        @show counts
+        @show objcounts
+        @error "Measurement results present + incompatible binner objects (unsupported)."
+      end
+
+      mp.confs_iterator_start = mp.ignore_first_n + objc + 1
+      @show mp.confs_iterator_start
+    else
+      mp.confs_iterator_start = -1
+    end
 
   else # there is no meas outfile yet or we are in overwrite mode
     mp.todo = copy(mp.requested)
+    isfile(mp.objfile) && rm(mp.objfile)
   end
 
   mp.todo
@@ -636,10 +655,10 @@ function measure_insteps(mp::MeasParams, obs::NamedTuple{K,V}, confs, greens, mc
     end
 
     # @mytimeit mp.to "final save" save_obs_objects(mp, obs)
-    if isfile(mp.objfile)
-      println("Deleting obj file: ", mp.objfile)
-      rm(mp.objfile)
-    end
+    # if isfile(mp.objfile)
+    #   println("Deleting obj file: ", mp.objfile)
+    #   rm(mp.objfile)
+    # end
 
     if TIMING
       println(); display(mp.to); println(); flush(stdout);
@@ -855,7 +874,8 @@ combine(x::NamedTuple, y::NamedTuple) = NamedTuple{(keys(x)..., keys(y)...)}((x.
 Create or load LightObservable
 """
 function create_or_load_lightobs(abbrev::String, args...; kwargs...)
-  print(abbrev, ": looking for old LightObservable ... ")
+  print(abbrev, ": looking for old LightObservable in ", mp.objfile ," ... ")
+  isfile(mp.objfile*"_tmp") && rm(mp.objfile*"_tmp")
   if isfile(mp.objfile)
     x = nothing
     jldopen(mp.objfile, "r") do f
@@ -877,7 +897,8 @@ end
 Create or load Observable
 """
 function create_or_load_obs(abbrev::String, args...; kwargs...)
-  print(abbrev, ": looking for old Observable ... ")
+  print(abbrev, ": looking for old Observable in ", mp.objfile ," ... ")
+  isfile(mp.objfile*"_tmp") && rm(mp.objfile*"_tmp")
   if isfile(mp.objfile)
     x = nothing
     jldopen(mp.objfile, "r") do f
