@@ -648,11 +648,12 @@ end
 
 function save_obs_objects(mp, obs)
   println("Intermediate save..."); flush(stdout)
-  jldopen(mp.objfile, "w") do f # always overwrite => "w"
+  jldopen(mp.objfile*"_tmp", "w") do f # always overwrite => "w"
     for (o, obj) in pairs(obs)
       f[string(o)] = obj
     end
   end
+  mv(mp.objfile*"_tmp", mp.objfile; force=true)
   # OPT: Be smarter for Observable objects (bosonic observables)
   nothing
 end
