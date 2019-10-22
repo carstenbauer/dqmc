@@ -418,13 +418,9 @@ function measure(mp::MeasParams; debug=false)
       println("\nOVERWRITE MODE: Ignored to avoid bug #23.")
     else
       println("\nOVERWRITE MODE")
+      isfile(mp.objfile) && rm(mp.objfile)
       jldopen(mp.outfile, "r+") do f
         for o in mp.todo
-          p = joinpath("obj/", string(o))
-          if HDF5.has(f.plain, p)
-            println("Clearing $p")
-            o_delete(f, p)
-          end
           p = joinpath("obs/", string(o))
           if HDF5.has(f.plain, p)
             println("Clearing $p")
