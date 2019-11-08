@@ -40,6 +40,8 @@ ProgressMeter = "1.0"
 RecursiveArrayTools = "1.0"
 Revise = "2.1.6"
 TimerOutputs = "0.5"
+BlockArrays = "0.10.1"
+KrylovKit = "0.4"
 
 [extras]
 BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
