@@ -7,7 +7,7 @@
 [codecov-img]: https://img.shields.io/codecov/c/github/crstnbr/dqmc/master.svg?label=codecov
 
 
-**Determinant quantum Monte Carlo (DQMC)** code for simulating a quantum critical metal, that is a Fermi sea coupled to antiferromagnetic bosonic fluctuations, in two spatial dimensions.
+**Determinant quantum Monte Carlo (DQMC)** code for simulating a quantum critical metal, a Fermi sea coupled to antiferromagnetic bosonic fluctuations, in two spatial dimensions.
 
 This code has been used to produce (most of) the results in the following paper:
 
