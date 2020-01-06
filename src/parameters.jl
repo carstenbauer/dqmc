@@ -224,7 +224,8 @@ function deduce_remaining_parameters(p::Params)
       elseif occursin("travis", hn)
         p.lattice_file = joinpath(dirname(dirname(@__FILE__)), "test/lattices/", lat)
       else
-        error("Unrecognized host. Can't deduce lattice file path.")
+        @warn "Unrecognized host. Can't deduce lattice file path. Trying to use lattices in test/lattices. (likely to fail)"
+        p.lattice_file = joinpath(dirname(dirname(@__FILE__)), "test/lattices/", lat)
       end
     end
   end
