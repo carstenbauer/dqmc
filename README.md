@@ -11,7 +11,7 @@
 
 This code has been used to produce (most of) the results in the following paper:
 
-> [*Hierarchy of energy scales in an O(3) symmetric antiferromagnetic quantum critical metal: a Monte Carlo study*<br>Carsten Bauer, Yoni Schattner, Simon Trebst, Erez Berg<br>arXiv:2001.00586](https://arxiv.org/abs/2001.00586)
+> [*Hierarchy of energy scales in an O(3) symmetric antiferromagnetic quantum critical metal: a Monte Carlo study*<br>Carsten Bauer, Yoni Schattner, Simon Trebst, Erez Berg](https://arxiv.org/abs/2001.00586)
 
 
 
