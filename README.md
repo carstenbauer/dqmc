@@ -1,19 +1,13 @@
-[![Build Status](https://travis-ci.com/crstnbr/dqmc.svg?token=ZhpR15dDPdpyVFTzrPfp&branch=master)](https://travis-ci.com/crstnbr/dqmc)
-[![codecov](https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh)](https://codecov.io/gh/crstnbr/dqmc)
-<!-- [![codecov][codecov-img]](http://codecov.io/github/crstnbr/BinningAnalysis.jl?branch=master) !-->
-<!-- [![travis][travis-img]](https://travis-ci.org/crstnbr/dqmc) !-->
-
-<!-- [travis-img]: https://img.shields.io/travis/crstnbr/dqmc/master.svg?label=linux !-->
-[codecov-img]: https://img.shields.io/codecov/c/github/crstnbr/dqmc/master.svg?label=codecov
-
 | **Documentation**                                                               | **Build Status**                                                                                |  **License**                                                                                |
 |:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![][docs-dev-img]][docs-dev-url] | ![][lifecycle-img] [![][github-ci-img]][github-ci-url] [![](https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh)][codecov-url] | [![][license-img]][license-url] |
+| [![][docs-dev-img]][docs-dev-url] | ![][lifecycle-img] [![][github-ci-img]][github-ci-url] [![][travis-ci-img]][travis-ci-url] [![](https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh)][codecov-url] | [![][license-img]][license-url] |
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://crstnbr.github.io/dqmc/dev
 [github-ci-img]: https://github.com/crstnbr/dqmc/workflows/Run%20tests/badge.svg
 [github-ci-url]: https://github.com/crstnbr/dqmc/actions?query=workflow%3A%22Run+tests%22
+[travis-ci-img]: https://travis-ci.com/crstnbr/dqmc.svg?token=ZhpR15dDPdpyVFTzrPfp&branch=master
+[travis-ci-url]: https://travis-ci.com/crstnbr/dqmc
 [codecov-img]: https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh
 [codecov-url]: https://codecov.io/gh/crstnbr/dqmc
 
