@@ -6,6 +6,24 @@
 <!-- [travis-img]: https://img.shields.io/travis/crstnbr/dqmc/master.svg?label=linux !-->
 [codecov-img]: https://img.shields.io/codecov/c/github/crstnbr/dqmc/master.svg?label=codecov
 
+| **Documentation**                                                               | **Build Status**                                                                                |  **License**                                                                                |
+|:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
+| [![][docs-dev-img]][docs-dev-url] | ![][lifecycle-img] [![][github-ci-img]][github-ci-url] [![](https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh)][codecov-url] | [![][license-img]][license-url] |
+
+[docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
+[docs-dev-url]: https://crstnbr.github.io/dqmc/dev
+[github-ci-img]: https://github.com/crstnbr/dqmc/workflows/Run%20tests/badge.svg
+[github-ci-url]: https://github.com/crstnbr/dqmc/actions?query=workflow%3A%22Run+tests%22
+[codecov-img]: https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh
+[codecov-url]: https://codecov.io/gh/crstnbr/dqmc
+
+[slack-url]: https://slackinvite.julialang.org/
+[slack-img]: https://img.shields.io/badge/chat-on%20slack-yellow.svg
+[license-img]: https://img.shields.io/badge/License-MIT-red.svg
+[license-url]: https://opensource.org/licenses/MIT
+
+[lifecycle-img]: https://img.shields.io/badge/lifecycle-stable-blue.svg
+
 
 **Determinant quantum Monte Carlo (DQMC)** code for simulating a quantum critical metal, a Fermi sea coupled to antiferromagnetic bosonic fluctuations, in two spatial dimensions.
 
