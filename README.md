@@ -21,7 +21,7 @@
 
 **Determinant quantum Monte Carlo (DQMC)** code for simulating a quantum critical metal, a Fermi sea coupled to antiferromagnetic bosonic fluctuations, in two spatial dimensions.
 
-This code has been used to produce (most of) the results in the following paper:
+A version of this code has been used to produce (most of) the results in the following paper:
 
 > [*Hierarchy of energy scales in an O(3) symmetric antiferromagnetic quantum critical metal: a Monte Carlo study*<br>Carsten Bauer, Yoni Schattner, Simon Trebst, Erez Berg](https://arxiv.org/abs/2001.00586)
 
