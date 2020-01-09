@@ -1,10 +1,10 @@
         o.OOOo.    .oOOOo.   Oo      oO  .oOOOo.  
          O    `o  .O     o.  O O    o o .O     o  
-         o      O o       O  o  o  O  O o           
-         O      o O       o  O   Oo   O o           Determinant quantum Monte Carlo code
-         o      O o       O  O        o o           for simulating quantum critical metals!
-         O      o O    Oo o  o        O O           
-         o    .O' `o     O'  o        O `o     .o   (In pure Julia!)
+         o      O o       O  o  o  O  O o           Determinant quantum Monte Carlo code
+         O      o O       o  O   Oo   O o           for simulating quantum critical metals!
+         o      O o       O  O        o o           
+         O      o O    Oo o  o        O O           (In pure Julia!)
+         o    .O' `o     O'  o        O `o     .o   
          OooOO'    `OoooO Oo O        o  `OoooO'  
 
 
