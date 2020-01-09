@@ -1,3 +1,14 @@
+        o.OOOo.    .oOOOo.   Oo      oO  .oOOOo.  
+         O    `o  .O     o.  O O    o o .O     o  
+         o      O o       O  o  o  O  O o           
+         O      o O       o  O   Oo   O o           Determinant quantum Monte Carlo code
+         o      O o       O  O        o o           for simulating quantum critical metals!
+         O      o O    Oo o  o        O O         
+         o    .O' `o     O'  o        O `o     .o 
+         OooOO'    `OoooO Oo O        o  `OoooO'  
+
+
+
 | **Build Status**                                                                                |  **License**                                                                                |
 |:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
 | ![][lifecycle-img] [![][github-ci-img]][github-ci-url] [![][travis-ci-img]][travis-ci-url] [![](https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh)][codecov-url] | [![][license-img]][license-url] |
