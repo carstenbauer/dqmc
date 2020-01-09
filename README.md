@@ -9,7 +9,7 @@
 
 | **Build Status**                                                                                |  **License**                                                                                |
 |:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| ![][lifecycle-img] [![][github-ci-img]][github-ci-url] [![][travis-ci-img]][travis-ci-url] [![](https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh)][codecov-url] | [![][license-img]][license-url] |
+| ![][lifecycle-img] [![][travis-ci-img]][travis-ci-url] [![](https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh)][codecov-url] | [![][license-img]][license-url] |
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://crstnbr.github.io/dqmc/dev
