@@ -7,8 +7,6 @@
          o    .O' `o     O'  o        O `o     .o   
          OooOO'    `OoooO Oo O        o  `OoooO'  
 
-
-
 | **Build Status**                                                                                |  **License**                                                                                |
 |:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
 | ![][lifecycle-img] [![][github-ci-img]][github-ci-url] [![][travis-ci-img]][travis-ci-url] [![](https://codecov.io/gh/crstnbr/dqmc/branch/master/graph/badge.svg?token=jTD6HWrHVh)][codecov-url] | [![][license-img]][license-url] |
@@ -31,6 +29,8 @@
 
 
 **Determinant quantum Monte Carlo (DQMC)** code for simulating a quantum critical metal, a Fermi sea coupled to antiferromagnetic bosonic fluctuations, in two spatial dimensions.
+
+<img src="https://github.com/crstnbr/dqmc/raw/master/viz.png" width=400px>
 
 A version of this code has been used to produce (most of) the results in the following paper:
 
