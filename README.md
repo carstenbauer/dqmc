@@ -38,7 +38,7 @@ A version of this code has been used to produce (most of) the results in the fol
 
 ### Performance comparison
 
-The figure below shows a comparison of three different DQMC codes written in C++, Fortran, and Julia. Specifically, it show the time it takes to perform one sweep of local updates in space and imaginary time for a spin-fermion model (studied in the paper linked above) with these codes. All kinds of special features, such as a small magnetic flux to improve finite size effects, are turned off.
+The figure below shows a comparison of three different DQMC codes written in C++, Fortran, and Julia. Specifically, it shows the time it takes to perform one sweep of local updates in space and imaginary time for a spin-fermion model (studied in the paper linked above). All kinds of special features, such as a small magnetic flux to improve finite size effects, are turned off.
 
 Codes:
 
