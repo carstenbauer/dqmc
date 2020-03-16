@@ -36,7 +36,17 @@ A version of this code has been used to produce (most of) the results in the fol
 
 > [*Hierarchy of energy scales in an O(3) symmetric antiferromagnetic quantum critical metal: a Monte Carlo study*<br>Carsten Bauer, Yoni Schattner, Simon Trebst, Erez Berg](https://arxiv.org/abs/2001.00586)
 
+### Performance comparison
 
+The figure below shows a comparison of three different DQMC codes written in C++, Fortran, and Julia. Specifically, it show the time it takes to perform one sweep of local updates in space and imaginary time for a spin-fermion model (studied in the paper linked above) with these codes. All kinds of special features, such as a small magnetic flux to improve finite size effects, are turned off.
+
+Codes:
+
+* C++ code by Max Gerlach ([repository](https://github.com/maxhgerlach/detqmc), [used in this paper](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.95.035124)).
+* Private Fortran code by Yoni Schattner ([used in this paper](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.097002)).
+* Julia DQMC implementation in this repository.
+
+<img src="https://github.com/crstnbr/dqmc/raw/master/speed_comp.png" width=700px>
 
 ### Settings
 
