@@ -46,7 +46,7 @@ Codes:
 * Private Fortran code by Yoni Schattner ([used in this paper](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.097002)).
 * Julia DQMC implementation in this repository.
 
-<img src="https://github.com/crstnbr/dqmc/raw/master/speed_comp.png" width=700px>
+<img src="https://github.com/crstnbr/dqmc/raw/master/speed_comp.png" width=600px>
 
 ### Settings
 
