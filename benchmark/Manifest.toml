@@ -6,20 +6,26 @@ git-tree-sha1 = "051c95d6836228d120f5f4b984dd5aba1624f716"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "0.5.0"
 
+[[AbstractTrees]]
+deps = ["Markdown"]
+git-tree-sha1 = "33e450545eaf7699da1a6e755f9ea65f14077a45"
+uuid = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+version = "0.3.3"
+
 [[ArrayInterface]]
 deps = ["LinearAlgebra", "Requires", "SparseArrays"]
-git-tree-sha1 = "656fd4bcdf204ea96945d9bc1068c0056013438a"
+git-tree-sha1 = "5f34aee5e5dbc1ce5cfb137d63f719a64d98ae82"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "2.3.1"
+version = "2.8.5"
 
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[BenchmarkTools]]
-deps = ["JSON", "Printf", "Statistics"]
-git-tree-sha1 = "90b73db83791c5f83155016dd1cc1f684d4e1361"
+deps = ["JSON", "Logging", "Printf", "Statistics", "UUIDs"]
+git-tree-sha1 = "9e62e66db34540a0c919d72172cc2f642ac71260"
 uuid = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-version = "0.4.3"
+version = "0.5.0"
 
 [[BinDeps]]
 deps = ["Compat", "Libdl", "SHA", "URIParser"]
@@ -35,21 +41,21 @@ version = "0.5.8"
 
 [[BinningAnalysis]]
 deps = ["Lazy", "Random", "RecursiveArrayTools", "Reexport", "Statistics"]
-git-tree-sha1 = "2c23b62806d4dc4557659b0d1a71464a00dd0a62"
+git-tree-sha1 = "796130615e9e83a8649b895576b466d6ba7bd2ed"
 uuid = "b7192094-8e58-5052-a244-180a858778ee"
-version = "0.3.1"
+version = "0.3.4"
 
 [[Blosc]]
-deps = ["BinaryProvider", "CMakeWrapper", "Compat", "Libdl"]
-git-tree-sha1 = "71fb23581e1f0b0ae7be8ccf0ebfb3600e23ca41"
+deps = ["BinaryProvider", "CMakeWrapper", "Libdl"]
+git-tree-sha1 = "9981f1795919b8f770dc064fe733ba09c2e7c7a9"
 uuid = "a74b3585-a348-5f62-a45c-50e91977d574"
-version = "0.5.1"
+version = "0.6.0"
 
 [[CMake]]
 deps = ["BinDeps"]
-git-tree-sha1 = "c67a8689dc5444adc5eb2be7d837100340ecba11"
+git-tree-sha1 = "50a8b41d2c562fccd9ab841085fc7d1e2706da82"
 uuid = "631607c0-34d2-5d66-819e-eb0f9aa2061a"
-version = "1.1.2"
+version = "1.2.0"
 
 [[CMakeWrapper]]
 deps = ["BinDeps", "CMake", "Libdl", "Parameters", "Test"]
@@ -59,9 +65,9 @@ version = "0.2.3"
 
 [[CodeTracking]]
 deps = ["InteractiveUtils", "UUIDs"]
-git-tree-sha1 = "0becdab7e6fbbcb7b88d8de5b72e5bb2f28239f3"
+git-tree-sha1 = "c8f94de86731698373f3c82a8aa40d8ab765c50c"
 uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
-version = "0.5.8"
+version = "0.5.9"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
@@ -71,21 +77,15 @@ version = "2.2.0"
 
 [[Conda]]
 deps = ["JSON", "VersionParsing"]
-git-tree-sha1 = "9a11d428dcdc425072af4aea19ab1e8c3e01c032"
+git-tree-sha1 = "7a58bb32ce5d85f8bf7559aa7c2842f9aecf52fc"
 uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
-version = "1.3.0"
+version = "1.4.1"
 
 [[DQMC]]
 deps = ["BenchmarkTools", "BinningAnalysis", "Dates", "FFTW", "Git", "HDF5", "JLD", "LightXML", "LinearAlgebra", "MonteCarloObservable", "Parameters", "Pkg", "Printf", "ProgressMeter", "Random", "RecursiveArrayTools", "Revise", "SparseArrays", "Statistics", "TimerOutputs"]
 path = ".."
 uuid = "b29854ae-375b-11e9-29ea-b3054bce59ef"
 version = "0.1.0"
-
-[[DataStructures]]
-deps = ["InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "f784254f428fb8fd7ac15982e5862a38a44523d3"
-uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.17.7"
 
 [[Dates]]
 deps = ["Printf"]
@@ -112,9 +112,9 @@ version = "1.1.0"
 
 [[FileIO]]
 deps = ["Pkg"]
-git-tree-sha1 = "74585bf1f7ed7259e166011e89f49363d7fa89a6"
+git-tree-sha1 = "3d7cb2c4c850439f19c4d6d3fbe1dce6481cddb1"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.2.1"
+version = "1.2.4"
 
 [[FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -127,9 +127,9 @@ version = "0.3.0"
 
 [[GitHub]]
 deps = ["Base64", "Dates", "HTTP", "JSON", "MbedTLS", "Sockets"]
-git-tree-sha1 = "477818ab174a14d4730b3d15ac8719dbc98555d2"
+git-tree-sha1 = "bc8ded5984130076ca6fe6b752508effa1201a19"
 uuid = "bc5e4493-9b4d-5f90-b8aa-2b2bcaad7a26"
-version = "5.1.3"
+version = "5.1.5"
 
 [[HDF5]]
 deps = ["BinaryProvider", "Blosc", "CMakeWrapper", "Libdl", "Mmap"]
@@ -139,9 +139,9 @@ version = "0.12.5"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "IniFile", "MbedTLS", "Sockets"]
-git-tree-sha1 = "5c49dab19938b119fe204fd7d7e8e174f4e9c68b"
+git-tree-sha1 = "fe31f4ff144392ad8176f5c7c03cca6ba320271c"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "0.8.8"
+version = "0.8.14"
 
 [[Homebrew]]
 deps = ["BinDeps", "InteractiveUtils", "JSON", "Libdl", "Test", "Unicode"]
@@ -160,10 +160,10 @@ deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JLD]]
-deps = ["Compat", "FileIO", "HDF5", "LegacyStrings", "Profile", "Random"]
-git-tree-sha1 = "95fd5d7f129918a75d0535aaaf5b8e235e6e0b0b"
+deps = ["FileIO", "HDF5", "Printf"]
+git-tree-sha1 = "f6cf928214ae7c0e7550b2424a57f11875d7e49a"
 uuid = "4138dd39-2aa7-5051-a626-17a0bb65d9c8"
-version = "0.9.1"
+version = "0.10.0"
 
 [[JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
@@ -173,21 +173,21 @@ version = "0.21.0"
 
 [[JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "a4f675340a109713f74c47a2b499df06f800c8d0"
+git-tree-sha1 = "2eadbbde5534346cbb837c3a75b377cba477a06d"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.7.8"
+version = "0.7.13"
 
 [[Lazy]]
 deps = ["MacroTools"]
-git-tree-sha1 = "ead48f10ad295afe72046ab0f2b9d704466452a0"
+git-tree-sha1 = "0bd934e15f5df97414aa81abf74ba8a2d5042964"
 uuid = "50d2b5c4-7a5e-59d5-8109-a42b560f39c0"
-version = "0.14.0"
+version = "0.15.0"
 
-[[LegacyStrings]]
-deps = ["Compat"]
-git-tree-sha1 = "d4b9bde2694c552fe579cc4462733f1ce08733fe"
-uuid = "1b4a561d-cfcb-5daf-8433-43fcf8b4bea3"
-version = "0.4.1"
+[[LeftChildRightSiblingTrees]]
+deps = ["AbstractTrees"]
+git-tree-sha1 = "71be1eb5ad19cb4f61fa8c73395c0338fd092ae0"
+uuid = "1d6d02ad-be62-4b6b-8a6d-2f90e265016e"
+version = "0.1.2"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -210,15 +210,15 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LoweredCodeUtils]]
 deps = ["JuliaInterpreter"]
-git-tree-sha1 = "b416a30717e9109fffd4d9869f2f962b5dca3162"
+git-tree-sha1 = "1c41621653250b2824b6e664ac5bd805558aeff9"
 uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
-version = "0.4.2"
+version = "0.4.3"
 
 [[MacroTools]]
-deps = ["DataStructures", "Markdown", "Random"]
-git-tree-sha1 = "e2fc7a55bb2224e203bbd8b59f72b91323233458"
+deps = ["Markdown", "Random"]
+git-tree-sha1 = "f7d2e3f654af75f01ec49be82c231c382214223a"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-version = "0.5.3"
+version = "0.5.5"
 
 [[Markdown]]
 deps = ["Base64"]
@@ -253,27 +253,29 @@ version = "0.12.0"
 
 [[Parsers]]
 deps = ["Dates", "Test"]
-git-tree-sha1 = "0139ba59ce9bc680e2925aec5b7db79065d60556"
+git-tree-sha1 = "f8f5d2d4b4b07342e5811d2b6428e45524e241df"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "0.3.10"
+version = "1.0.2"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PkgBenchmark]]
-deps = ["BenchmarkTools", "Dates", "InteractiveUtils", "JSON", "LibGit2", "Pkg", "Printf", "ProgressMeter"]
-git-tree-sha1 = "eeda9bde6194b57515c2494082ee1875ebf140ad"
+deps = ["BenchmarkTools", "Dates", "InteractiveUtils", "JSON", "LibGit2", "Logging", "Pkg", "Printf", "TerminalLoggers", "UUIDs"]
+git-tree-sha1 = "337bffb8781cc4f2bfea9dcc2030074693c475c9"
 uuid = "32113eaa-f34f-5b0d-bd6c-c81e245fc73d"
-version = "0.2.6"
+version = "0.2.8"
 
 [[Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
-[[Profile]]
-deps = ["Printf"]
-uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+[[ProgressLogging]]
+deps = ["Logging", "SHA", "UUIDs"]
+git-tree-sha1 = "e47914361d124d8760f5e356403daeb7f3b81633"
+uuid = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
+version = "0.1.2"
 
 [[ProgressMeter]]
 deps = ["Distributed", "Printf"]
@@ -290,15 +292,15 @@ deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[RecipesBase]]
-git-tree-sha1 = "7bdce29bc9b2f5660a6e5e64d64d91ec941f6aa2"
+git-tree-sha1 = "54f8ceb165a0f6d083f0d12cb4996f5367c6edbc"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "0.7.0"
+version = "1.0.1"
 
 [[RecursiveArrayTools]]
-deps = ["ArrayInterface", "RecipesBase", "Requires", "StaticArrays", "Statistics"]
-git-tree-sha1 = "f795d0f557ff9f40a16e2b0634fc709ceb59c0d5"
+deps = ["ArrayInterface", "RecipesBase", "Requires", "StaticArrays", "Statistics", "ZygoteRules"]
+git-tree-sha1 = "01af091d2e62b907f6bb65ea2e7c12208131cf17"
 uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
-version = "2.0.0"
+version = "2.2.0"
 
 [[Reexport]]
 deps = ["Pkg"]
@@ -308,15 +310,15 @@ version = "0.2.0"
 
 [[Requires]]
 deps = ["UUIDs"]
-git-tree-sha1 = "999513b7dea8ac17359ed50ae8ea089e4464e35e"
+git-tree-sha1 = "d37400976e98018ee840e0ca4f9d20baa231dc6b"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
-version = "1.0.0"
+version = "1.0.1"
 
 [[Revise]]
 deps = ["CodeTracking", "Distributed", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "Pkg", "REPL", "UUIDs", "Unicode"]
-git-tree-sha1 = "2ecbd19f31a934b035bfc38036d5f7ac575d0878"
+git-tree-sha1 = "a0a8be8022bd76a7f7d80f0ae2c3d66427b25f29"
 uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
-version = "2.5.0"
+version = "2.6.4"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -337,13 +339,19 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "5a3bcb6233adabde68ebc97be66e95dcb787424c"
+git-tree-sha1 = "4118cba3529e99af61aea9a83f7bfd3cff5ffb28"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.12.1"
+version = "0.12.2"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[[TerminalLoggers]]
+deps = ["LeftChildRightSiblingTrees", "Logging", "Markdown", "Printf", "ProgressLogging", "UUIDs"]
+git-tree-sha1 = "8c05be75dfe73d90e5dfb6293e0c852013f7282d"
+uuid = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
+version = "0.1.1"
 
 [[Test]]
 deps = ["Distributed", "InteractiveUtils", "Logging", "Random"]
@@ -351,15 +359,15 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[TimerOutputs]]
 deps = ["Printf"]
-git-tree-sha1 = "311765af81bbb48d7bad01fb016d9c328c6ede03"
+git-tree-sha1 = "0cc8db57cb537191b02948d4fabdc09eb7f31f98"
 uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-version = "0.5.3"
+version = "0.5.5"
 
 [[URIParser]]
-deps = ["Test", "Unicode"]
-git-tree-sha1 = "6ddf8244220dfda2f17539fa8c9de20d6c575b69"
+deps = ["Unicode"]
+git-tree-sha1 = "53a9f49546b8d2dd2e688d216421d050c9a31d0d"
 uuid = "30578b45-9adc-5946-b283-645ec420af67"
-version = "0.4.0"
+version = "0.4.1"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]
@@ -372,3 +380,9 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 git-tree-sha1 = "80229be1f670524750d905f8fc8148e5a8c4537f"
 uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
 version = "1.2.0"
+
+[[ZygoteRules]]
+deps = ["MacroTools"]
+git-tree-sha1 = "b3b4882cc9accf6731a08cc39543fbc6b669dca8"
+uuid = "700de1a5-db45-46bc-99cf-38207098b444"
+version = "0.2.0"
