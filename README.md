@@ -1,4 +1,6 @@
-        o.OOOo.    .oOOOo.   Oo      oO  .oOOOo.  
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3603345.svg)](https://doi.org/10.5281/zenodo.3603345)
+
+         o.OOOo.    .oOOOo.   Oo      oO  .oOOOo.  
          O    `o  .O     o.  O O    o o .O     o  
          o      O o       O  o  o  O  O o              Determinant quantum Monte Carlo code
          O      o O       o  O   Oo   O o              for simulating quantum critical metals!
