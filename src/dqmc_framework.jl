@@ -102,13 +102,13 @@ mutable struct DQMC{C<:Checkerboard, GreensEltype<:Number, HoppingEltype<:Number
   a::Analysis
 end
 
-DQMC(p::Params) = begin
+DQMC(p::Params; force_generic_chkr=false) = begin
   CB = CBFalse
 
   # choose checkerboard variant
   if p.chkr
     if p.Nhoppings == "none" && p.NNhoppings == "none"
-      CB = iseven(p.L) ? CBAssaad : CBGeneric
+      CB = iseven(p.L) && !force_generic_chkr ? CBAssaad : CBGeneric
     else
       CB = CBGeneric
     end
