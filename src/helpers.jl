@@ -86,24 +86,24 @@ end
 
 """
     setrng(rng)
-Replaces current `Random.GLOBAL_RNG` with `rng`.
+Replaces current `Random.default_rng()` with `rng`.
 """
 function setrng(rng::MersenneTwister)
-  Random.GLOBAL_RNG.idxI = rng.idxI
-  Random.GLOBAL_RNG.idxF = rng.idxF
-  Random.GLOBAL_RNG.state = rng.state
-  Random.GLOBAL_RNG.vals = rng.vals
-  Random.GLOBAL_RNG.seed = rng.seed
-  Random.GLOBAL_RNG.ints = rng.ints
+  Random.default_rng().idxI = rng.idxI
+  Random.default_rng().idxF = rng.idxF
+  Random.default_rng().state = rng.state
+  Random.default_rng().vals = rng.vals
+  Random.default_rng().seed = rng.seed
+  Random.default_rng().ints = rng.ints
   nothing
 end
 
 """
   saverng(filename [, rng::MersenneTwister; group="GLOBAL_RNG"])
   saverng(HDF5.HDF5File [, rng::MersenneTwister; group="GLOBAL_RNG"])
-Saves the current state of Julia's random generator (`Random.GLOBAL_RNG`) to HDF5.
+Saves the current state of Julia's random generator (`Random.default_rng()`) to HDF5.
 """
-function saverng(f::HDF5.HDF5File, rng::MersenneTwister=Random.GLOBAL_RNG; group::String="GLOBAL_RNG")
+function saverng(f::HDF5.HDF5File, rng::MersenneTwister=Random.default_rng(); group::String="GLOBAL_RNG")
   g = endswith(group, "/") ? group : group * "/"
   try
     if HDF5.exists(f, g)
@@ -121,7 +121,7 @@ function saverng(f::HDF5.HDF5File, rng::MersenneTwister=Random.GLOBAL_RNG; group
   end
   nothing
 end
-function saverng(filename::String, rng::MersenneTwister=Random.GLOBAL_RNG; group::String="GLOBAL_RNG")
+function saverng(filename::String, rng::MersenneTwister=Random.default_rng(); group::String="GLOBAL_RNG")
   mode = isfile(filename) ? "r+" : "w"
   HDF5.h5open(filename, mode) do f
     saverng(f, rng; group=group)
