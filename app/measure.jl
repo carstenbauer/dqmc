@@ -59,17 +59,32 @@ end
 #           Parse ARGS and maybe .meas.xml
 # -------------------------------------------------------
 
-const arg = ARGS[1]
+if length(ARGS) == 1
+  arg = ARGS[1]
 
-isfile(arg) || error("Input file $arg not found.")
-if endswith(arg, ".meas.xml")
-  mp = measxml2MeasParams(arg)
-elseif endswith(arg, ".in.xml")
-  measxml = arg[1:end-7]*".meas.xml"
-  isfile(measxml) || error("File $(measxml) not found. Input arg was: $(arg).")
+  isfile(arg) || error("Input file $arg not found.")
+  if endswith(arg, ".meas.xml")
+    mp = measxml2MeasParams(arg)
+  elseif endswith(arg, ".in.xml")
+    measxml = arg[1:end-7]*".meas.xml"
+    isfile(measxml) || error("File $(measxml) not found. Input arg was: $(arg).")
+    mp = measxml2MeasParams(measxml)
+  else
+    error("No .meas.xml or .in.xml file found. Input arg was: $(arg)")
+  end
+elseif length(ARGS) == 2
+  # Backward compatibility
+  # ARGS = ["sdwO3_L_4_B_2_dt_0.1_2", 1]
+  prefix = convert(String, ARGS[1])
+  idx = parse(Int, ARGS[2])           # SLURM_ARRAY_TASK_ID
+  println("Prefix is ", prefix, " and idx is ", idx)
+  measxml = prefix * ".task" * string(idx) * ".meas.xml"
+  println("Input xml constructed as: $(measxml)")
+  isfile(measxml) || error("File $(measxml) not found. Input args were: $(ARGS).")
   mp = measxml2MeasParams(measxml)
+  println("Input xml loaded successfully!!!!!!")
 else
-  error("No .meas.xml or .in.xml file found. Input arg was: $(arg)")
+  error("Incompatible input arguments. Input args were: $(ARGS)")
 end
 
 
