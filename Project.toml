@@ -27,7 +27,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [compat]
 BenchmarkTools = "0.4.2, 0.5"
-BinningAnalysis = "0.3.0"
+BinningAnalysis = "0.3.0, 0.4"
 BlockArrays = "0.10.1"
 FFTW = "0.3, 1.0"
 Git = "0.3"
